@@ -52,6 +52,17 @@ app.use((req, res, next) => {
 // Helper function to call Home Assistant services
 // ============================================
 
+/**
+ * Get the full HA API URL based on environment (Supervisor vs HA_URL)
+ */
+function getFullHAUrl(endpoint) {
+    // endpoint should not start with /
+    if (HA_URL) {
+        return `${HA_URL}/api/${endpoint}`;
+    }
+    return `http://supervisor/core/api/${endpoint}`;
+}
+
 async function callHomeAssistantService(domain, service, serviceData = {}) {
     const supervisorToken = process.env.SUPERVISOR_TOKEN;
 
@@ -61,9 +72,7 @@ async function callHomeAssistantService(domain, service, serviceData = {}) {
     }
 
     // Determine API URL
-    const apiUrl = HA_URL
-        ? `${HA_URL}/api/services/${domain}/${service}`
-        : `http://supervisor/core/api/services/${domain}/${service}`;
+    const apiUrl = getFullHAUrl(`services/${domain}/${service}`);
 
     try {
         const response = await fetch(apiUrl, {
@@ -169,9 +178,7 @@ async function cleanupOrphanedEntities() {
 
     try {
         // 1. Fetch all states
-        const apiUrl = HA_URL
-            ? `${HA_URL}/api/states`
-            : 'http://supervisor/core/api/states';
+        const apiUrl = getFullHAUrl('states');
 
         const statesResponse = await fetch(apiUrl, {
             headers: {
@@ -237,9 +244,7 @@ async function checkConfig() {
     }
 
     try {
-        const apiUrl = HA_URL
-            ? `${HA_URL}/api/config/core/check_config`
-            : 'http://supervisor/core/api/config/core/check_config';
+        const apiUrl = getFullHAUrl('config/core/check_config');
 
         const response = await fetch(apiUrl, {
             method: 'POST',
@@ -1137,11 +1142,11 @@ app.get('/api/debug/traces/:domain/:itemId', async (req, res) => {
 
     // Try multiple possible endpoints
     const endpointsToTry = [
-        `http://supervisor/core/api/trace/${domain}/${itemId}`,
-        `http://supervisor/core/api/logbook/${domain}.${itemId}`,
-        `http://supervisor/core/api/history/period?filter_entity_id=${domain}.${itemId}`,
-        `http://supervisor/core/api/trace/debug/${domain}.${itemId}`,
-        `http://supervisor/core/api/config/automation/trace/${itemId}`
+        getFullHAUrl(`trace/${domain}/${itemId}`),
+        getFullHAUrl(`logbook/${domain}.${itemId}`),
+        getFullHAUrl(`history/period?filter_entity_id=${domain}.${itemId}`),
+        getFullHAUrl(`trace/debug/${domain}.${itemId}`),
+        getFullHAUrl(`config/automation/trace/${itemId}`)
     ];
 
     for (const url of endpointsToTry) {
@@ -1263,7 +1268,7 @@ app.get('/api/states', async (req, res) => {
     }
 
     try {
-        const response = await fetch('http://supervisor/core/api/states', {
+        const response = await fetch(getFullHAUrl('states'), {
             headers: {
                 'Authorization': `Bearer ${supervisorToken}`,
                 'Content-Type': 'application/json'
@@ -1293,7 +1298,7 @@ app.get('/api/entities', async (req, res) => {
     }
 
     try {
-        const response = await fetch('http://supervisor/core/api/states', {
+        const response = await fetch(getFullHAUrl('states'), {
             headers: {
                 'Authorization': `Bearer ${supervisorToken}`,
                 'Content-Type': 'application/json'
@@ -1397,7 +1402,7 @@ app.get('/api/services', async (req, res) => {
     }
 
     try {
-        const response = await fetch('http://supervisor/core/api/services', {
+        const response = await fetch(getFullHAUrl('services'), {
             headers: {
                 'Authorization': `Bearer ${supervisorToken}`,
                 'Content-Type': 'application/json'
@@ -1445,7 +1450,7 @@ app.get('/api/devices', async (req, res) => {
     }
 
     try {
-        const response = await fetch('http://supervisor/core/api/devices', {
+        const response = await fetch(getFullHAUrl('devices'), {
             headers: {
                 'Authorization': `Bearer ${supervisorToken}`,
                 'Content-Type': 'application/json'
@@ -1485,7 +1490,7 @@ app.get('/api/areas', async (req, res) => {
     }
 
     try {
-        const response = await fetch('http://supervisor/core/api/areas', {
+        const response = await fetch(getFullHAUrl('areas'), {
             headers: {
                 'Authorization': `Bearer ${supervisorToken}`,
                 'Content-Type': 'application/json'
@@ -1527,7 +1532,7 @@ app.post('/api/execute_service', async (req, res) => {
     try {
         console.log(`[API] Executing service ${domain}.${service}`, serviceData);
 
-        const response = await fetch(`http://supervisor/core/api/services/${domain}/${service}`, {
+        const response = await fetch(getFullHAUrl(`services/${domain}/${service}`), {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${supervisorToken}`,
@@ -1581,7 +1586,7 @@ app.get('/api/orphaned/:type', async (req, res) => {
             try {
                 // Try to get specific domain lists effectively
                 // First try the entity registry via list endpoints if available, otherwise states
-                const response = await fetch('http://supervisor/core/api/states', {
+                const response = await fetch(getFullHAUrl('states'), {
                     headers: { 'Authorization': `Bearer ${supervisorToken}` }
                 });
                 if (response.ok) {
