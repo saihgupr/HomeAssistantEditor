@@ -1,6 +1,12 @@
 # Home Assistant Editor
 
-A robust visual editor for Home Assistant automations and scripts. This addon provides a cleaner, more intuitive interface for creating and editing automations compared to Home Assistant's built-in editor.
+I built a visual editor for those massive automations that are impossible to read in the standard UI.
+
+I love the built-in automation editor, but I started hitting a wall once my logic got complex. You know the feeling: you have three nested Choose blocks, and by the time you're at the final action, the UI is so expanded and indented that it's hard to keep track of where you actually are.
+
+I wanted something that felt more like a professional IDE, where I could see my groups, my list of items, and the editor all side-by-side. 
+
+So, I built **Home Assistant Editor**. It’s a standalone tool (available as an Add-on or Docker container) that gives you a three-column view of your automations and scripts.
 
 ![Screenshot 1](https://github.com/saihgupr/HomeAssistantEditor/raw/main/images/screenshot-1.png)
 ![Screenshot 2](https://github.com/saihgupr/HomeAssistantEditor/raw/main/images/screenshot-2.png)
@@ -47,7 +53,7 @@ For Docker users who aren't using the Home Assistant add-on, you have three depl
 
 1. Download the `compose.yaml` file:
    ```bash
-   curl -o compose.yaml https://github.com/saihgupr/HomeAssistantEditor/raw/main/compose.yaml
+   curl -L -o compose.yaml https://github.com/saihgupr/HomeAssistantEditor/raw/main/compose.yaml
    ```
 
 2. Edit the file to set your paths:
