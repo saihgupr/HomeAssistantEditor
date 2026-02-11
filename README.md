@@ -67,11 +67,15 @@ For Docker users who aren't using the Home Assistant add-on, you have three depl
 docker run -d \
   --name ha-editor \
   -v /path/to/your/ha/config:/config \
-  -e HA_URL="http://your-home-assistant-ip:8123" \
+  -e HA_URL="http://192.168.1.100:8123" \
+  -e VC_URL="http://192.168.1.100:54001" \
   -e SUPERVISOR_TOKEN="your_long_lived_access_token" \
   -p 54002:54002 \
   ghcr.io/saihgupr/homeassistant-editor:latest
 ```
+
+> [!TIP]
+> Use the IP address (e.g. `192.168.1.100`) instead of `homeassistant.local` for `HA_URL` and `VC_URL` to ensure reliable communication between containers.
 
 **Option C: Build locally:**
 
@@ -83,7 +87,8 @@ docker build -t ha-editor .
 docker run -d \
   --name ha-editor \
   -v /path/to/your/ha/config:/config \
-  -e HA_URL="http://your-home-assistant-ip:8123" \
+  -e HA_URL="http://192.168.1.100:8123" \
+  -e VC_URL="http://192.168.1.100:54001" \
   -e SUPERVISOR_TOKEN="your_long_lived_access_token" \
   -p 54002:54002 \
   ha-editor
@@ -112,6 +117,7 @@ When running in Docker mode, the application can be configured using the followi
 | Variable | Description | Default |
 | :--- | :--- | :--- |
 | `HA_URL` | The external URL of your Home Assistant instance | `null` |
+| `VC_URL` | The URL of your Home Assistant Version Control instance | `null` |
 | `SUPERVISOR_TOKEN` | A Long Lived Access Token created in your HA profile | `null` |
 | `CONFIG_PATH` | The internal path to the HA config directory | `/config` |
 | `PORT` | The port the server listens on | `54002` |

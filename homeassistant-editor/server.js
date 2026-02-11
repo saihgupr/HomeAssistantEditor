@@ -582,7 +582,7 @@ async function callVersionControlAPI(path) {
             const response = await fetchWithTimeout(url, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
-            });
+            }, 5000);
 
             if (response.ok) {
                 return await response.json();
@@ -620,10 +620,13 @@ async function callVersionControlAPI(path) {
 // Check if Version Control addon is available
 app.get('/api/version-control/status', async (req, res) => {
     try {
-        const result = await callVersionControlAPI('/api/automations');
+        const result = await callVersionControlAPI('/api/health');
         res.json({ success: true, available: true });
     } catch (error) {
         console.log('[Version Control] Status check failed:', error.message);
+        if (process.env.VC_URL) {
+            console.log(`[Version Control] Debug: VC_URL is set to ${process.env.VC_URL}. Ensure this URL is reachable from within the container.`);
+        }
         res.json({ success: true, available: false, reason: error.message });
     }
 });
