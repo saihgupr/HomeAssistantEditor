@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Action Block Test</title>
+    <style>
+        .nested-section {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin: 10px 0;
+        }
+
+        .nested-section-header {
+            font-weight: bold;
+            background: #eee;
+            padding: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="test-output"></div>
+    <script>
+        // Mocks for dependencies
+        function createFieldHtml(label, name, value, type, options) {
+            return `<div class="field">
+                <label>${label}</label>
+                <input name="${name}" value='${value}' type="${type || 'text'}">
+            </div>`;
+        }
+        function summarizeBlock(block) { return "Summary"; }
+
+        // Mocking formatDuration as it is used in app.js
+        function formatDuration(d) { return d; }
+
+        // Paste the relevant parts of app.js logic here manually for testing isolation
+        // OR load app.js if possible, but mocking is safer for unit testing logic.
+
+        // We will just verify if getBlockFields returns the nested structure
+
+        // --- PASTE NEW LOGIC HERE FOR TEST ---
+        const ACTION_CONFIGS = {
+            if: {
+                priority: 100,
+                detect: (block) => block.if || (block.service === 'if' && block.then),
+                render: renderNestedIfThenBlock
+            }
+        };
+
+        function renderNestedIfThenBlock(block) {
+            let html = '';
+            html += '<div class="nested-section"><div class="nested-section-header">If</div><div class="nested-section-content">';
+            const ifVal = block.if ? (Array.isArray(block.if) ? block.if : [block.if]) : [];
+            const ifJson = JSON.stringify(ifVal);
+            html += createFieldHtml('Conditions', 'if', ifJson, 'script');
+            html += '</div></div>';
+
+            html += '<div class="nested-section"><div class="nested-section-header">Then</div><div class="nested-section-content">';
+            const thenVal = block.then ? (Array.isArray(block.then) ? block.then : [block.then]) : [];
+            html += createFieldHtml('Actions', 'then', JSON.stringify(thenVal), 'script');
+            html += '</div></div>';
+
+            html += '<div class="nested-section"><div class="nested-section-header">Else (Optional)</div><div class="nested-section-content">';
+            const elseVal = block.else ? (Array.isArray(block.else) ? block.else : [block.else]) : [];
+            html += createFieldHtml('Actions', 'else', JSON.stringify(elseVal), 'script');
+            html += '</div></div>';
+            return html;
+        }
+
+        function getBlockFields(block, type) {
+            for (const [key, config] of Object.entries(ACTION_CONFIGS)) {
+                if (config.detect(block)) {
+                    return config.render(block);
+                }
+            }
+            return "Fallback";
+        }
+        // -------------------------------------
+
+        const testBlock = {
+            if: [{ condition: "state", entity_id: "light.test", state: "on" }],
+            then: [{ service: "light.turn_off", target: { entity_id: "light.test" } }],
+            else: []
+        };
+
+        const output = getBlockFields(testBlock, 'action');
+        document.getElementById('test-output').innerText = output;
+
+        console.log("Output:", output);
+    </script>
+</body>
+
+</html>
