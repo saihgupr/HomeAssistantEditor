@@ -56,11 +56,29 @@ app.use((req, res, next) => {
  * Get the full HA API URL based on environment (Supervisor vs HA_URL)
  */
 function getFullHAUrl(endpoint) {
-    // endpoint should not start with /
     if (HA_URL) {
         return `${HA_URL}/api/${endpoint}`;
     }
     return `http://supervisor/core/api/${endpoint}`;
+}
+
+/**
+ * Fetch with timeout helper
+ */
+async function fetchWithTimeout(url, options = {}, timeout = 5000) {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
+    try {
+        const response = await fetch(url, {
+            ...options,
+            signal: controller.signal
+        });
+        clearTimeout(id);
+        return response;
+    } catch (error) {
+        clearTimeout(id);
+        throw error;
+    }
 }
 
 async function callHomeAssistantService(domain, service, serviceData = {}) {
@@ -75,7 +93,7 @@ async function callHomeAssistantService(domain, service, serviceData = {}) {
     const apiUrl = getFullHAUrl(`services/${domain}/${service}`);
 
     try {
-        const response = await fetch(apiUrl, {
+        const response = await fetchWithTimeout(apiUrl, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${supervisorToken}`,
@@ -180,7 +198,7 @@ async function cleanupOrphanedEntities() {
         // 1. Fetch all states
         const apiUrl = getFullHAUrl('states');
 
-        const statesResponse = await fetch(apiUrl, {
+        const statesResponse = await fetchWithTimeout(apiUrl, {
             headers: {
                 'Authorization': `Bearer ${supervisorToken}`,
                 'Content-Type': 'application/json'
@@ -246,7 +264,7 @@ async function checkConfig() {
     try {
         const apiUrl = getFullHAUrl('config/core/check_config');
 
-        const response = await fetch(apiUrl, {
+        const response = await fetchWithTimeout(apiUrl, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${supervisorToken}`,
@@ -523,7 +541,7 @@ async function discoverVersionControlHost() {
         }
 
         // Query Supervisor API to get list of addons
-        const response = await fetch('http://supervisor/addons', {
+        const response = await fetchWithTimeout('http://supervisor/addons', {
             headers: {
                 'Authorization': `Bearer ${supervisorToken}`,
                 'Content-Type': 'application/json'
@@ -562,7 +580,7 @@ async function callVersionControlAPI(path) {
         // Try internal addon-to-addon communication
         const url = `http://${host}:${VERSION_CONTROL_PORT}${path}`;
         try {
-            const response = await fetch(url, {
+            const response = await fetchWithTimeout(url, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
                 signal: AbortSignal.timeout(5000)
@@ -1151,7 +1169,7 @@ app.get('/api/debug/traces/:domain/:itemId', async (req, res) => {
 
     for (const url of endpointsToTry) {
         try {
-            const response = await fetch(url, {
+            const response = await fetchWithTimeout(url, {
                 headers: {
                     'Authorization': `Bearer ${supervisorToken}`,
                     'Content-Type': 'application/json'
@@ -1268,7 +1286,7 @@ app.get('/api/states', async (req, res) => {
     }
 
     try {
-        const response = await fetch(getFullHAUrl('states'), {
+        const response = await fetchWithTimeout(getFullHAUrl('states'), {
             headers: {
                 'Authorization': `Bearer ${supervisorToken}`,
                 'Content-Type': 'application/json'
@@ -1298,7 +1316,7 @@ app.get('/api/entities', async (req, res) => {
     }
 
     try {
-        const response = await fetch(getFullHAUrl('states'), {
+        const response = await fetchWithTimeout(getFullHAUrl('states'), {
             headers: {
                 'Authorization': `Bearer ${supervisorToken}`,
                 'Content-Type': 'application/json'
@@ -1402,7 +1420,7 @@ app.get('/api/services', async (req, res) => {
     }
 
     try {
-        const response = await fetch(getFullHAUrl('services'), {
+        const response = await fetchWithTimeout(getFullHAUrl('services'), {
             headers: {
                 'Authorization': `Bearer ${supervisorToken}`,
                 'Content-Type': 'application/json'
@@ -1450,7 +1468,7 @@ app.get('/api/devices', async (req, res) => {
     }
 
     try {
-        const response = await fetch(getFullHAUrl('devices'), {
+        const response = await fetchWithTimeout(getFullHAUrl('devices'), {
             headers: {
                 'Authorization': `Bearer ${supervisorToken}`,
                 'Content-Type': 'application/json'
@@ -1490,7 +1508,7 @@ app.get('/api/areas', async (req, res) => {
     }
 
     try {
-        const response = await fetch(getFullHAUrl('areas'), {
+        const response = await fetchWithTimeout(getFullHAUrl('areas'), {
             headers: {
                 'Authorization': `Bearer ${supervisorToken}`,
                 'Content-Type': 'application/json'
@@ -1532,7 +1550,7 @@ app.post('/api/execute_service', async (req, res) => {
     try {
         console.log(`[API] Executing service ${domain}.${service}`, serviceData);
 
-        const response = await fetch(getFullHAUrl(`services/${domain}/${service}`), {
+        const response = await fetchWithTimeout(getFullHAUrl(`services/${domain}/${service}`), {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${supervisorToken}`,
@@ -1586,7 +1604,7 @@ app.get('/api/orphaned/:type', async (req, res) => {
             try {
                 // Try to get specific domain lists effectively
                 // First try the entity registry via list endpoints if available, otherwise states
-                const response = await fetch(getFullHAUrl('states'), {
+                const response = await fetchWithTimeout(getFullHAUrl('states'), {
                     headers: { 'Authorization': `Bearer ${supervisorToken}` }
                 });
                 if (response.ok) {

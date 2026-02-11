@@ -2,8 +2,10 @@ services:
   ha-editor:
     # Home Assistant Editor
     # Image: https://github.com/saihgupr/HomeAssistantEditor/pkgs/container/homeassistant-editor
-    # Or build locally with: docker build -t saihgupr/homeassistant-editor:latest ./homeassistant-editor
-    image: ghcr.io/saihgupr/homeassistant-editor:latest
+    image: homeassistant-editor:local
+    build:
+      context: ./homeassistant-editor
+      dockerfile: Dockerfile
     container_name: ha-editor
     ports:
       - "54002:54002"
@@ -13,8 +15,9 @@ services:
       - SUPERVISOR_TOKEN=your_long_lived_access_token_here
       
       # Optional: Home Assistant URL (required for Docker mode to enable reload features)
-      # Format: http://homeassistant.local:8123 or http://192.168.1.100:8123
-      - HA_URL=http://homeassistant.local:8123
+      # Format: http://192.168.1.100:8123
+      # TIP: Use the IP address instead of .local if you have connection issues.
+      - HA_URL=http://192.168.1.100:8123
       
       # Optional: The internal path to your Home Assistant config directory
       # This should match the volume mount path
