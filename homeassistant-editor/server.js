@@ -36,6 +36,7 @@ const app = express();
 const PORT = process.env.PORT || 54002;
 const CONFIG_PATH = process.env.CONFIG_PATH || '/config';
 const HA_URL = process.env.HA_URL ? process.env.HA_URL.replace(/\/$/, '') : null; // Remove trailing slash if present
+const VC_URL = process.env.VC_URL ? process.env.VC_URL.replace(/\/$/, '') : null;
 
 // Middleware
 app.use(express.json());
@@ -574,6 +575,25 @@ async function discoverVersionControlHost() {
 }
 
 async function callVersionControlAPI(path) {
+    // If VC_URL is provided directly (Docker mode), use it
+    if (VC_URL) {
+        const url = `${VC_URL}${path}`;
+        try {
+            const response = await fetchWithTimeout(url, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            if (response.ok) {
+                return await response.json();
+            }
+            console.log(`[Version Control] Request to VC_URL failed with status: ${response.status}`);
+        } catch (error) {
+            console.log(`[Version Control] Request to VC_URL failed: ${error.message}`);
+        }
+        throw new Error('Version Control API not reachable at VC_URL');
+    }
+
     const host = await discoverVersionControlHost();
 
     if (host) {
@@ -582,8 +602,7 @@ async function callVersionControlAPI(path) {
         try {
             const response = await fetchWithTimeout(url, {
                 method: 'GET',
-                headers: { 'Content-Type': 'application/json' },
-                signal: AbortSignal.timeout(5000)
+                headers: { 'Content-Type': 'application/json' }
             });
 
             if (response.ok) {

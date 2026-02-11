@@ -19,6 +19,10 @@ services:
       # TIP: Use the IP address instead of .local if you have connection issues.
       - HA_URL=http://192.168.1.100:8123
       
+      # Optional: Version Control URL (if running the Version Control addon separately)
+      # Format: http://192.168.1.100:54001
+      - VC_URL=http://192.168.1.100:54001
+      
       # Optional: The internal path to your Home Assistant config directory
       # This should match the volume mount path
       - CONFIG_PATH=/config
