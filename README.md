@@ -140,7 +140,7 @@ When running in Docker mode, the application can be configured using the followi
 Right-click on items or blocks to access powerful context-sensitive actions:
 
 - **On Automations/Scripts:** Quickly **Enable/Disable**, **Run**, **Duplicate**, or **Delete** without opening the item.
-- **On Visual Blocks:** Right-click anywhere on a block to **Show YAML**, **Disable**, or **Run** individual actions instantly.
+- **On Visual Blocks:** Right-click anywhere on a block to **Duplicate**, **Delete**, **Enable/Disable**, **Show YAML**, or **Run** individual actions instantly.
 
 ### Keyboard Shortcuts
 

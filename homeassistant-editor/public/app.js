@@ -2470,6 +2470,8 @@ function renderBlocks(section, blocks, expandedStates = null) {
             aliasInput.addEventListener('click', (e) => e.stopPropagation());
         }
 
+        const duplicateBtn = blockEl.querySelector('.block-action-btn.duplicate');
+
         copyBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             const idx = parseInt(blockEl.dataset.index);
@@ -2478,6 +2480,21 @@ function renderBlocks(section, blocks, expandedStates = null) {
             showToast('Block copied to clipboard', 'success');
             updatePasteButtonsVisibility();
         });
+
+        if (duplicateBtn) {
+            duplicateBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                pushToHistory();
+                const index = parseInt(blockEl.dataset.index);
+                const sectionBlocks = getBlocksData(section);
+                const clone = JSON.parse(JSON.stringify(sectionBlocks[index]));
+                sectionBlocks.splice(index + 1, 0, clone);
+                updateSectionBlocks(section, sectionBlocks);
+                checkDirty();
+                updateYamlView();
+                renderBlocks(section, sectionBlocks);
+            });
+        }
 
         deleteBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -2583,6 +2600,8 @@ function initializeBlockComponents(blockEl) {
         aliasInput.addEventListener('click', (e) => e.stopPropagation());
     }
 
+    const duplicateBtn = blockEl.querySelector('.block-action-btn.duplicate');
+
     if (copyBtn) {
         copyBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -2590,6 +2609,35 @@ function initializeBlockComponents(blockEl) {
             state.clipboard = JSON.parse(JSON.stringify(data));
             showToast('Block copied to clipboard', 'success');
             updatePasteButtonsVisibility();
+        });
+    }
+
+    if (duplicateBtn) {
+        duplicateBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            pushToHistory();
+            const wrapper = blockEl.closest('.nested-block-wrapper');
+            const parentContainer = wrapper.parentElement;
+            const parentPath = wrapper.dataset.parentPath;
+            const type = blockEl.classList.contains('trigger') ? 'trigger' : (blockEl.classList.contains('condition') ? 'condition' : 'action');
+
+            const blockData = parseBlockElement(blockEl);
+            const clone = JSON.parse(JSON.stringify(blockData));
+
+            const newIndex = parseInt(wrapper.dataset.index) + 1;
+            const html = renderNestedBlockInline(clone, newIndex, parentPath, type);
+            wrapper.insertAdjacentHTML('afterend', html);
+
+            const nextWrapper = wrapper.nextElementSibling;
+            const nextBlockEl = nextWrapper.querySelector('.action-block');
+            if (nextBlockEl) {
+                initializeBlockComponents(nextBlockEl);
+            }
+
+            updateNestedWrapperIndices(parentContainer);
+            syncNestedEmpty(parentContainer);
+            checkDirty();
+            updateYamlView();
         });
     }
 
@@ -2904,6 +2952,13 @@ function initBlockContextMenu(blockEl) {
                 </svg>
                 <span>${isItemEnabled ? 'Disable' : 'Enable'}</span>
             </div>
+            <div class="block-menu-item duplicate-block">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                </svg>
+                <span>Duplicate</span>
+            </div>
             <div class="block-menu-item show-yaml">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="16 18 22 12 16 6" />
@@ -2916,6 +2971,16 @@ function initBlockContextMenu(blockEl) {
                     <polygon points="5 3 19 12 5 21 5 3" />
                 </svg>
                 <span>Run</span>
+            </div>
+            <div class="block-menu-item danger delete-block">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6" />
+                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                    <path d="M10 11v6" />
+                    <path d="M14 11v6" />
+                    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                </svg>
+                <span>Delete</span>
             </div>
         `;
 
@@ -2947,6 +3012,56 @@ function initBlockContextMenu(blockEl) {
             blockEl.classList.toggle('is-disabled');
             checkDirty();
             menu.remove();
+            updateYamlView();
+        });
+
+        menu.querySelector('.duplicate-block').addEventListener('click', (me) => {
+            me.stopPropagation();
+            menu.remove();
+
+            const container = blockEl.parentElement;
+            const nestedWrapper = blockEl.closest('.nested-block-wrapper');
+            const sectionId = nestedWrapper ? null : container.id.replace('-container', '');
+            const sectionName = sectionId === 'triggers' ? 'triggers' : (sectionId === 'conditions' ? 'conditions' : 'actions');
+
+            pushToHistory();
+
+            if (nestedWrapper) {
+                // Duplicate nested block
+                const parentContainer = nestedWrapper.parentElement;
+                const parentPath = nestedWrapper.dataset.parentPath;
+                const type = blockEl.classList.contains('trigger') ? 'trigger' : (blockEl.classList.contains('condition') ? 'condition' : 'action');
+
+                // Parse and copy data
+                const blockData = parseBlockElement(blockEl);
+                const clone = JSON.parse(JSON.stringify(blockData));
+
+                // Render and insert
+                const newIndex = parseInt(nestedWrapper.dataset.index) + 1;
+                const html = renderNestedBlockInline(clone, newIndex, parentPath, type);
+                nestedWrapper.insertAdjacentHTML('afterend', html);
+
+                // Initialize
+                const nextWrapper = nestedWrapper.nextElementSibling;
+                const nextBlockEl = nextWrapper.querySelector('.action-block');
+                if (nextBlockEl) {
+                    initializeBlockComponents(nextBlockEl);
+                }
+
+                updateNestedWrapperIndices(parentContainer);
+                syncNestedEmpty(parentContainer);
+            } else {
+                // Duplicate top-level block
+                const index = Array.from(container.children).indexOf(blockEl);
+                const sectionBlocks = getBlocksData(sectionName);
+                const clone = JSON.parse(JSON.stringify(sectionBlocks[index]));
+
+                sectionBlocks.splice(index + 1, 0, clone);
+                updateSectionBlocks(sectionName, sectionBlocks);
+                renderBlocks(sectionName, sectionBlocks);
+            }
+
+            checkDirty();
             updateYamlView();
         });
 
@@ -2995,6 +3110,34 @@ function initBlockContextMenu(blockEl) {
                 showToast('Run is only available for Action blocks', 'warning');
             }
             menu.remove();
+        });
+
+        menu.querySelector('.delete-block').addEventListener('click', (me) => {
+            me.stopPropagation();
+            menu.remove();
+
+            const container = blockEl.parentElement;
+            const nestedWrapper = blockEl.closest('.nested-block-wrapper');
+            const sectionId = nestedWrapper ? null : container.id.replace('-container', '');
+            const sectionName = sectionId === 'triggers' ? 'triggers' : (sectionId === 'conditions' ? 'conditions' : 'actions');
+
+            pushToHistory();
+
+            if (nestedWrapper) {
+                const parentContainer = nestedWrapper.parentElement;
+                nestedWrapper.remove();
+                updateNestedWrapperIndices(parentContainer);
+                syncNestedEmpty(parentContainer);
+            } else {
+                const index = Array.from(container.children).indexOf(blockEl);
+                const sectionBlocks = getBlocksData(sectionName);
+                sectionBlocks.splice(index, 1);
+                updateSectionBlocks(sectionName, sectionBlocks);
+                renderBlocks(sectionName, sectionBlocks);
+            }
+
+            checkDirty();
+            updateYamlView();
         });
 
         const closeMenu = (clickEvent) => {
@@ -3198,6 +3341,12 @@ function createBlockHtml(block, type, index, options = {}) {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+          </button>
+          <button class="block-action-btn duplicate" title="Duplicate">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
             </svg>
           </button>
           <button class="block-action-btn delete" title="Delete">
