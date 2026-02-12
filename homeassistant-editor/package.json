@@ -1,6 +1,6 @@
 {
     "name": "homeassistant-editor",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Keyboard Maestro-inspired visual editor for Home Assistant automations and scripts",
     "main": "server.js",
     "type": "module",

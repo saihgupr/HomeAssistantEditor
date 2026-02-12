@@ -1,6 +1,6 @@
 <h1>
   Home Assistant Editor
-  <img src="https://github.com/saihgupr/HomeAssistantEditor/raw/main/images/app-icon.png" width="80" align="right" />
+  <img src="images/app-icon.png" width="80" align="right" />
 </h1>
 
 A powerful visual editor for Home Assistant automations and scripts. This add-on provides a cleaner, more intuitive interface for creating and editing automations, with built-in version history that allows you to review changes and restore previous versions when needed.
