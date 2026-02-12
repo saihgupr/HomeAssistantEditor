@@ -7,6 +7,7 @@ import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import WebSocket from 'ws';
+import dns from 'node:dns';
 import { fileURLToPath } from 'url';
 import {
     extractAutomations,
@@ -47,6 +48,30 @@ app.use((req, res, next) => {
     console.log(`[${timestamp}] ${req.method} ${req.path}`);
     next();
 });
+// ============================================
+// Internal IP Resolution (Fixes HA IPv6 Auth Issue)
+// ============================================
+
+let supervisorIPv4 = null;
+
+/**
+ * Resolves the 'supervisor' hostname to an IPv4 address to force IPv4 communication.
+ * This fixes the 'Login attempt failed' issue caused by IPv6 link-local addresses.
+ */
+async function resolveSupervisorIP() {
+    if (supervisorIPv4) return supervisorIPv4;
+
+    try {
+        const result = await dns.promises.lookup('supervisor', { family: 4 });
+        supervisorIPv4 = result.address;
+        console.log(`[Supervisor] Resolved supervisor to IPv4: ${supervisorIPv4}`);
+        return supervisorIPv4;
+    } catch (error) {
+        // Fallback to hostname if resolution fails (e.g. dev mode)
+        console.log(`[Supervisor] IPv4 resolution failed for 'supervisor', using hostname instead: ${error.message}`);
+        return 'supervisor';
+    }
+}
 
 // ============================================
 // Helper function to call Home Assistant services
@@ -60,9 +85,10 @@ async function callHomeAssistantService(domain, service, serviceData = {}) {
         return { success: true, message: 'Dev mode - service call simulated' };
     }
 
+    const host = HA_URL ? null : await resolveSupervisorIP();
     const apiUrl = HA_URL
         ? `${HA_URL}/api/services/${domain}/${service}`
-        : `http://supervisor/core/api/services/${domain}/${service}`;
+        : `http://${host || 'supervisor'}/core/api/services/${domain}/${service}`;
 
     try {
         const response = await fetch(apiUrl, {
@@ -93,6 +119,8 @@ async function callHAWebSocket(payload) {
         throw new Error('No supervisor token');
     }
 
+    const host = HA_URL ? null : await resolveSupervisorIP();
+
     return new Promise((resolve, reject) => {
         // Determine WebSocket URL
         let wsUrl;
@@ -102,7 +130,7 @@ async function callHAWebSocket(payload) {
                 ? HA_URL.replace('https', 'wss') + '/api/websocket'
                 : HA_URL.replace('http', 'ws') + '/api/websocket';
         } else {
-            wsUrl = 'ws://supervisor/core/websocket';
+            wsUrl = `ws://${host}/core/websocket`;
         }
 
         const ws = new WebSocket(wsUrl);
@@ -168,9 +196,10 @@ async function cleanupOrphanedEntities() {
 
     try {
         // 1. Fetch all states
+        const host = await resolveSupervisorIP();
         const apiUrl = HA_URL
             ? `${HA_URL}/api/states`
-            : 'http://supervisor/core/api/states';
+            : `http://${host}/core/api/states`;
 
         const statesResponse = await fetch(apiUrl, {
             headers: {
@@ -236,9 +265,10 @@ async function checkConfig() {
     }
 
     try {
+        const host = await resolveSupervisorIP();
         const apiUrl = HA_URL
             ? `${HA_URL}/api/config/core/check_config`
-            : 'http://supervisor/core/api/config/core/check_config';
+            : `http://${host}/core/api/config/core/check_config`;
 
         const response = await fetch(apiUrl, {
             method: 'POST',
@@ -501,6 +531,13 @@ const VERSION_CONTROL_PORT = 54001;
 const VERSION_CONTROL_SLUG = 'home-assistant-version-control';
 
 async function discoverVersionControlHost() {
+    // Check for manual override first
+    if (process.env.VC_URL) {
+        versionControlHost = process.env.VC_URL;
+        console.log(`[Version Control] Using manual override VC_URL: ${versionControlHost}`);
+        return versionControlHost;
+    }
+
     // Already discovered
     if (versionControlHost) return versionControlHost;
 
@@ -517,7 +554,8 @@ async function discoverVersionControlHost() {
         }
 
         // Query Supervisor API to get list of addons
-        const response = await fetch('http://supervisor/addons', {
+        const host = await resolveSupervisorIP();
+        const response = await fetch(`http://${host}/addons`, {
             headers: {
                 'Authorization': `Bearer ${supervisorToken}`,
                 'Content-Type': 'application/json'
@@ -795,6 +833,8 @@ async function fetchTracesViaWebSocket(domain, itemId, fetchDetails = false) {
         return null;
     }
 
+    const host = HA_URL ? null : await resolveSupervisorIP();
+
     return new Promise((resolve, reject) => {
         // Determine WebSocket URL
         let wsUrl;
@@ -803,7 +843,7 @@ async function fetchTracesViaWebSocket(domain, itemId, fetchDetails = false) {
                 ? HA_URL.replace('https', 'wss') + '/api/websocket'
                 : HA_URL.replace('http', 'ws') + '/api/websocket';
         } else {
-            wsUrl = 'ws://supervisor/core/websocket';
+            wsUrl = `ws://${host}/core/websocket`;
         }
 
         const ws = new WebSocket(wsUrl);
@@ -1134,13 +1174,14 @@ app.get('/api/debug/traces/:domain/:itemId', async (req, res) => {
         return res.json(debug);
     }
 
+    const host = await resolveSupervisorIP();
     // Try multiple possible endpoints
     const endpointsToTry = [
-        `http://supervisor/core/api/trace/${domain}/${itemId}`,
-        `http://supervisor/core/api/logbook/${domain}.${itemId}`,
-        `http://supervisor/core/api/history/period?filter_entity_id=${domain}.${itemId}`,
-        `http://supervisor/core/api/trace/debug/${domain}.${itemId}`,
-        `http://supervisor/core/api/config/automation/trace/${itemId}`
+        `http://${host}/core/api/trace/${domain}/${itemId}`,
+        `http://${host}/core/api/logbook/${domain}.${itemId}`,
+        `http://${host}/core/api/history/period?filter_entity_id=${domain}.${itemId}`,
+        `http://${host}/core/api/trace/debug/${domain}.${itemId}`,
+        `http://${host}/core/api/config/automation/trace/${itemId}`
     ];
 
     for (const url of endpointsToTry) {
@@ -1262,7 +1303,8 @@ app.get('/api/states', async (req, res) => {
     }
 
     try {
-        const response = await fetch('http://supervisor/core/api/states', {
+        const host = await resolveSupervisorIP();
+        const response = await fetch(`http://${host}/core/api/states`, {
             headers: {
                 'Authorization': `Bearer ${supervisorToken}`,
                 'Content-Type': 'application/json'
@@ -1292,7 +1334,8 @@ app.get('/api/entities', async (req, res) => {
     }
 
     try {
-        const response = await fetch('http://supervisor/core/api/states', {
+        const host = await resolveSupervisorIP();
+        const response = await fetch(`http://${host}/core/api/states`, {
             headers: {
                 'Authorization': `Bearer ${supervisorToken}`,
                 'Content-Type': 'application/json'
@@ -1396,7 +1439,8 @@ app.get('/api/services', async (req, res) => {
     }
 
     try {
-        const response = await fetch('http://supervisor/core/api/services', {
+        const host = await resolveSupervisorIP();
+        const response = await fetch(`http://${host}/core/api/services`, {
             headers: {
                 'Authorization': `Bearer ${supervisorToken}`,
                 'Content-Type': 'application/json'
@@ -1444,7 +1488,8 @@ app.get('/api/devices', async (req, res) => {
     }
 
     try {
-        const response = await fetch('http://supervisor/core/api/devices', {
+        const host = await resolveSupervisorIP();
+        const response = await fetch(`http://${host}/core/api/devices`, {
             headers: {
                 'Authorization': `Bearer ${supervisorToken}`,
                 'Content-Type': 'application/json'
@@ -1484,7 +1529,8 @@ app.get('/api/areas', async (req, res) => {
     }
 
     try {
-        const response = await fetch('http://supervisor/core/api/areas', {
+        const host = await resolveSupervisorIP();
+        const response = await fetch(`http://${host}/core/api/areas`, {
             headers: {
                 'Authorization': `Bearer ${supervisorToken}`,
                 'Content-Type': 'application/json'
@@ -1526,7 +1572,8 @@ app.post('/api/execute_service', async (req, res) => {
     try {
         console.log(`[API] Executing service ${domain}.${service}`, serviceData);
 
-        const response = await fetch(`http://supervisor/core/api/services/${domain}/${service}`, {
+        const host = await resolveSupervisorIP();
+        const response = await fetch(`http://${host}/core/api/services/${domain}/${service}`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${supervisorToken}`,
@@ -1580,7 +1627,8 @@ app.get('/api/orphaned/:type', async (req, res) => {
             try {
                 // Try to get specific domain lists effectively
                 // First try the entity registry via list endpoints if available, otherwise states
-                const response = await fetch('http://supervisor/core/api/states', {
+                const host = await resolveSupervisorIP();
+                const response = await fetch(`http://${host}/core/api/states`, {
                     headers: { 'Authorization': `Bearer ${supervisorToken}` }
                 });
                 if (response.ok) {

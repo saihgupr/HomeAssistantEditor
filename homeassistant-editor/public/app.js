@@ -7926,7 +7926,7 @@ async function init() {
     updateSearchClear();
 
     // Check if Version Control addon is available
-    checkVersionControlStatus();
+    await checkVersionControlStatus();
     initVersionNavStyle();
 
     // Fetch both counts on startup (in parallel)

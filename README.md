@@ -117,10 +117,11 @@ When running in Docker mode, the application can be configured using the followi
 | `HA_URL` | The external URL of your Home Assistant instance | `null` |
 | `SUPERVISOR_TOKEN` | A Long Lived Access Token created in your HA profile | `null` |
 | `CONFIG_PATH` | The internal path to the HA config directory | `/config` |
+| `VC_URL` | URL of the Version Control service (for standalone mode) | `null` |
 | `PORT` | The port the server listens on | `54002` |
 
 > [!NOTE]
-> For standalone usage, `SUPERVISOR_TOKEN` and `HA_URL` are required for the editor to communicate with Home Assistant (reloading automations, etc.).
+> For standalone usage, `SUPERVISOR_TOKEN` and `HA_URL` are required for the editor to communicate with Home Assistant. `VC_URL` is required to enable Version History features.
 
 ## Usage
 
