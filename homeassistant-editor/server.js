@@ -60,7 +60,6 @@ async function callHomeAssistantService(domain, service, serviceData = {}) {
         return { success: true, message: 'Dev mode - service call simulated' };
     }
 
-    // Determine API URL
     const apiUrl = HA_URL
         ? `${HA_URL}/api/services/${domain}/${service}`
         : `http://supervisor/core/api/services/${domain}/${service}`;
