@@ -462,7 +462,9 @@ async function filterCommitsProgressively(commits, type, vcId) {
     // Get current content for comparison
     const currentContent = state.selectedItem ? JSON.stringify(normalizeForComparison(state.selectedItem)) : '';
 
-    for (const commit of commits) {
+    // Only check the most recent 25 commits to avoid excessive API calls
+    const commitsToScan = commits.slice(0, 25);
+    for (const commit of commitsToScan) {
         // Check if we switched to a different item while scanning
         if (!state.selectedItem || String(state.selectedItem.id) !== String(vcId.split(':').pop())) {
             console.log('[VersionControl] Item changed, stopping scan');
@@ -632,9 +634,13 @@ function updateVersionNavUI() {
     const previewMode = state.versionControl.previewMode;
 
     // Show/hide based on availability
+    console.log('[VersionControl] updateVersionNavUI: available=', available, 'commits=', commits.length);
     nav.style.display = available ? 'flex' : 'none';
 
-    if (!available) return;
+    if (!available) {
+        console.log('[VersionControl] nav hidden because available is false');
+        return;
+    }
 
     // Update buttons
     const btnBack = nav.querySelector('.version-nav-back');
