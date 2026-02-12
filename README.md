@@ -140,7 +140,7 @@ When running in Docker mode, the application can be configured using the followi
 Right-click on items or blocks to access powerful context-sensitive actions:
 
 - **On Automations/Scripts:** Quickly **Enable/Disable**, **Run**, **Duplicate**, or **Delete** without opening the item.
-- **On Visual Blocks:** **Show YAML** to edit a block's raw code in a modal, **Disable** specific blocks to test logic, or **Run** individual actions instantly.
+- **On Visual Blocks:** Right-click anywhere on a block to **Show YAML**, **Disable**, or **Run** individual actions instantly.
 
 ### Keyboard Shortcuts
 
@@ -148,7 +148,7 @@ Right-click on items or blocks to access powerful context-sensitive actions:
 | :--- | :--- |
 | `Cmd/Ctrl + S` | Save current item |
 | `Escape` | Close modal dialogs |
-| `Right Click` | Open context menu for items/blocks |
+| `Right Click` | Context menu (Items & Blocks) |
 
 ## Version Control & History
 

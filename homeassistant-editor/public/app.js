@@ -2885,9 +2885,9 @@ function initNestedDragAndDrop(blockEl, header) {
 }
 function initBlockContextMenu(blockEl) {
     const menuTrigger = blockEl.querySelector('.block-menu-trigger');
-    if (!menuTrigger) return;
 
-    menuTrigger.addEventListener('click', (e) => {
+    const openMenu = (e, isRightClick = false) => {
+        e.preventDefault();
         e.stopPropagation();
 
         // Close any other open menus
@@ -2919,13 +2919,29 @@ function initBlockContextMenu(blockEl) {
             </div>
         `;
 
-        // Position menu relative to trigger
         document.body.appendChild(menu);
-        const rect = menuTrigger.getBoundingClientRect();
-        menu.style.top = `${rect.bottom + 5}px`;
-        menu.style.left = `${rect.right - 140}px`;
 
-        // Toggle Enabled logic
+        if (isRightClick) {
+            // Position at cursor
+            menu.style.top = `${e.clientY}px`;
+            menu.style.left = `${e.clientX}px`;
+
+            // Adjust if near edge
+            const rect = menu.getBoundingClientRect();
+            if (rect.right > window.innerWidth - 10) {
+                menu.style.left = `${window.innerWidth - rect.width - 10}px`;
+            }
+            if (rect.bottom > window.innerHeight - 10) {
+                menu.style.top = `${window.innerHeight - rect.height - 10}px`;
+            }
+        } else if (menuTrigger) {
+            // Position relative to trigger
+            const rect = menuTrigger.getBoundingClientRect();
+            menu.style.top = `${rect.bottom + 5}px`;
+            menu.style.left = `${rect.right - 140}px`;
+        }
+
+        // Action Handlers
         menu.querySelector('.toggle-enabled').addEventListener('click', (me) => {
             me.stopPropagation();
             blockEl.classList.toggle('is-disabled');
@@ -2934,26 +2950,18 @@ function initBlockContextMenu(blockEl) {
             updateYamlView();
         });
 
-        // Show YAML logic
         menu.querySelector('.show-yaml').addEventListener('click', (me) => {
             me.stopPropagation();
-            // Need to find the actual block data reference.
-            // Since we don't have direct reference here easily without index, 
-            // we might need to rely on the fact that we can get index from DOM
             const container = blockEl.parentElement;
             const index = Array.from(container.children).indexOf(blockEl);
             const sectionId = container.id.replace('-container', '');
-
-            // Map section ID to data property
             let sectionName = sectionId === 'triggers' ? 'triggers' : (sectionId === 'conditions' ? 'conditions' : 'actions');
 
-            // Locate data block
             let blockData = null;
             if (state.selectedItem) {
                 if (sectionName === 'triggers') blockData = state.selectedItem.triggers[index];
                 else if (sectionName === 'conditions') blockData = state.selectedItem.conditions[index];
                 else {
-                    // Actions handles both automation actions and script sequence
                     const actionsList = state.currentGroup === 'automations' ? state.selectedItem.actions : state.selectedItem.sequence;
                     blockData = actionsList[index];
                 }
@@ -2961,12 +2969,7 @@ function initBlockContextMenu(blockEl) {
 
             if (blockData) {
                 openBlockYamlModal(blockData, (newYaml) => {
-                    // Update data
                     try {
-                        // We rely on parse backend or simple js-yaml if available? 
-                        // For now, let's use the API to parse YAML snippet if possible, or simple JSON check
-                        // Actually, we can just use the parsing endpoint for snippets too if we wrap it?
-                        // Or better, let's just assume we send valid YAML to server to parse.
                         updateBlockFromYaml(index, sectionName, newYaml);
                     } catch (e) {
                         showToast('Error updating block', 'error');
@@ -2976,7 +2979,6 @@ function initBlockContextMenu(blockEl) {
             menu.remove();
         });
 
-        // Run logic
         menu.querySelector('.run-block').addEventListener('click', (me) => {
             me.stopPropagation();
             const container = blockEl.parentElement;
@@ -2995,15 +2997,19 @@ function initBlockContextMenu(blockEl) {
             menu.remove();
         });
 
-        // Close menu when clicking outside
         const closeMenu = (clickEvent) => {
-            if (!menu.contains(clickEvent.target) && clickEvent.target !== menuTrigger) {
+            if (!menu.contains(clickEvent.target) && (!menuTrigger || clickEvent.target !== menuTrigger)) {
                 menu.remove();
                 document.removeEventListener('click', closeMenu);
             }
         };
         setTimeout(() => document.addEventListener('click', closeMenu), 0);
-    });
+    };
+
+    if (menuTrigger) {
+        menuTrigger.addEventListener('click', (e) => openMenu(e, false));
+    }
+    blockEl.addEventListener('contextmenu', (e) => openMenu(e, true));
 }
 
 function findItemById(id, typeHint = null) {
