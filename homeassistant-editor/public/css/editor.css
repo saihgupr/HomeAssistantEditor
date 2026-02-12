@@ -1273,16 +1273,19 @@ body.resizing {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   border-radius: 4px;
   border: none;
   background: transparent;
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.4);
   cursor: pointer;
   padding: 0;
-  font-size: 16px;
-  line-height: 1;
+  font-size: 14px;
+  line-height: 18px;
+  margin-top: -1px;
+  /* Nudge up to align with text */
+  transition: var(--transition-fast);
 }
 
 .editor-tag-remove:hover {
