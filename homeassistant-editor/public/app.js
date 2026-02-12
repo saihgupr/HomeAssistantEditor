@@ -7329,7 +7329,7 @@ async function openBlockYamlModal(blockData, onSave) {
     const modal = document.getElementById('block-yaml-modal');
     const textarea = document.getElementById('block-yaml-content');
     const saveBtn = document.getElementById('block-yaml-save');
-    const closeBtns = modal.querySelectorAll('.modal-close');
+    const closeBtns = modal.querySelectorAll('.modal-close, .modal-footer-close');
 
     // Convert block data to YAML
     try {
