@@ -1774,6 +1774,8 @@ async function loadItems() {
             // Fallback (keep what we guessed, or null)
             item.last_triggered = null;
             item.entity_id = entityId;
+            // If we have an entity_id but no state, don't automatically mark as disabled
+            // if the server already claimed it was enabled (initial_state: true)
         }
     });
 
@@ -7154,6 +7156,11 @@ function initEventListeners() {
                 body: JSON.stringify({ entity_id: entityId, enabled: enabled })
             });
 
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `Server returned ${response.status}`);
+            }
+
             const result = await response.json();
             if (result.success) {
                 showToast(`${state.currentGroup === 'automations' ? 'Automation' : 'Script'} ${enabled ? 'enabled' : 'disabled'}`, 'success');
@@ -7165,14 +7172,12 @@ function initEventListeners() {
                     renderItemsList(state.currentGroup === 'automations' ? state.automations : state.scripts);
                 }
             } else {
-                showToast(`Failed to toggle live: ${result.error}`, 'error');
-                // Revert UI if failed
-                elements.editorEnabled.checked = !enabled;
-                if (toggleLabel) toggleLabel.textContent = !enabled ? 'Enabled' : 'Disabled';
+                throw new Error(result.error || 'Unknown error');
             }
         } catch (error) {
-            console.error('Error toggling live:', error);
-            showToast(`Error: ${error.message}`, 'error');
+            console.error('[Toggle] Error:', error);
+            showToast(`Failed to toggle: ${error.message || 'Check logs'}`, 'error');
+            // Revert UI toggle if failed
             elements.editorEnabled.checked = !enabled;
             const toggleLabel = elements.editorEnabled.closest('.enabled-toggle').querySelector('.toggle-label');
             if (toggleLabel) toggleLabel.textContent = !enabled ? 'Enabled' : 'Disabled';

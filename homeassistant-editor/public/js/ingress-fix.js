@@ -24,12 +24,15 @@ window.EDITOR_API_BASE = getAPIBasePath();
 // Override fetch to automatically prepend the base path
 const originalFetch = window.fetch;
 window.fetch = function (url, options) {
-    // Only modify relative URLs starting with /api/
-    if (typeof url === 'string' && url.startsWith('/api/') && window.EDITOR_API_BASE) {
-        url = window.EDITOR_API_BASE + url;
-        console.log('[Ingress Fix] Rewriting URL to:', url);
+    // Only rewrite if it's an /api or ./api call and we are in ingress
+    if (typeof url === 'string' && (url.startsWith('/api/') || url.startsWith('./api/')) && isIngress) {
+        // Normalize path: replace ./api/ with /api/
+        let apiPath = url.startsWith('./api/') ? url.substring(1) : url;
+        const newUrl = window.EDITOR_API_BASE + apiPath; // Corrected: apiPath already starts with /
+        console.log('[IngressFix] Rewriting fetch:', url, '->', newUrl);
+        return originalFetch(newUrl, options);
     }
-    return originalFetch.call(this, url, options);
+    return originalFetch(url, options);
 };
 
 console.log('[Ingress] Running through ingress:', isIngress);
