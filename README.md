@@ -135,12 +135,20 @@ When running in Docker mode, the application can be configured using the followi
 4. **Toggle to YAML** - Click the Visual/YAML toggle to see or edit raw YAML
 5. **Save** - Click Save to write changes and reload in Home Assistant
 
+### Context Menu Options
+
+Right-click on items or blocks to access powerful context-sensitive actions:
+
+- **On Automations/Scripts:** Quickly **Enable/Disable**, **Run**, **Duplicate**, or **Delete** without opening the item.
+- **On Visual Blocks:** **Show YAML** to edit a block's raw code in a modal, **Disable** specific blocks to test logic, or **Run** individual actions instantly.
+
 ### Keyboard Shortcuts
 
 | Shortcut | Action |
 | :--- | :--- |
 | `Cmd/Ctrl + S` | Save current item |
 | `Escape` | Close modal dialogs |
+| `Right Click` | Open context menu for items/blocks |
 
 ## Version Control & History
 

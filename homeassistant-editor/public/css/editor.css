@@ -5059,33 +5059,36 @@ body.replay-mode .panel-trace {
 
 /* Confirm Modal */
 .confirm-modal-box {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
-  min-width: 300px;
+  background: rgba(30, 30, 30, 0.85);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  min-width: 320px;
   max-width: 400px;
-  animation: modalSlideIn 0.2s ease;
+  animation: modalSlideIn 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  overflow: hidden;
 }
 
 .confirm-modal-body {
-  padding: var(--spacing-lg);
+  padding: 24px 24px 16px;
   text-align: center;
 }
 
 .confirm-modal-body p {
   margin: 0;
-  font-size: 14px;
+  font-size: 15px;
+  font-weight: 500;
   color: var(--text-primary);
   line-height: 1.5;
 }
 
 .confirm-modal-footer {
   display: flex;
-  justify-content: flex-end;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-md) var(--spacing-lg);
-  border-top: 1px solid var(--border-color);
+  justify-content: center;
+  gap: 12px;
+  padding: 0 24px 24px;
 }
 
 /* ============================================
