@@ -8,6 +8,7 @@ import path from 'path';
 import fs from 'fs';
 import WebSocket from 'ws';
 import dns from 'node:dns';
+dns.setDefaultResultOrder('ipv4first'); // Force IPv4 globally for all Node.js requests
 import { fileURLToPath } from 'url';
 import {
     extractAutomations,
@@ -49,6 +50,22 @@ app.use((req, res, next) => {
     console.log(`[${timestamp}] ${req.method} ${req.path}`);
     next();
 });
+
+// CORS and ingress support middleware
+app.use((req, res, next) => {
+    // Set CORS headers to prevent browser from making direct requests to HA
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    // Handle OPTIONS preflight requests
+    if (req.method === 'OPTIONS') {
+        res.sendStatus(200);
+        return;
+    }
+
+    next();
+});
 // ============================================
 // Internal IP Resolution (Fixes HA IPv6 Auth Issue)
 // ============================================
@@ -63,13 +80,14 @@ async function resolveSupervisorIP() {
     if (supervisorIPv4) return supervisorIPv4;
 
     try {
+        console.log('[Supervisor] Attempting to resolve supervisor to IPv4...');
         const result = await dns.promises.lookup('supervisor', { family: 4 });
         supervisorIPv4 = result.address;
-        console.log(`[Supervisor] Resolved supervisor to IPv4: ${supervisorIPv4}`);
+        console.log(`[Supervisor] Successfully resolved supervisor to IPv4: ${supervisorIPv4}`);
         return supervisorIPv4;
     } catch (error) {
         // Fallback to hostname if resolution fails (e.g. dev mode)
-        console.log(`[Supervisor] IPv4 resolution failed for 'supervisor', using hostname instead: ${error.message}`);
+        console.warn(`[Supervisor] IPv4 resolution failed for 'supervisor', will retry next time. Error: ${error.message}`);
         return 'supervisor';
     }
 }
