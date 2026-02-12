@@ -1657,7 +1657,7 @@ function showToast(message, type = 'info') {
     elements.toastContainer.appendChild(toast);
 
     setTimeout(() => {
-        toast.style.animation = 'slideIn 0.3s ease reverse';
+        toast.style.animation = 'slideOut 0.3s cubic-bezier(0.2, 0, 0.2, 1) forwards';
         setTimeout(() => toast.remove(), 300);
     }, 3000);
 }
