@@ -871,7 +871,7 @@ async function runSelectedItem() {
             Running...
         `;
 
-        const response = await fetch(`/api/run/${domain}/${encodeURIComponent(itemId)}`, {
+        const response = await fetch(`./api/run/${domain}/${encodeURIComponent(itemId)}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ entity_id: entityId })
@@ -914,7 +914,7 @@ async function toggleItemEnabled(item, enabled) {
     const entityId = item.entity_id;
 
     try {
-        const response = await fetch(`/api/run/automation/${encodeURIComponent(itemId)}/toggle`, {
+        const response = await fetch(`./api/run/automation/${encodeURIComponent(itemId)}/toggle`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ entity_id: entityId, enabled: enabled })
@@ -6239,7 +6239,7 @@ function getTypeIcon(iconName) {
 
 async function fetchFolders() {
     try {
-        const response = await fetch('/api/folders');
+        const response = await fetch('./api/folders');
         const data = await response.json();
         if (data.success) {
             state.folders = data.folders || [];
@@ -6252,7 +6252,7 @@ async function fetchFolders() {
 
 async function saveFolders() {
     try {
-        const response = await fetch('/api/folders', {
+        const response = await fetch('./api/folders', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(state.folders)
@@ -7148,7 +7148,7 @@ function initEventListeners() {
         const enabled = elements.editorEnabled.checked;
 
         try {
-            const response = await fetch(`/api/run/${domain}/${encodeURIComponent(itemId)}/toggle`, {
+            const response = await fetch(`./api/run/${domain}/${encodeURIComponent(itemId)}/toggle`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ entity_id: entityId, enabled: enabled })
