@@ -1235,7 +1235,7 @@ body.resizing {
   border-radius: 6px;
   padding: 0 4px 0 10px;
   white-space: nowrap;
-  height: 28px;
+  height: 26px;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -1298,9 +1298,9 @@ body.resizing {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 28px;
+  height: 26px;
   padding: 0 8px;
-  min-width: 28px;
+  min-width: 26px;
   border-radius: 6px;
   border: none;
   background: rgba(255, 255, 255, 0.03);
@@ -1319,7 +1319,7 @@ body.resizing {
 }
 
 .editor-tags-input {
-  height: 28px;
+  height: 26px;
   width: 140px;
   background: var(--input-bg);
   border: 1px solid var(--border-color);
