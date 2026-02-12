@@ -5957,7 +5957,8 @@ function createNewItem() {
         alias: isAutomation ? 'New Automation' : 'New Script',
         description: '',
         mode: 'single',
-        enabled: true
+        enabled: true,
+        _type: isAutomation ? 'automation' : 'script'
     };
 
     if (isAutomation) {
