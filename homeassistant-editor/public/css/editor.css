@@ -1240,23 +1240,15 @@ body.resizing {
   align-items: center;
   gap: 4px;
   transition: var(--transition-fast);
-}
-
-.editor-tag-text {
-  opacity: 0.45;
   letter-spacing: 0.2px;
 }
+
 
 .editor-tag:hover {
   color: rgba(255, 255, 255, 0.9);
 }
 
-.editor-tag:hover .editor-tag-text {
-  opacity: 1;
-}
-
 .editor-tag-text[contenteditable="true"] {
-  opacity: 1;
   outline: none;
   cursor: text;
 }
