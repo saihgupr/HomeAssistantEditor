@@ -1,6 +1,6 @@
 {
   "name": "Home Assistant Editor",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "slug": "homeassistant-editor",
   "description": "A powerful visual editor for Home Assistant automations and scripts",
   "url": "https://github.com/saihgupr/HomeAssistantEditor",
