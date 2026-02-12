@@ -1,0 +1,12 @@
+node_modules/
+.DS_Store
+*.log
+test-config/
+deploy.sh
+extra/
+logs/
+*.bak
+git-backup-*/
+.git-backup-*/
+git-backup-test/
+.git-backup-test/

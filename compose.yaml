@@ -1,0 +1,26 @@
+services:
+  ha-editor:
+    # Home Assistant Editor
+    # Image: https://github.com/saihgupr/HomeAssistantEditor/pkgs/container/homeassistant-editor
+    # Or build locally with: docker build -t saihgupr/homeassistant-editor:latest ./homeassistant-editor
+    image: ghcr.io/saihgupr/homeassistant-editor:latest
+    container_name: ha-editor
+    ports:
+      - "54002:54002"
+    environment:
+      # Optional: Add your Home Assistant Supervisor token to enable HA API features
+      # This allows the editor to save changes directly to YAML and reload HA
+      - SUPERVISOR_TOKEN=your_long_lived_access_token_here
+      
+      # Optional: Home Assistant URL (required for Docker mode to enable reload features)
+      # Format: http://homeassistant.local:8123 or http://192.168.1.100:8123
+      - HA_URL=http://homeassistant.local:8123
+      
+      # Optional: The internal path to your Home Assistant config directory
+      # This should match the volume mount path
+      - CONFIG_PATH=/config
+    volumes:
+      # Mount your Home Assistant config directory
+      # This is where your automations.yaml and scripts.yaml are located
+      - /path/to/your/ha/config:/config
+    restart: unless-stopped

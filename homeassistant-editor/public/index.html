@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Home Assistant Editor</title>
+  <link rel="stylesheet" href="css/editor.css">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+
+<body>
+  <div class="app">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-left">
+        <button class="btn-icon sidebar-toggle" id="btn-sidebar-toggle" title="Toggle Sidebar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="9" y1="3" x2="9" y2="21"></line>
+          </svg>
+        </button>
+        <h1 class="logo">
+          <img src="images/home-edit-outline.png" alt="Home Assistant Editor" width="24" height="24">
+          Home Assistant Editor
+        </h1>
+      </div>
+      <div class="header-right">
+        <div class="view-toggle">
+          <button class="toggle-btn active" data-view="visual">Visual</button>
+          <button class="toggle-btn" data-view="yaml">YAML</button>
+        </div>
+
+        <button class="btn-settings" id="btn-history-toggle" title="Toggle Run History" style="margin-right: 4px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </button>
+        <button class="btn-settings" id="btn-settings" title="Settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3" />
+            <path
+              d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+      <!-- Left Sidebar - Groups -->
+      <aside class="sidebar-left">
+        <div class="sidebar-header">
+          <h2>Groups</h2>
+        </div>
+        <nav class="group-nav">
+          <button class="group-item active" data-group="automations">
+            <svg class="group-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path
+                d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+            </svg>
+            Automations
+            <span class="group-count" id="automation-count">0</span>
+          </button>
+          <button class="group-item" data-group="scripts">
+            <svg class="group-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+              <line x1="10" y1="9" x2="8" y2="9" />
+            </svg>
+            Scripts
+            <span class="group-count" id="script-count">0</span>
+          </button>
+        </nav>
+
+        <div class="sidebar-header sidebar-header-folders">
+          <h2>Folders</h2>
+          <button class="btn-add-folder" id="btn-add-folder" title="Add Folder">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+          </button>
+        </div>
+        <nav class="group-nav" id="folder-list">
+          <!-- Folders will be rendered here -->
+        </nav>
+
+        <div class="sidebar-header sidebar-header-folders">
+          <h2>Tags</h2>
+          <button class="btn-add-folder" id="btn-add-tag" title="Add Tag Section">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+          </button>
+        </div>
+        <nav class="group-nav" id="tag-group-list">
+          <!-- Tag groups will be rendered here -->
+        </nav>
+      </aside>
+
+      <div class="divider" data-id="sidebar"></div>
+
+
+      <!-- Middle Panel - Items List -->
+      <section class="panel-middle">
+        <div class="panel-header">
+          <div class="search-box">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input type="text" id="search-input" placeholder="Search...">
+            <button type="button" class="search-clear" id="search-clear" aria-label="Clear search">×</button>
+          </div>
+
+          <button class="btn-new" id="btn-new">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            <span>New</span>
+          </button>
+        </div>
+        <!-- Filter Dropdown -->
+
+        <!-- Bulk Action Toolbar (hidden by default) -->
+        <div class="bulk-actions" id="bulk-actions" style="display: none;">
+          <span class="bulk-count" id="bulk-count">0 selected</span>
+          <button class="btn-bulk" id="btn-bulk-enable" title="Enable Selected">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+              <polyline points="22 4 12 14.01 9 11.01" />
+            </svg>
+          </button>
+          <button class="btn-bulk" id="btn-bulk-disable" title="Disable Selected">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+            </svg>
+          </button>
+          <button class="btn-bulk btn-bulk-danger" id="btn-bulk-delete" title="Delete Selected">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            </svg>
+          </button>
+          <button class="btn-bulk-cancel" id="btn-bulk-cancel">Cancel</button>
+        </div>
+        <div class="items-list" id="items-list">
+          <div class="loading-state">
+            <div class="spinner"></div>
+            <span>Loading...</span>
+          </div>
+        </div>
+      </section>
+
+      <div class="divider" data-id="editor"></div>
+
+
+      <!-- Right Panel - Editor -->
+      <section class="panel-right">
+        <div class="editor-container" id="editor-container">
+          <!-- Empty State -->
+          <div class="empty-state" id="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+            </svg>
+            <h3>Select an item to edit</h3>
+            <p>Choose an automation or script from the list, or create a new one.</p>
+          </div>
+
+          <!-- Shared Editor Header (visible in both visual and YAML modes) -->
+          <div class="editor-header" id="editor-header" style="display: none;">
+            <div class="editor-name-row">
+              <input type="text" id="editor-alias" class="editor-alias" placeholder="Automation Name">
+              <div class="editor-tags-area">
+                <div class="editor-tags-inline" id="editor-tags-inline"></div>
+                <button type="button" class="editor-tags-add" id="editor-tags-add" title="Add tag">+</button>
+                <input type="text" id="editor-tags-input" class="editor-tags-input" placeholder="#tag">
+              </div>
+              <input type="hidden" id="editor-tags" class="editor-tags">
+
+              <label class="enabled-toggle">
+                <input type="checkbox" id="editor-enabled" checked>
+                <span class="toggle-slider"></span>
+                <span class="toggle-label">Enabled</span>
+              </label>
+            </div>
+            <input type="text" id="editor-description" class="editor-description" placeholder="Description (optional)">
+          </div>
+
+          <!-- Visual Editor -->
+          <div class="visual-editor" id="visual-editor" style="display: none;">
+
+            <!-- Triggers Section -->
+            <div class="editor-section" id="triggers-section">
+              <div class="section-header">
+                <div class="section-title">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                  </svg>
+                  Triggers
+                </div>
+                <div class="section-actions">
+                  <button class="btn-paste-item" data-section="triggers" title="Paste Block">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                      <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+                    </svg>
+                  </button>
+                  <button class="btn-add-item" data-section="triggers">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="12" y1="5" x2="12" y2="19" />
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div class="blocks-container" id="triggers-container">
+                <!-- Trigger blocks will be inserted here -->
+              </div>
+            </div>
+
+            <!-- Conditions Section -->
+            <div class="editor-section" id="conditions-section">
+              <div class="section-header">
+                <div class="section-title">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                    <circle cx="8.5" cy="7" r="4" />
+                    <line x1="20" y1="8" x2="20" y2="14" />
+                    <line x1="23" y1="11" x2="17" y2="11" />
+                  </svg>
+                  Conditions
+                  <span class="optional-badge">optional</span>
+                </div>
+                <div class="section-actions">
+                  <button class="btn-paste-item" data-section="conditions" title="Paste Block">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                      <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+                    </svg>
+                  </button>
+                  <button class="btn-add-item" data-section="conditions">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="12" y1="5" x2="12" y2="19" />
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div class="blocks-container" id="conditions-container">
+                <!-- Condition blocks will be inserted here -->
+              </div>
+            </div>
+
+            <!-- Actions Section -->
+            <div class="editor-section" id="actions-section">
+              <div class="section-header">
+                <div class="section-title">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <polygon points="10 8 16 12 10 16 10 8" />
+                  </svg>
+                  Actions
+                </div>
+                <div class="section-actions">
+                  <button class="btn-run-selected" id="btn-run-selected" title="Run selected actions">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polygon points="5 3 19 12 5 21 5 3" />
+                    </svg>
+                  </button>
+                  <button class="btn-paste-item" data-section="actions" title="Paste Block">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                      <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+                    </svg>
+                  </button>
+                  <button class="btn-add-item" data-section="actions">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="12" y1="5" x2="12" y2="19" />
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div class="blocks-container" id="actions-container">
+                <!-- Action blocks will be inserted here -->
+              </div>
+            </div>
+          </div>
+
+          <!-- YAML Editor -->
+          <!-- YAML Editor -->
+          <div class="yaml-editor" id="yaml-editor" style="display: none;">
+            <div class="code-editor-wrapper">
+              <div class="line-numbers" id="line-numbers"></div>
+              <div class="code-area">
+                <pre class="highlight-layer"><code id="highlight-content" class="language-yaml"></code></pre>
+                <textarea id="yaml-content" spellcheck="false" autocomplete="off" autocorrect="off"
+                  autocapitalize="off"></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Editor Footer -->
+        <div class="editor-footer" id="editor-footer" style="display: none;">
+          <div class="footer-left">
+            <button class="btn btn-danger" id="btn-delete">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              </svg>
+              Delete
+            </button>
+          </div>
+          <div class="footer-right">
+            <!-- Version Navigation -->
+            <div class="version-nav" style="display: none;" data-style="1">
+              <button class="version-nav-back" onclick="navigateVersion('back')" title="Previous version" disabled>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                  <polyline points="15 18 9 12 15 6" />
+                </svg>
+              </button>
+              <span class="version-badge">Current</span>
+              <button class="version-nav-forward" onclick="navigateVersion('forward')" title="Next version" disabled>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </button>
+            </div>
+            <button class="btn btn-secondary" id="btn-run" title="Run Now">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="5 3 19 12 5 21 5 3" />
+              </svg>
+              Run
+            </button>
+            <button class="btn btn-secondary" id="btn-duplicate">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
+              Duplicate
+            </button>
+            <button class="btn btn-primary" id="btn-save">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                <polyline points="17 21 17 13 7 13 7 21" />
+                <polyline points="7 3 7 8 15 8" />
+              </svg>
+              Save
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <div class="divider" data-id="trace" id="divider-trace"></div>
+
+
+      <aside class="panel-trace" id="panel-trace" style="display: none;">
+        <div class="trace-header">
+          <h3 class="trace-title">Run History</h3>
+        </div>
+        <div class="trace-list" id="trace-list">
+          <div class="trace-empty">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+            <span>No runs yet</span>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Replay Controls -->
+    <div class="replay-controls" id="replay-controls" style="display: none;">
+      <div class="replay-details" id="replay-details">
+        <div class="replay-details-header">
+          <span class="replay-step-status" id="replay-step-status"></span>
+          <span class="replay-step-title" id="replay-step-title">Trigger 0</span>
+          <span class="replay-step-counter" id="replay-step-counter">1/5</span>
+        </div>
+        <div class="replay-details-body">
+          <div class="replay-detail-row" id="replay-detail-result">
+            <span class="replay-detail-label">Result:</span>
+            <span class="replay-detail-value" id="replay-result-value">✓ passed</span>
+          </div>
+          <div class="replay-detail-row" id="replay-detail-entity" style="display: none;">
+            <span class="replay-detail-label">Entity:</span>
+            <span class="replay-detail-value replay-entity" id="replay-entity-value">light.bedroom</span>
+          </div>
+          <div class="replay-detail-row" id="replay-detail-time">
+            <span class="replay-detail-label">Time:</span>
+            <span class="replay-detail-value" id="replay-time-value">12:34:56</span>
+          </div>
+          <div class="replay-detail-row replay-error-row" id="replay-detail-error" style="display: none;">
+            <span class="replay-detail-label">Error:</span>
+            <span class="replay-detail-value replay-error" id="replay-error-value"></span>
+          </div>
+        </div>
+      </div>
+      <div class="replay-nav">
+        <button class="replay-btn" id="replay-prev" title="Previous Step (←)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+        </button>
+        <button class="replay-btn" id="replay-next" title="Next Step (→)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </button>
+        <div class="replay-divider"></div>
+        <button class="replay-btn replay-exit" id="replay-exit" title="Exit Replay (Esc)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+          Exit
+        </button>
+      </div>
+    </div>
+
+    <!-- Add Block Modal -->
+    <div class="modal" id="add-block-modal">
+      <div class="modal-backdrop"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Add <span id="modal-section-type">Action</span></h3>
+          <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="block-types-grid" id="block-types-grid">
+            <!-- Block types will be inserted here -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal" id="settings-modal">
+      <div class="modal-backdrop"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Settings</h3>
+          <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="settings-group">
+            <label class="settings-toggle">
+              <input type="checkbox" id="setting-collapse-blocks" checked>
+              <span class="toggle-slider"></span>
+              <div class="settings-label">
+                <span class="settings-title">Collapse blocks by default</span>
+                <span class="settings-description">Blocks will be collapsed when opening an automation or script</span>
+              </div>
+            </label>
+            <div class="settings-divider" style="height: 1px; background: var(--border-color); margin: 12px 0;"></div>
+            <label class="settings-toggle">
+              <input type="checkbox" id="setting-dark-mode">
+              <span class="toggle-slider"></span>
+              <div class="settings-label">
+                <span class="settings-title">Dark Mode</span>
+                <span class="settings-description">Toggle between dark and light themes</span>
+              </div>
+            </label>
+            <div class="settings-divider" style="height: 1px; background: var(--border-color); margin: 12px 0;"></div>
+            <label class="settings-toggle">
+              <input type="checkbox" id="setting-color-mode">
+              <span class="toggle-slider"></span>
+              <div class="settings-label">
+                <span class="settings-title">Color Mode</span>
+                <span class="settings-description">Use colorful blocks (blue, orange, purple) instead of
+                  monochrome</span>
+              </div>
+            </label>
+            <div class="settings-divider" style="height: 1px; background: var(--border-color); margin: 12px 0;"></div>
+            <label class="settings-toggle">
+              <input type="checkbox" id="setting-mini-list">
+              <span class="toggle-slider"></span>
+              <div class="settings-label">
+                <span class="settings-title">Mini Mode</span>
+                <span class="settings-description">Compact automation/script list to title-only rows</span>
+              </div>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Folder Edit Modal -->
+  <div class="modal-overlay" id="folder-edit-modal">
+    <div class="folder-edit-modal-box">
+      <div class="modal-header">
+        <h3 id="folder-edit-title">Edit Folder</h3>
+        <button class="modal-close" id="folder-edit-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="folder-edit-field">
+          <label for="folder-edit-name">Folder Name</label>
+          <input type="text" id="folder-edit-name" placeholder="Folder name">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-danger" id="folder-edit-delete">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+          Delete
+        </button>
+        <button class="btn btn-primary" id="folder-edit-save">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tag Group Modal -->
+  <div class="modal-overlay" id="tag-group-modal">
+    <div class="folder-edit-modal-box">
+      <div class="modal-header">
+        <h3 id="tag-group-title">Edit Tag Section</h3>
+        <button class="modal-close" id="tag-group-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="folder-edit-field">
+          <label for="tag-group-name">Tag Section Name</label>
+          <input type="text" id="tag-group-name" placeholder="e.g. Cameras">
+        </div>
+        <div class="folder-edit-field">
+          <label for="tag-group-tags">Tags</label>
+          <input type="text" id="tag-group-tags" placeholder="#frigate #motion">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-danger" id="tag-group-delete">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+          Delete
+        </button>
+        <button class="btn btn-primary" id="tag-group-save">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="confirm-modal">
+    <div class="confirm-modal-box">
+      <div class="confirm-modal-body">
+        <p id="confirm-modal-message">Are you sure?</p>
+      </div>
+      <div class="confirm-modal-footer">
+        <button class="btn btn-secondary" id="confirm-modal-cancel">Cancel</button>
+        <button class="btn btn-danger" id="confirm-modal-confirm">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Block YAML Modal -->
+  <div class="modal" id="block-yaml-modal">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3>Edit Block YAML</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="code-editor-wrapper"
+          style="height: 300px; border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+          <textarea id="block-yaml-content" class="yaml-input" spellcheck="false"
+            style="width: 100%; height: 100%; resize: none; border: none; padding: 10px; font-family: 'JetBrains Mono', monospace; font-size: 13px; background: var(--bg-secondary); color: var(--text-primary);"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer"
+        style="padding: 16px; display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--border-color);">
+        <button class="btn btn-secondary modal-close">Cancel</button>
+        <button class="btn btn-primary" id="block-yaml-save">Save</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- UI Tweaker (Debug) -->
+  <div id="ui-tweaker" style="display: none;">
+    <div class="tweaker-header">
+      <h3>UI Tweaker</h3>
+      <div style="display: flex; gap: 8px;">
+        <button class="tweaker-copy" title="Copy Settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+        </button>
+        <button class="tweaker-reset" title="Reset to Defaults">
+          <svg viewBox="0 0 24 24" width="14" height="14">
+            <path fill="currentColor"
+              d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
+          </svg>
+        </button>
+        <button class="tweaker-toggle">
+          <svg viewBox="0 0 24 24" width="16" height="16">
+            <path fill="currentColor" d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div class="tweaker-tabs">
+      <button class="tweaker-tab active" data-tab="layout">Layout</button>
+      <button class="tweaker-tab" data-tab="nav">Nav</button>
+      <button class="tweaker-tab" data-tab="buttons">Buttons</button>
+      <button class="tweaker-tab" data-tab="typography">Typography</button>
+      <button class="tweaker-tab" data-tab="colors">Colors</button>
+      <button class="tweaker-tab" data-tab="yaml">YAML</button>
+    </div>
+    <div class="tweaker-content active" id="tweaker-tab-layout">
+      <!-- Layout Section -->
+      <div class="tweaker-group">
+        <div class="tweaker-group-title">Layout</div>
+        <div class="tweaker-control">
+          <div class="tweaker-label">
+            <span>Item Height</span>
+            <span class="tweaker-value" data-var="--item-height">56px</span>
+          </div>
+          <input type="range" class="tweaker-range" min="32" max="64" step="2" value="56" data-var="--item-height"
+            data-unit="px">
+        </div>
+
+        <div class="tweaker-control">
+          <div class="tweaker-label">
+            <span>Border Radius</span>
+            <span class="tweaker-value" data-var="--radius-md">14px</span>
+          </div>
+          <input type="range" class="tweaker-range" min="0" max="24" step="1" value="14" data-var="--radius-md"
+            data-unit="px">
+        </div>
+      </div>
+
+      <!-- Spacing Section -->
+      <div class="tweaker-group">
+        <div class="tweaker-group-title">Spacing</div>
+
+        <div class="tweaker-control">
+          <div class="tweaker-label">
+            <span>Spacing XS</span>
+            <span class="tweaker-value" data-var="--spacing-xs">0px</span>
+          </div>
+          <input type="range" class="tweaker-range" min="0" max="16" step="1" value="0" data-var="--spacing-xs"
+            data-unit="px">
+        </div>
+
+        <div class="tweaker-control">
+          <div class="tweaker-label">
+            <span>Spacing SM</span>
+            <span class="tweaker-value" data-var="--spacing-sm">9px</span>
+          </div>
+          <input type="range" class="tweaker-range" min="0" max="24" step="1" value="9" data-var="--spacing-sm"
+            data-unit="px">
+        </div>
+
+        <div class="tweaker-control">
+          <div class="tweaker-label">
+            <span>Spacing MD</span>
+            <span class="tweaker-value" data-var="--spacing-md">12px</span>
+          </div>
+          <input type="range" class="tweaker-range" min="0" max="32" step="1" value="12" data-var="--spacing-md"
+            data-unit="px">
+        </div>
+
+        <div class="tweaker-control">
+          <div class="tweaker-label">
+            <span>Spacing LG</span>
+            <span class="tweaker-value" data-var="--spacing-lg">9px</span>
+          </div>
+          <input type="range" class="tweaker-range" min="0" max="48" step="1" value="9" data-var="--spacing-lg"
+            data-unit="px">
+        </div>
+
+        <div class="tweaker-control">
+          <div class="tweaker-label">
+            <span>List Item Gap</span>
+            <span class="tweaker-value" data-var="--list-item-gap">5px</span>
+          </div>
+          <input type="range" class="tweaker-range" min="0" max="24" step="1" value="5" data-var="--list-item-gap"
+            data-unit="px">
+        </div>
+      </div>
+
+      <!-- Action Bars Section -->
+      <div class="tweaker-group">
+        <div class="tweaker-group-title">Action Bars</div>
+        <div class="tweaker-control">
+          <div class="tweaker-label">
+            <span>Action Bar Gap</span>
+            <span class="tweaker-value" data-var="--block-gap">5px</span>
+          </div>
+          <input type="range" class="tweaker-range" min="0" max="24" step="1" value="5" data-var="--block-gap"
+            data-unit="px">
+        </div>
+        <div class="tweaker-control">
+          <div class="tweaker-label">
+            <span>Height</span>
+            <span class="tweaker-value" data-var="--block-header-height">25px</span>
+          </div>
+          <input type="range" min="20" max="60" value="25" class="tweaker-range" data-var="--block-header-height"
+            data-unit="px">
+        </div>
+        <div class="tweaker-control">
+          <div class="tweaker-label">
+            <span>Label Height</span>
+            <span class="tweaker-value" data-var="--block-label-height">20px</span>
+          </div>
+          <input type="range" min="10" max="40" value="20" class="tweaker-range" data-var="--block-label-height"
+            data-unit="px">
+        </div>
+        <div class="tweaker-control">
+          <div class="tweaker-label">
+            <span>Corner Radius</span>
+            <span class="tweaker-value" data-var="--block-radius">8px</span>
+          </div>
+          <input type="range" min="0" max="20" value="8" class="tweaker-range" data-var="--block-radius" data-unit="px">
+        </div>
+        <div class="tweaker-control">
+          <div class="tweaker-label">
+            <span>Border Width</span>
+            <span class="tweaker-value" data-var="--block-border-width">1px</span>
+          </div>
+          <input type="range" min="0" max="5" value="1" class="tweaker-range" data-var="--block-border-width"
+            data-unit="px">
+        </div>
+      </div>
+
+
+    </div>
+
+    <!-- Nav Section -->
+    <div class="tweaker-content" id="tweaker-tab-nav">
+      <div class="tweaker-group">
+        <div class="tweaker-group-title">Version Navigation</div>
+
+        <div class="tweaker-control">
+          <label class="settings-toggle" style="margin-bottom: 8px;">
+            <input type="checkbox" id="tweak-nav-dim-enabled">
+            <span class="toggle-slider"></span>
+            <div class="settings-label" style="font-size: 12px; color: var(--text-secondary);">
+              Dim when inactive
+            </div>
+          </label>
+        </div>
+
+        <div class="tweaker-control">
+          <div class="tweaker-label">
+            <span>Dimmed Opacity</span>
+            <span class="tweaker-value" data-var="--version-dim-opacity">0.5</span>
+          </div>
+          <input type="range" class="tweaker-range" min="0" max="1" step="0.1" value="0.5"
+            data-var="--version-dim-opacity">
+        </div>
+
+        <div class="tweaker-control">
+          <div class="tweaker-label">
+            <span>Badge Width</span>
+            <span class="tweaker-value" data-var="--version-badge-width">140px</span>
+          </div>
+          <input type="range" class="tweaker-range" min="80" max="250" step="1" value="140"
+            data-var="--version-badge-width" data-unit="px">
+        </div>
+
+        <div class="tweaker-control">
+          <div class="tweaker-label">
+            <span>Font Size</span>
+            <span class="tweaker-value" data-var="--version-font-size">11px</span>
+          </div>
+          <input type="range" class="tweaker-range" min="10" max="20" step="1" value="11" data-var="--version-font-size"
+            data-unit="px">
+        </div>
+
+        <div class="tweaker-control">
+          <div class="tweaker-label">
+            <span>Font Weight</span>
+            <span class="tweaker-value" data-var="--version-font-weight">500</span>
+          </div>
+          <input type="range" class="tweaker-range" min="100" max="900" step="100" value="500"
+            data-var="--version-font-weight">
+        </div>
+
+        <div class="tweaker-control">
+          <div class="tweaker-label">
+            <span>Text Opacity</span>
+            <span class="tweaker-value" data-var="--version-opacity">0.9</span>
+          </div>
+          <input type="range" class="tweaker-range" min="0.1" max="1" step="0.1" value="0.9"
+            data-var="--version-opacity">
+        </div>
+
+        <div class="tweaker-control">
+          <div class="tweaker-label">
+            <span>Background</span>
+            <span class="tweaker-value" data-var="--version-bg">#2c2c2c</span>
+          </div>
+          <div style="display:flex; width:100%">
+            <input type="color" style="width:100%; height:30px; border:none; padding:0; background:none; cursor:pointer"
+              value="#2c2c2c" data-var="--version-bg">
+          </div>
+        </div>
+
+        <div class="tweaker-control">
+          <div class="tweaker-label">
+            <span>Border Color</span>
+            <span class="tweaker-value" data-var="--version-border">#2c2c2c</span>
+          </div>
+          <div style="display:flex; width:100%">
+            <input type="color" style="width:100%; height:30px; border:none; padding:0; background:none; cursor:pointer"
+              value="#2c2c2c" data-var="--version-border">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Buttons Section -->
+    <div class="tweaker-content" id="tweaker-tab-buttons">
+      <div class="tweaker-group">
+        <div class="tweaker-group-title">Shapes</div>
+
+        <div class="tweaker-control">
+          <div class="tweaker-label">
+            <span>Button Roundness</span>
+            <span class="tweaker-value" data-var="--radius-btn">12px</span>
+          </div>
+          <input type="range" class="tweaker-range" min="0" max="30" step="1" value="12" data-var="--radius-btn"
+            data-unit="px">
+        </div>
+
+        <div class="tweaker-control">
+          <div class="tweaker-label">
+            <span>Plus Button Roundness</span>
+            <span class="tweaker-value" data-var="--radius-btn-plus">8px</span>
+          </div>
+          <input type="range" class="tweaker-range" min="0" max="20" step="1" value="8" data-var="--radius-btn-plus"
+            data-unit="px">
+        </div>
+      </div>
+    </div>
+
+    <!-- Typography Section -->
+    <div class="tweaker-content" id="tweaker-tab-typography">
+      <div class="tweaker-group">
+        <div class="tweaker-group-title">Fonts</div>
+
+        <div class="tweaker-control">
+          <div class="tweaker-label">
+            <span>Base Size</span>
+            <span class="tweaker-value" data-var="--font-size-base">14px</span>
+          </div>
+          <input type="range" class="tweaker-range" min="10" max="24" step="1" value="14" data-var="--font-size-base"
+            data-unit="px">
+        </div>
+
+        <div class="tweaker-control">
+          <div class="tweaker-label">
+            <span>Header Size</span>
+            <span class="tweaker-value" data-var="--font-size-header">18px</span>
+          </div>
+          <input type="range" class="tweaker-range" min="12" max="32" step="1" value="18" data-var="--font-size-header"
+            data-unit="px">
+        </div>
+
+        <div class="tweaker-control">
+          <div class="tweaker-label">
+            <span>Small Size</span>
+            <span class="tweaker-value" data-var="--font-size-sm">11px</span>
+          </div>
+          <input type="range" class="tweaker-range" min="8" max="16" step="1" value="11" data-var="--font-size-sm"
+            data-unit="px">
+        </div>
+
+        <div class="tweaker-control">
+          <div class="tweaker-label">
+            <span>Text Color</span>
+            <span class="tweaker-value" data-var="--text-primary"></span>
+          </div>
+          <div style="display:flex; width:100%">
+            <input type="color" style="width:100%; height:30px; border:none; padding:0; background:none; cursor:pointer"
+              value="#ffffff" data-var="--text-primary">
+          </div>
+        </div>
+
+        <div class="tweaker-group-title" style="margin-top: 12px; font-size: 11px; opacity: 0.5;">Action Bars</div>
+        <div class="tweaker-control">
+          <div class="tweaker-label">
+            <span>Title Size</span>
+            <span class="tweaker-value" data-var="--block-title-size">12px</span>
+          </div>
+          <input type="range" min="10" max="24" step="1" value="12" class="tweaker-range" data-var="--block-title-size"
+            data-unit="px">
+        </div>
+        <div class="tweaker-control">
+          <div class="tweaker-label">
+            <span>Title Weight</span>
+            <span class="tweaker-value" data-var="--block-title-weight">370</span>
+          </div>
+          <input type="range" min="10" max="900" step="10" value="370" class="tweaker-range"
+            data-var="--block-title-weight">
+        </div>
+        <div class="tweaker-control">
+          <div class="tweaker-label">
+            <span>Title Opacity</span>
+            <span class="tweaker-value" data-var="--block-title-opacity">0.85</span>
+          </div>
+          <input type="range" min="0" max="1" step="0.05" value="0.85" class="tweaker-range"
+            data-var="--block-title-opacity">
+        </div>
+        <div class="tweaker-control">
+          <div class="tweaker-label">
+            <span>Title Color</span>
+            <span class="tweaker-value" data-var="--block-title-color"></span>
+          </div>
+          <div style="display:flex; width:100%">
+            <input type="color" style="width:100%; height:30px; border:none; padding:0; background:none; cursor:pointer"
+              value="#ffffff" data-var="--block-title-color">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Colors Section -->
+    <div class="tweaker-content" id="tweaker-tab-colors">
+      <div class="tweaker-group">
+        <div class="tweaker-group-title">Backgrounds</div>
+
+        <div class="tweaker-control">
+          <div class="tweaker-label">
+            <span>Primary BG</span>
+            <span class="tweaker-value" data-var="--bg-primary"></span>
+          </div>
+          <div style="display:flex; width:100%">
+            <input type="color" style="width:100%; height:30px; border:none; padding:0; background:none; cursor:pointer"
+              value="#1c1c1c" data-var="--bg-primary">
+          </div>
+        </div>
+
+        <div class="tweaker-control">
+          <div class="tweaker-label">
+            <span>Sidebar BG</span>
+            <span class="tweaker-value" data-var="--bg-secondary"></span>
+          </div>
+          <div style="display:flex; width:100%">
+            <input type="color" style="width:100%; height:30px; border:none; padding:0; background:none; cursor:pointer"
+              value="#212121" data-var="--bg-secondary">
+          </div>
+        </div>
+
+        <div class="tweaker-control">
+          <div class="tweaker-label">
+            <span>Panel BG</span>
+            <span class="tweaker-value" data-var="--bg-tertiary"></span>
+          </div>
+          <div style="display:flex; width:100%">
+            <input type="color" style="width:100%; height:30px; border:none; padding:0; background:none; cursor:pointer"
+              value="#2c2c2c" data-var="--bg-tertiary">
+          </div>
+        </div>
+      </div>
+
+      <div class="tweaker-group">
+        <div class="tweaker-group-title">Text & Borders</div>
+
+        <div class="tweaker-control">
+          <div class="tweaker-label">
+            <span>Text Secondary</span>
+            <span class="tweaker-value" data-var="--text-secondary"></span>
+          </div>
+          <div style="display:flex; width:100%">
+            <input type="color" style="width:100%; height:30px; border:none; padding:0; background:none; cursor:pointer"
+              value="#a0a0a0" data-var="--text-secondary">
+          </div>
+        </div>
+
+        <div class="tweaker-control">
+          <div class="tweaker-label">
+            <span>Text Muted</span>
+            <span class="tweaker-value" data-var="--text-muted"></span>
+          </div>
+          <div style="display:flex; width:100%">
+            <input type="color" style="width:100%; height:30px; border:none; padding:0; background:none; cursor:pointer"
+              value="#666666" data-var="--text-muted">
+          </div>
+        </div>
+
+        <div class="tweaker-control">
+          <div class="tweaker-label">
+            <span>Border Color</span>
+            <span class="tweaker-value" data-var="--border-color"></span>
+          </div>
+          <div style="display:flex; width:100%">
+            <input type="color" style="width:100%; height:30px; border:none; padding:0; background:none; cursor:pointer"
+              value="#333333" data-var="--border-color">
+          </div>
+        </div>
+
+        <div class="tweaker-group-title" style="margin-top: 12px; font-size: 11px; opacity: 0.5;">Action Bars</div>
+        <div class="tweaker-control">
+          <div class="tweaker-label">
+            <span>Block Border</span>
+            <span class="tweaker-value" data-var="--block-border-color">#232424</span>
+          </div>
+          <div style="display:flex; width:100%">
+            <input type="color" style="width:100%; height:30px; border:none; padding:0; background:none; cursor:pointer"
+              value="#232424" data-var="--block-border-color">
+          </div>
+        </div>
+        <!-- Accents Group -->
+        <div class="tweaker-group">
+          <div class="tweaker-group-title">Accents</div>
+
+          <div class="tweaker-control">
+            <div class="tweaker-label">
+              <span>Accent Blue</span>
+              <span class="tweaker-value" data-var="--accent-blue"></span>
+            </div>
+            <div style="display:flex; width:100%">
+              <input type="color"
+                style="width:100%; height:30px; border:none; padding:0; background:none; cursor:pointer" value="#367beb"
+                data-var="--accent-blue">
+            </div>
+          </div>
+
+          <div class="tweaker-control">
+            <div class="tweaker-label">
+              <span>Accent Green</span>
+              <span class="tweaker-value" data-var="--accent-green"></span>
+            </div>
+            <div style="display:flex; width:100%">
+              <input type="color"
+                style="width:100%; height:30px; border:none; padding:0; background:none; cursor:pointer" value="#22c55e"
+                data-var="--accent-green">
+            </div>
+          </div>
+
+          <div class="tweaker-control">
+            <div class="tweaker-label">
+              <span>Accent Purple</span>
+              <span class="tweaker-value" data-var="--accent-purple"></span>
+            </div>
+            <div style="display:flex; width:100%">
+              <input type="color"
+                style="width:100%; height:30px; border:none; padding:0; background:none; cursor:pointer" value="#8b5cf6"
+                data-var="--accent-purple">
+            </div>
+          </div>
+
+          <div class="tweaker-control">
+            <div class="tweaker-label">
+              <span>Accent Orange</span>
+              <span class="tweaker-value" data-var="--accent-orange"></span>
+            </div>
+            <div style="display:flex; width:100%">
+              <input type="color"
+                style="width:100%; height:30px; border:none; padding:0; background:none; cursor:pointer" value="#f59e0b"
+                data-var="--accent-orange">
+            </div>
+          </div>
+
+          <div class="tweaker-control">
+            <div class="tweaker-label">
+              <span>Accent Red</span>
+              <span class="tweaker-value" data-var="--accent-red"></span>
+            </div>
+            <div style="display:flex; width:100%">
+              <input type="color"
+                style="width:100%; height:30px; border:none; padding:0; background:none; cursor:pointer" value="#ef4444"
+                data-var="--accent-red">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- YAML Section -->
+      <div class="tweaker-content" id="tweaker-tab-yaml">
+        <div class="tweaker-group">
+          <div class="tweaker-group-title">YAML Settings</div>
+          <div class="tweaker-control">
+            <div class="tweaker-label">
+              <span>Placeholder</span>
+              <span class="tweaker-value">None</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/fieldComponents.js"></script>
+  <script src="app.js"></script>
+</body>
+
+</html>
