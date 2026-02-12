@@ -21,8 +21,8 @@ services:
       - CONFIG_PATH=/config
 
       # Optional: Version Control service URL (required for standalone/Docker mode if using history)
-      # Format: http://version-control:54003
-      - VC_URL=http://version-control:54003
+      # Format: http://version-control:54001
+      - VC_URL=http://version-control:54001
     volumes:
       # Mount your Home Assistant config directory
       # This is where your automations.yaml and scripts.yaml are located
