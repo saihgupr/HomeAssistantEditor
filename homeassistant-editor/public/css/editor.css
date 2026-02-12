@@ -1303,9 +1303,9 @@ body.resizing {
   min-width: 28px;
   border-radius: 6px;
   border: none;
-  background: rgba(0, 0, 0, 0.32);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
-  color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: none;
+  color: rgba(255, 255, 255, 0.5);
   cursor: pointer;
   transition: var(--transition-fast);
   font-size: 13px;
