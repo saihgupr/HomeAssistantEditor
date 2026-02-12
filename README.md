@@ -8,7 +8,8 @@ A powerful visual editor for Home Assistant automations and scripts. This add-on
 ![Screenshot 1](https://github.com/saihgupr/HomeAssistantEditor/raw/main/images/screenshot-1.png)
 ![Screenshot 2](https://github.com/saihgupr/HomeAssistantEditor/raw/main/images/screenshot-2.png)
 ![Screenshot 3](https://github.com/saihgupr/HomeAssistantEditor/raw/main/images/screenshot-4.png)
-![Screenshot 4](https://github.com/saihgupr/HomeAssistantEditor/raw/main/images/screenshot-3.png)
+![Screenshot 4](https://github.com/saihgupr/HomeAssistantEditor/raw/main/images/screenshot-5.png)
+![Screenshot 5](https://github.com/saihgupr/HomeAssistantEditor/raw/main/images/screenshot-3.png)
 
 ## Features
 
@@ -17,7 +18,7 @@ A powerful visual editor for Home Assistant automations and scripts. This add-on
 - **Version History & Restore** - Browse "commits" and restore previous versions via Version Control integration
 - **Advanced Editing** - Inline editing with searchable pickers and instant Visual/YAML toggles
 - **Smart Folders & Hashtags** - Organize and filter your items using custom folders and tags
-- **Trace Replay Mode** - Navigate past runs step-by-step to debug logic or condition failures
+- **Trace Replay Mode** - Step through past runs to debug logic and inspect condition failures
 - **Professional YAML Support** - Handles `!include` patterns and orphan entity cleanup automatically
 - **Instant Sync** - Changes are saved directly to your YAML and auto-reloaded in Home Assistant
 
