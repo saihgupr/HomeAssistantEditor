@@ -802,9 +802,9 @@ async function saveItem() {
 
             // Config is valid, reload in HA first, then show a single success toast
             await reloadInHA(false);
-            const action = isRestoring ? 'restored' : 'saved';
-            const label = action === 'restored' ? 'Restored' : 'Saved';
-            showToast(`${label} & reloaded`, 'success');
+            const typeLabel = isAutomation ? 'Automation' : 'Script';
+            const actionLabel = isRestoring ? 'restored' : 'saved';
+            showToast(`${typeLabel} ${actionLabel} and reloaded!`, 'success');
         } else {
             throw new Error(data.error);
         }

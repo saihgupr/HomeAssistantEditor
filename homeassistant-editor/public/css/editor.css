@@ -3046,12 +3046,13 @@ body.light-theme .nested-block-wrapper .block {
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
-  padding: var(--spacing-md) var(--spacing-lg);
+  padding: 12px 20px;
   background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  animation: slideIn 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  animation: slideIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  color: #ffffff;
 }
 
 @keyframes slideIn {
@@ -3067,20 +3068,24 @@ body.light-theme .nested-block-wrapper .block {
 }
 
 .toast.success {
-  border-left: 3px solid var(--accent-green);
+  background: var(--accent-green);
+  border-color: rgba(0, 0, 0, 0.1);
 }
 
 .toast.error {
-  border-left: 3px solid var(--accent-red);
+  background: var(--accent-red);
+  border-color: rgba(0, 0, 0, 0.1);
 }
 
 .toast.info {
-  border-left: 3px solid var(--accent-blue);
+  background: var(--accent-blue);
+  border-color: rgba(0, 0, 0, 0.1);
 }
 
 .toast-message {
-  font-size: 13px;
-  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  color: #ffffff;
 }
 
 /* ============================================
