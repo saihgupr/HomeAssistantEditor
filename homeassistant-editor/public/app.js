@@ -7541,7 +7541,7 @@ async function updateBlockFromYaml(index, section, yamlContent) {
                 // Object
                 updateBlockData(section, index, data.config);
             }
-            showToast('Block updated from YAML', 'success');
+            // showToast('Block updated from YAML', 'success');
         } else {
             showToast('Invalid YAML: ' + (data.error || 'Unknown error'), 'error');
         }
