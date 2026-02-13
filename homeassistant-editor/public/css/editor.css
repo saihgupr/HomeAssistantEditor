@@ -1319,12 +1319,11 @@ body.resizing {
 
 .editor-tags-input {
   height: 26px;
-  width: 140px;
-  background: var(--input-bg);
-  border: 1px solid var(--border-color);
+  width: 120px;
+  background: rgba(255, 255, 255, 0.03);
+  border: none;
   border-radius: 6px;
-  /* Match other inputs */
-  padding: 0 8px;
+  padding: 0 10px;
   font-size: 13px;
   color: var(--text-primary);
   outline: none;
@@ -4463,8 +4462,8 @@ body.light-theme .editor-tags-add:hover {
 }
 
 body.light-theme .editor-tags-input {
-  background: var(--input-bg);
-  border-color: var(--border-light);
+  background: #f2f2f7;
+  border: 1px solid var(--border-light);
   color: var(--text-primary);
 }
 
