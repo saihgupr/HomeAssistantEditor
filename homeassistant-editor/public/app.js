@@ -159,6 +159,7 @@ const _state = {
     replayStepIndex: 0,
     history: [],
     future: [],
+    traceInterval: null,
     sidebarCollapsed: localStorage.getItem('ha-editor-sidebar-collapsed') === 'true',
     historyCollapsed: localStorage.getItem('ha-editor-history-collapsed') === 'true',
     // Version Control integration
@@ -946,9 +947,7 @@ async function toggleItemEnabled(item, enabled) {
 async function fetchTraces(automationId) {
     try {
         const domain = state.currentGroup === 'automations' ? 'automation' : 'script';
-        // Slugify ID to match HA entity format (lowercase, underscores instead of spaces)
-        const slugifiedId = automationId.toLowerCase().replace(/\s+/g, '_');
-        const res = await fetch(`./api/traces/${domain}/${slugifiedId}`);
+        const res = await fetch(`./api/traces/${domain}/${encodeURIComponent(automationId)}`);
         const data = await res.json();
         if (data.success) {
             return data.traces || [];
@@ -1359,6 +1358,18 @@ async function loadTracesForItem() {
     const traces = await fetchTraces(state.selectedItem.id);
     console.log(`[loadTracesForItem] Received ${traces.length} traces`);
     renderTracePanel(traces);
+
+    // Setup periodic refresh
+    if (state.traceInterval) clearInterval(state.traceInterval);
+    state.traceInterval = setInterval(async () => {
+        if (!state.selectedItem || state.historyCollapsed) {
+            clearInterval(state.traceInterval);
+            state.traceInterval = null;
+            return;
+        }
+        const updatedTraces = await fetchTraces(state.selectedItem.id);
+        renderTracePanel(updatedTraces);
+    }, 15000); // Refresh every 15 seconds
 }
 
 function showConfigError(errors) {

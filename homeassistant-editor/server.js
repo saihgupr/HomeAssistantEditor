@@ -935,7 +935,7 @@ async function fetchTracesViaWebSocket(domain, itemId, fetchDetails = false) {
                         access_token: supervisorToken
                     }));
                 } else if (msg.type === 'auth_ok') {
-                    console.log('[WS Traces] Authenticated, requesting traces');
+                    console.log(`[WS Traces] Authenticated, requesting traces for ${domain}.${itemId}`);
                     ws.send(JSON.stringify({
                         id: msgId++,
                         type: 'trace/list',
@@ -1060,7 +1060,7 @@ app.get('/api/traces/:domain/:itemId', async (req, res) => {
 
     // 1. Try to get live traces via WebSocket (with details for first few)
     try {
-        const wsTraces = await fetchTracesViaWebSocket(domain, titleCaseItemId, true);
+        const wsTraces = await fetchTracesViaWebSocket(domain, itemId, true);
         if (wsTraces && wsTraces.length > 0) {
             console.log(`[Traces] Got ${wsTraces.length} live traces via WebSocket`);
             wsTraces.forEach(t => {
