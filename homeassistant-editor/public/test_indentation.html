@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>YAML Indentation Tests</title>
+</head>
+<body>
+    <h1>YAML Indentation Tests</h1>
+    <div id="results">Running tests...</div>
+
+    <script src="js/yamlEditor.js"></script>
+    <script>
+        const results = document.getElementById('results');
+        const tests = [];
+
+        function assert(name, condition) {
+            tests.push({ name, passed: condition });
+            console.log(name, condition ? 'PASSED' : 'FAILED');
+        }
+
+        function runTests() {
+            // Test 1: Indent single line (cursor at start)
+            {
+                const input = "line1\nline2";
+                const result = YamlEditor.processTabKey(input, 0, 0, false);
+                assert("Indent single line (cursor at start)", 
+                    result.value === "  line1\nline2" && 
+                    result.selectionStart === 2 && 
+                    result.selectionEnd === 2
+                );
+            }
+
+            // Test 2: Indent single line (cursor inside)
+            {
+                const input = "line1\nline2";
+                const result = YamlEditor.processTabKey(input, 2, 2, false);
+                assert("Indent single line (cursor inside)", 
+                    result.value === "li  ne1\nline2" && 
+                    result.selectionStart === 4 && 
+                    result.selectionEnd === 4
+                );
+            }
+
+            // Test 3: Indent block (selection covers multiple lines)
+            {
+                const input = "line1\nline2\nline3";
+                // Select "ne1\nli"
+                const result = YamlEditor.processTabKey(input, 2, 8, false);
+                assert("Indent block", 
+                    result.value === "  line1\n  line2\nline3"
+                );
+            }
+
+            // Test 4: Unindent block (Shift+Tab)
+            {
+                const input = "  line1\n  line2\nline3";
+                // Select "ne1\n  li"
+                const result = YamlEditor.processTabKey(input, 4, 12, true);
+                assert("Unindent block", 
+                    result.value === "line1\nline2\nline3"
+                );
+            }
+
+            // Test 5: Unindent single line (Shift+Tab)
+            {
+                const input = "  line1";
+                const result = YamlEditor.processTabKey(input, 0, 0, true);
+                assert("Unindent single line (Shift+Tab)", 
+                    result.value === "line1"
+                );
+            }
+
+            // Render results
+            let html = '<ul>';
+            tests.forEach(t => {
+                html += `<li style="color: ${t.passed ? 'green' : 'red'}">${t.name}: ${t.passed ? 'PASSED' : 'FAILED'}</li>`;
+            });
+            html += '</ul>';
+            results.innerHTML = html;
+        }
+
+        window.onload = runTests;
+    </script>
+</body>
+</html>

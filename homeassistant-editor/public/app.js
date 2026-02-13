@@ -5492,6 +5492,8 @@ function updateLineNumbers(text) {
     lineNumbers.innerHTML = Array(lines).fill(0).map((_, i) => i + startLine).join('\n');
 }
 
+
+
 function setupYamlEditorListeners() {
     const textarea = document.getElementById('yaml-content');
     if (!textarea || textarea.dataset.listenersAttached) return;
@@ -5543,24 +5545,7 @@ function setupYamlEditorListeners() {
     });
 
     // Tab support (indentation)
-    textarea.addEventListener('keydown', (e) => {
-        if (e.key === 'Tab') {
-            e.preventDefault();
-            const start = textarea.selectionStart;
-            const end = textarea.selectionEnd;
-
-            // Insert 2 spaces
-            const spaces = '  ';
-            textarea.value = textarea.value.substring(0, start) + spaces + textarea.value.substring(end);
-
-            // Move cursor
-            textarea.selectionStart = textarea.selectionEnd = start + spaces.length;
-
-            updateYamlHighlighter();
-            state.isDirty = true;
-            updateSaveButtonStatus(true);
-        }
-    });
+    YamlEditor.enableIndentation(textarea);
 
     textarea.dataset.listenersAttached = 'true';
 }
@@ -7497,6 +7482,7 @@ async function openBlockYamlModal(blockData, onSave) {
     const textarea = document.getElementById('block-yaml-content');
     const saveBtn = document.getElementById('block-yaml-save');
     const closeBtns = modal.querySelectorAll('.modal-close, .modal-footer-close');
+    YamlEditor.enableIndentation(textarea);
 
     // Convert block data to YAML
     try {
