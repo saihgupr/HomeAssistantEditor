@@ -606,6 +606,25 @@ export async function deleteScript(scriptId, configPath) {
     throw error;
   }
 }
+/**
+ * Convert arbitrary object to YAML string
+ */
+export function dumpYaml(obj) {
+  try {
+    return yaml.dump(obj, {
+      indent: 2,
+      lineWidth: -1,
+      noRefs: true,
+      sortKeys: false
+    });
+  } catch (error) {
+    throw new Error(`Failed to dump YAML: ${error.message}`);
+  }
+}
+
+/**
+ * Get automation as YAML string
+ */
 
 /**
  * Get automation as YAML string

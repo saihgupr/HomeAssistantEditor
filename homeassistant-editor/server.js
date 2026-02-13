@@ -27,6 +27,7 @@ import {
     validateAutomation,
     getFolders,
     saveFolders,
+    dumpYaml,
     getRawAutomationYaml,
     getRawScriptYaml
 } from './automation-service.js';
@@ -823,6 +824,22 @@ app.post('/api/parse-yaml', async (req, res) => {
         res.status(400).json({ success: false, error: error.message });
     }
 });
+
+// Convert JSON object to YAML string
+app.post('/api/dump-yaml', (req, res) => {
+    try {
+        const { config } = req.body;
+        if (config === undefined || config === null) {
+            return res.status(400).json({ success: false, error: 'No config provided' });
+        }
+        const yaml = dumpYaml(config);
+        res.json({ success: true, yaml });
+    } catch (error) {
+        console.error('[API] Error dumping YAML:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 
 // ============================================
 // API Routes - Traces
