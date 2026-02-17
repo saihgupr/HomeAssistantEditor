@@ -1369,8 +1369,12 @@ app.get('/api/states', async (req, res) => {
     }
 
     try {
-        const host = await resolveSupervisorIP();
-        const response = await fetch(`http://${host}/core/api/states`, {
+        const host = HA_URL ? null : await resolveSupervisorIP();
+        const apiUrl = HA_URL
+            ? `${HA_URL}/api/states`
+            : `http://${host}/core/api/states`;
+
+        const response = await fetch(apiUrl, {
             headers: {
                 'Authorization': `Bearer ${supervisorToken}`,
                 'Content-Type': 'application/json'
@@ -1400,8 +1404,12 @@ app.get('/api/entities', async (req, res) => {
     }
 
     try {
-        const host = await resolveSupervisorIP();
-        const response = await fetch(`http://${host}/core/api/states`, {
+        const host = HA_URL ? null : await resolveSupervisorIP();
+        const apiUrl = HA_URL
+            ? `${HA_URL}/api/states`
+            : `http://${host}/core/api/states`;
+
+        const response = await fetch(apiUrl, {
             headers: {
                 'Authorization': `Bearer ${supervisorToken}`,
                 'Content-Type': 'application/json'
@@ -1505,8 +1513,12 @@ app.get('/api/services', async (req, res) => {
     }
 
     try {
-        const host = await resolveSupervisorIP();
-        const response = await fetch(`http://${host}/core/api/services`, {
+        const host = HA_URL ? null : await resolveSupervisorIP();
+        const apiUrl = HA_URL
+            ? `${HA_URL}/api/services`
+            : `http://${host}/core/api/services`;
+
+        const response = await fetch(apiUrl, {
             headers: {
                 'Authorization': `Bearer ${supervisorToken}`,
                 'Content-Type': 'application/json'
@@ -1554,8 +1566,12 @@ app.get('/api/devices', async (req, res) => {
     }
 
     try {
-        const host = await resolveSupervisorIP();
-        const response = await fetch(`http://${host}/core/api/devices`, {
+        const host = HA_URL ? null : await resolveSupervisorIP();
+        const apiUrl = HA_URL
+            ? `${HA_URL}/api/devices`
+            : `http://${host}/core/api/devices`;
+
+        const response = await fetch(apiUrl, {
             headers: {
                 'Authorization': `Bearer ${supervisorToken}`,
                 'Content-Type': 'application/json'
@@ -1595,8 +1611,12 @@ app.get('/api/areas', async (req, res) => {
     }
 
     try {
-        const host = await resolveSupervisorIP();
-        const response = await fetch(`http://${host}/core/api/areas`, {
+        const host = HA_URL ? null : await resolveSupervisorIP();
+        const apiUrl = HA_URL
+            ? `${HA_URL}/api/areas`
+            : `http://${host}/core/api/areas`;
+
+        const response = await fetch(apiUrl, {
             headers: {
                 'Authorization': `Bearer ${supervisorToken}`,
                 'Content-Type': 'application/json'
@@ -1638,8 +1658,12 @@ app.post('/api/execute_service', async (req, res) => {
     try {
         console.log(`[API] Executing service ${domain}.${service}`, serviceData);
 
-        const host = await resolveSupervisorIP();
-        const response = await fetch(`http://${host}/core/api/services/${domain}/${service}`, {
+        const host = HA_URL ? null : await resolveSupervisorIP();
+        const apiUrl = HA_URL
+            ? `${HA_URL}/api/services/${domain}/${service}`
+            : `http://${host}/core/api/services/${domain}/${service}`;
+
+        const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${supervisorToken}`,
@@ -1693,8 +1717,12 @@ app.get('/api/orphaned/:type', async (req, res) => {
             try {
                 // Try to get specific domain lists effectively
                 // First try the entity registry via list endpoints if available, otherwise states
-                const host = await resolveSupervisorIP();
-                const response = await fetch(`http://${host}/core/api/states`, {
+                const host = HA_URL ? null : await resolveSupervisorIP();
+                const apiUrl = HA_URL
+                    ? `${HA_URL}/api/states`
+                    : `http://${host}/core/api/states`;
+
+                const response = await fetch(apiUrl, {
                     headers: { 'Authorization': `Bearer ${supervisorToken}` }
                 });
                 if (response.ok) {
