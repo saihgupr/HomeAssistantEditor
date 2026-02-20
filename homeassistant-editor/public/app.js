@@ -3047,15 +3047,23 @@ function initBlockContextMenu(blockEl) {
         menu.querySelector('.run-block').addEventListener('click', (me) => {
             me.stopPropagation();
             const container = blockEl.parentElement;
-            const directBlocks = Array.from(container.children).filter(el => el.classList.contains('action-block'));
-            const index = directBlocks.indexOf(blockEl);
+            const isAction = blockEl.classList.contains('action');
 
-            if (container.id === 'actions-container') {
-                if (state.selectedActionIndices.size > 0 && state.selectedActionIndices.has(index)) {
-                    runActionIndices(Array.from(state.selectedActionIndices));
-                } else {
-                    runActionIndices([index]);
+            if (isAction) {
+                // If it's a top-level action and part of a selection, run the whole selection
+                if (container && container.id === 'actions-container') {
+                    const directBlocks = Array.from(container.children).filter(el => el.classList.contains('action-block'));
+                    const index = directBlocks.indexOf(blockEl);
+                    if (state.selectedActionIndices.size > 0 && state.selectedActionIndices.has(index)) {
+                        runActionIndices(Array.from(state.selectedActionIndices));
+                        menu.remove();
+                        return;
+                    }
                 }
+
+                // Otherwise run just this block by parsing its current state
+                const blockData = parseBlockElement(blockEl);
+                runBlock(blockData);
             } else {
                 showToast('Run is only available for Action blocks', 'warning');
             }
