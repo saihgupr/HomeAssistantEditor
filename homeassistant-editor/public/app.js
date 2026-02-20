@@ -2390,19 +2390,8 @@ function renderBlocks(section, blocks, expandedStates = null) {
 
     container.innerHTML = htmlParts.join('');
 
-    // Add event listeners and apply collapse setting
-    Array.from(container.children).filter(el => el.classList.contains('action-block')).forEach((blockEl, index) => {
-        const header = blockEl.querySelector('.block-header');
-        const deleteBtn = blockEl.querySelector('.block-action-btn.delete');
-        const copyBtn = blockEl.querySelector('.block-action-btn.copy');
-        const aliasText = blockEl.querySelector('.block-alias-text');
-        const aliasInput = blockEl.querySelector('.block-title-input');
-
-        // Initial Tag Render
-        if (aliasText) {
-            renderBlockTags(blockEl, aliasText.textContent);
-        }
-
+    // Initialize all blocks (including deeply nested ones)
+    container.querySelectorAll('.action-block').forEach((blockEl, index) => {
         // Apply collapse setting or restore state
         let shouldCollapse = state.settings.collapseBlocksByDefault;
         if (expandedStates && index < expandedStates.length) {
@@ -2412,121 +2401,7 @@ function renderBlocks(section, blocks, expandedStates = null) {
             blockEl.classList.add('collapsed');
         }
 
-        // Toggle Collapse on header click
-        header.addEventListener('click', (e) => {
-            if (blockEl.classList.contains('dragging-active')) return;
-            if (e.shiftKey && section === 'actions') {
-                e.preventDefault();
-                e.stopPropagation();
-                if (state.actionSelectionAnchor === null) {
-                    state.actionSelectionAnchor = index;
-                }
-                setActionSelectionRange(state.actionSelectionAnchor, index);
-                applyActionSelectionStyles(container);
-                return;
-            }
-            if (section === 'actions' && state.selectedActionIndices.size > 0) {
-                clearActionSelection();
-            }
-            if (e.target.closest('.block-action-btn') || e.target.closest('.block-menu-trigger') || e.target.closest('.block-title-input')) return;
-            blockEl.classList.toggle('collapsed');
-        });
-
-        if (section === 'actions') {
-            blockEl.addEventListener('click', (e) => {
-                if (!e.shiftKey) return;
-                if (e.target.closest('input, textarea, select, button, .block-menu-trigger, .block-action-btn')) return;
-                e.preventDefault();
-                e.stopPropagation();
-                if (state.actionSelectionAnchor === null) {
-                    state.actionSelectionAnchor = index;
-                }
-                setActionSelectionRange(state.actionSelectionAnchor, index);
-                applyActionSelectionStyles(container);
-            });
-        }
-
-        // Inline Alias Editing
-        if (aliasText && aliasInput) {
-            aliasText.addEventListener('click', (e) => {
-                e.stopPropagation();
-                aliasText.style.display = 'none';
-                aliasInput.style.display = 'block';
-                aliasInput.focus();
-            });
-
-            aliasInput.addEventListener('blur', () => {
-                const newValue = aliasInput.value.trim();
-                const defaultTitle = aliasInput.getAttribute('placeholder');
-                aliasText.textContent = newValue || defaultTitle;
-                if (!newValue) aliasText.classList.add('is-placeholder');
-                else aliasText.classList.remove('is-placeholder');
-                aliasInput.style.display = 'none';
-                aliasText.style.display = 'block';
-
-                // Update tags
-                renderBlockTags(blockEl, aliasText.textContent);
-
-                checkDirty();
-                updateYamlView();
-            });
-
-            aliasInput.addEventListener('input', () => {
-                checkDirty();
-                updateYamlView();
-            });
-
-            aliasInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') aliasInput.blur();
-                if (e.key === 'Escape') aliasInput.blur();
-            });
-
-            aliasInput.addEventListener('click', (e) => e.stopPropagation());
-        }
-
-        const duplicateBtn = blockEl.querySelector('.block-action-btn.duplicate');
-
-        copyBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const idx = parseInt(blockEl.dataset.index);
-            const sectionBlocks = getBlocksData(section);
-            state.clipboard = JSON.parse(JSON.stringify(sectionBlocks[idx]));
-            showToast('Block copied to clipboard', 'success');
-            updatePasteButtonsVisibility();
-        });
-
-        if (duplicateBtn) {
-            duplicateBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                pushToHistory();
-                const index = parseInt(blockEl.dataset.index);
-                const sectionBlocks = getBlocksData(section);
-                const clone = JSON.parse(JSON.stringify(sectionBlocks[index]));
-                sectionBlocks.splice(index + 1, 0, clone);
-                updateSectionBlocks(section, sectionBlocks);
-                checkDirty();
-                updateYamlView();
-                renderBlocks(section, sectionBlocks);
-            });
-        }
-
-        deleteBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            pushToHistory();
-            const idx = parseInt(blockEl.dataset.index);
-            const sectionBlocks = getBlocksData(section);
-            sectionBlocks.splice(idx, 1);
-            updateSectionBlocks(section, sectionBlocks);
-            checkDirty();
-            updateYamlView();
-            renderBlocks(section, sectionBlocks);
-        });
-
-        // Initialize drag and drop
-        initBlockDragAndDrop(blockEl, section, header);
-
-        // Initialize Context Menu
-        initBlockContextMenu(blockEl);
+        initializeBlockComponents(blockEl);
     });
 
     if (section === 'actions') {
@@ -2546,10 +2421,7 @@ function renderBlocks(section, blocks, expandedStates = null) {
         });
     });
 
-    // Initialize nested blocks (if any)
-    container.querySelectorAll('.action-block .nested-block-wrapper .action-block').forEach(nestedBlock => {
-        initializeBlockComponents(nestedBlock);
-    });
+
 
     container.querySelectorAll('.action-block').forEach(blockEl => {
         applyFieldValidation(blockEl);
@@ -2572,9 +2444,47 @@ function initializeBlockComponents(blockEl) {
 
     if (header) {
         header.addEventListener('click', (e) => {
+            if (blockEl.classList.contains('dragging-active')) return;
+
+            const container = blockEl.parentElement;
+            const section = container.id ? container.id.replace('-container', '') : null;
+            const index = Array.from(container.children).indexOf(blockEl);
+
+            if (e.shiftKey && section === 'actions') {
+                e.preventDefault();
+                e.stopPropagation();
+                if (state.actionSelectionAnchor === null) {
+                    state.actionSelectionAnchor = index;
+                }
+                setActionSelectionRange(state.actionSelectionAnchor, index);
+                applyActionSelectionStyles(container);
+                return;
+            }
+
+            if (section === 'actions' && state.selectedActionIndices.size > 0) {
+                clearActionSelection();
+            }
+
             if (e.target.closest('.block-action-btn') || e.target.closest('.block-menu-trigger') || e.target.closest('.block-title-input')) return;
             blockEl.classList.toggle('collapsed');
         });
+
+        const container = blockEl.parentElement;
+        const section = container.id ? container.id.replace('-container', '') : null;
+        if (section === 'actions') {
+            blockEl.addEventListener('click', (e) => {
+                if (!e.shiftKey) return;
+                if (e.target.closest('input, textarea, select, button, .block-menu-trigger, .block-action-btn')) return;
+                e.preventDefault();
+                e.stopPropagation();
+                const index = Array.from(container.children).indexOf(blockEl);
+                if (state.actionSelectionAnchor === null) {
+                    state.actionSelectionAnchor = index;
+                }
+                setActionSelectionRange(state.actionSelectionAnchor, index);
+                applyActionSelectionStyles(container);
+            });
+        }
     }
 
     if (aliasText && aliasInput) {
@@ -2665,7 +2575,12 @@ function initializeBlockComponents(blockEl) {
                 updateNestedWrapperIndices(container);
                 syncNestedEmpty(container);
             } else {
+                const container = blockEl.parentElement;
+                const section = container.id.replace('-container', '');
                 blockEl.remove();
+                if (container.children.length === 0) {
+                    container.innerHTML = `<div class="blocks-empty">No ${section} configured. Click + to add one.</div>`;
+                }
             }
             checkDirty();
             updateYamlView();
@@ -2709,10 +2624,23 @@ function initializeBlockComponents(blockEl) {
         refreshBlockTitle(blockEl);
     });
 
+    const container = blockEl.parentElement;
+    const section = container.id ? container.id.replace('-container', '') : null;
     const nestedWrapper = blockEl.closest('.nested-block-wrapper');
+
     if (nestedWrapper && header) {
         initNestedDragAndDrop(blockEl, header);
+    } else if (header && section) {
+        initBlockDragAndDrop(blockEl, section, header);
     }
+
+    // Initialize Context Menu for nested blocks too
+    initBlockContextMenu(blockEl);
+
+    // Recursively initialize any nested blocks within this block
+    blockEl.querySelectorAll('.action-block').forEach(nestedBlock => {
+        initializeBlockComponents(nestedBlock);
+    });
 }
 
 function initBlockDragAndDrop(blockEl, section, header) {
@@ -3016,8 +2944,16 @@ function initBlockContextMenu(blockEl) {
         } else if (menuTrigger) {
             // Position relative to trigger
             const rect = menuTrigger.getBoundingClientRect();
-            menu.style.top = `${rect.bottom + 5}px`;
-            menu.style.left = `${rect.right - 140}px`;
+            let menuLeft = rect.right - 140;
+            let menuTop = rect.bottom + 5;
+
+            // Ensure it's not off-screen
+            if (menuLeft < 10) menuLeft = 10;
+            if (menuLeft + 140 > window.innerWidth - 10) menuLeft = window.innerWidth - 150;
+            if (menuTop + 200 > window.innerHeight - 10) menuTop = rect.top - 205; // Open above if no space
+
+            menu.style.top = `${menuTop}px`;
+            menu.style.left = `${menuLeft}px`;
         }
 
         // Action Handlers
@@ -3155,7 +3091,7 @@ function initBlockContextMenu(blockEl) {
         });
 
         const closeMenu = (clickEvent) => {
-            if (!menu.contains(clickEvent.target) && (!menuTrigger || clickEvent.target !== menuTrigger)) {
+            if (!menu.contains(clickEvent.target) && (!menuTrigger || !menuTrigger.contains(clickEvent.target))) {
                 menu.remove();
                 document.removeEventListener('click', closeMenu);
             }
@@ -6223,29 +6159,13 @@ function addBlock(section, type) {
     const blockHtml = createBlockHtml(block, blockClass, container.children.length);
     container.insertAdjacentHTML('beforeend', blockHtml);
 
-    // Add event listeners to new block
     const newBlock = container.lastElementChild;
-    const header = newBlock.querySelector('.block-header');
-    const deleteBtn = newBlock.querySelector('.block-action-btn.delete');
 
-    header.addEventListener('click', (e) => {
-        if (!e.target.closest('.block-action-btn')) {
-            newBlock.classList.toggle('collapsed');
-        }
-    });
-
-    deleteBtn.addEventListener('click', () => {
-        newBlock.remove();
-        checkDirty();
-        if (container.children.length === 0) {
-            container.innerHTML = `<div class="blocks-empty">No ${section} configured. Click + to add one.</div>`;
-        }
-        updateYamlView();
-    });
-
-    initBlockContextMenu(newBlock);
+    // Initialize the new block (this will also handle drag-and-drop via recursion/parentElement check)
+    initializeBlockComponents(newBlock);
 
     checkDirty();
+    updateYamlView();
 }
 
 function createEmptyBlock(blockType, type) {
