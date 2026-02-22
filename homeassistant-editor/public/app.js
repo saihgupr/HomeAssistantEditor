@@ -908,6 +908,116 @@ async function runSelectedItem() {
     }
 }
 
+/**
+ * Test an individual condition block
+ */
+async function testCondition(blockEl) {
+    const testBtn = blockEl.querySelector('.block-action-btn.test');
+    if (testBtn) testBtn.classList.add('loading');
+
+    const resultContainer = blockEl.querySelector('.test-result-container');
+    if (resultContainer) resultContainer.innerHTML = '';
+
+    try {
+        const conditionData = parseBlockElement(blockEl);
+        const response = await fetch('./api/test-condition', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ condition: conditionData })
+        });
+
+        const data = await response.json();
+        updateConditionTestResult(blockEl, data);
+    } catch (error) {
+        console.error('Error testing condition:', error);
+        updateConditionTestResult(blockEl, { success: false, error: error.message });
+    } finally {
+        if (testBtn) testBtn.classList.remove('loading');
+    }
+}
+
+/**
+ * Test a group of nested conditions
+ */
+async function testNestedSection(btn, role) {
+    const section = btn.closest('.nested-section') || btn.closest('.choose-option') || btn.closest('.condition-group');
+    const resultContainer = section.querySelector('.test-result-container');
+    btn.disabled = true;
+    btn.classList.add('loading');
+
+    if (resultContainer) resultContainer.innerHTML = '';
+
+    try {
+        // Collect all blocks in this section
+        const blocksContainer = section.querySelector('.nested-blocks');
+        const blocks = Array.from(blocksContainer.children).map(wrapper => {
+            const blockEl = wrapper.querySelector('.action-block');
+            return parseBlockElement(blockEl);
+        });
+
+        if (blocks.length === 0) {
+            updateConditionTestResult(section, { success: false, error: 'No conditions to test' });
+            return;
+        }
+
+        // Implicitly treat multiple conditions in a section as 'and'
+        const parentCondition = blocks.length === 1 ? blocks[0] : {
+            condition: 'and',
+            conditions: blocks
+        };
+
+        const response = await fetch('./api/test-condition', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ condition: parentCondition })
+        });
+
+        const data = await response.json();
+        updateConditionTestResult(section, data);
+    } catch (error) {
+        console.error('Error testing nested conditions:', error);
+        updateConditionTestResult(section, { success: false, error: error.message });
+    } finally {
+        btn.disabled = false;
+        btn.classList.remove('loading');
+    }
+}
+
+/**
+ * Update the UI with the condition test result
+ */
+function updateConditionTestResult(targetEl, data) {
+    const resultContainer = targetEl.querySelector('.test-result-container');
+    if (!resultContainer) return;
+
+    let html = '';
+    if (data.success && data.result) {
+        const result = data.result.result;
+        const className = result ? 'success' : 'fail';
+        const icon = result
+            ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>'
+            : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+        const text = result ? 'Passes' : 'Fails';
+
+        html = `
+            <div class="test-result-indicator ${className}">
+                ${icon}
+                <span>${text}</span>
+            </div>
+        `;
+    } else {
+        const error = data.error || 'Unknown error';
+        html = `
+            <div class="test-result-indicator error" title="${error}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <span>Error</span>
+            </div>
+        `;
+    }
+
+    resultContainer.innerHTML = html;
+}
+
 async function toggleItemEnabled(item, enabled) {
     if (!item || item._type !== 'automation') {
         showToast('Enable/Disable is only available for automations', 'info');
@@ -2574,6 +2684,14 @@ function initializeBlockComponents(blockEl) {
         });
     }
 
+    const testBtn = blockEl.querySelector('.block-action-btn.test');
+    if (testBtn) {
+        testBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            testCondition(blockEl);
+        });
+    }
+
     if (duplicateBtn) {
         duplicateBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -3333,6 +3451,12 @@ function createBlockHtml(block, type, index, options = {}) {
         <div class="block-tags"></div>
         
         <div class="block-actions">
+          <button class="block-action-btn test" title="Test Condition" style="display: ${type === 'condition' ? 'flex' : 'none'}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+              <polyline points="22 4 12 14.01 9 11.01" />
+            </svg>
+          </button>
           <button class="block-action-btn copy" title="Copy">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
@@ -3354,6 +3478,7 @@ function createBlockHtml(block, type, index, options = {}) {
         </div>
 
         <span class="block-type-badge">${typeBadge}</span>
+        <div class="test-result-container" style="display: inline-block;"></div>
 
         <div class="block-menu-trigger">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -3402,6 +3527,13 @@ function renderNestedIfThenBlock(block) {
                     </svg>
                 </button>
                 <span class="section-label">If:</span>
+                <button type="button" class="test-action-btn" title="Test Conditions" onclick="testNestedSection(this, 'if')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                        <polyline points="22 4 12 14.01 9 11.01" />
+                    </svg>
+                </button>
+                <div class="test-result-container" style="display: inline-block;"></div>
             </div>
             <div class="section-content">
                 <div class="nested-blocks" data-path="if" data-role="if" data-empty-text="No conditions yet.">
@@ -3486,6 +3618,13 @@ function renderConditionGroupBlock(block) {
         <div class="nested-section condition-group" data-section-type="conditions">
             <div class="section-header">
                 <span class="section-label">Conditions:</span>
+                <button type="button" class="test-action-btn" title="Test Conditions" onclick="testNestedSection(this, 'conditions')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                        <polyline points="22 4 12 14.01 9 11.01" />
+                    </svg>
+                </button>
+                <div class="test-result-container" style="display: inline-block;"></div>
             </div>
             <div class="section-content">
                 <div class="nested-blocks" data-role="conditions" data-empty-text="No conditions yet.">
@@ -3584,6 +3723,13 @@ function renderChooseOption(option, index) {
             <div class="nested-section">
                 <div class="section-header">
                     <span class="section-label">Conditions:</span>
+                    <button type="button" class="test-action-btn" title="Test Conditions" onclick="testNestedSection(this, 'choose-conditions')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                            <polyline points="22 4 12 14.01 9 11.01" />
+                        </svg>
+                    </button>
+                    <div class="test-result-container" style="display: inline-block;"></div>
                 </div>
                 <div class="section-content">
                     <div class="nested-blocks" data-role="choose-conditions" data-empty-text="No conditions yet.">
