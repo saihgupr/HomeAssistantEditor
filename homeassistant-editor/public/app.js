@@ -1830,7 +1830,12 @@ function renderItemsList(items) {
     filtered = filtered.filter(item => {
         const name = (item.alias || item.id || '').toLowerCase();
         const desc = (item.description || '').toLowerCase();
-        const textMatch = !search.text || name.includes(search.text) || desc.includes(search.text);
+
+        // Advanced search: check entity and device IDs
+        const entityIds = collectAllEntityIds(item);
+        const idMatch = !search.text || entityIds.some(id => id.includes(search.text));
+
+        const textMatch = !search.text || name.includes(search.text) || desc.includes(search.text) || idMatch;
 
         if (!search.tags.length) return textMatch;
 
@@ -1910,6 +1915,39 @@ function getItemTags(item) {
         }
     });
     return { normalized, display };
+}
+
+function collectAllEntityIds(obj) {
+    if (!obj || typeof obj !== 'object') return [];
+
+    let ids = new Set();
+
+    // Check for entity_id or device_id in this object
+    if (obj.entity_id) {
+        if (Array.isArray(obj.entity_id)) {
+            obj.entity_id.forEach(id => ids.add(String(id).toLowerCase()));
+        } else {
+            ids.add(String(obj.entity_id).toLowerCase());
+        }
+    }
+
+    if (obj.device_id) {
+        if (Array.isArray(obj.device_id)) {
+            obj.device_id.forEach(id => ids.add(String(id).toLowerCase()));
+        } else {
+            ids.add(String(obj.device_id).toLowerCase());
+        }
+    }
+
+    // Recursively check all properties (for nested triggers/conditions/actions)
+    for (const key in obj) {
+        if (obj[key] && typeof obj[key] === 'object') {
+            const nestedIds = collectAllEntityIds(obj[key]);
+            nestedIds.forEach(id => ids.add(id));
+        }
+    }
+
+    return Array.from(ids);
 }
 
 function extractTagsFromText(text) {
@@ -4497,7 +4535,7 @@ function getBlockFields(block, type) {
 
     // Common Trigger ID for all triggers
     if (type === 'trigger') {
-        fields.push(createFieldHtml('Trigger ID (optional)', 'id', block.id || ''));
+        fields.push(createFieldHtml('Trigger ID', 'id', block.id || ''));
     }
 
     const coerceObject = (val) => {
