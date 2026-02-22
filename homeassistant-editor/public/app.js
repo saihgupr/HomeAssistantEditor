@@ -4494,6 +4494,12 @@ function getBlockIcon(block, type) {
 
 function getBlockFields(block, type) {
     const fields = [];
+
+    // Common Trigger ID for all triggers
+    if (type === 'trigger') {
+        fields.push(createFieldHtml('Trigger ID (optional)', 'id', block.id || ''));
+    }
+
     const coerceObject = (val) => {
         if (val && typeof val === 'object') return val;
         if (typeof val === 'string') {
