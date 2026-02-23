@@ -908,116 +908,6 @@ async function runSelectedItem() {
     }
 }
 
-/**
- * Test an individual condition block
- */
-async function testCondition(blockEl) {
-    const testBtn = blockEl.querySelector('.block-action-btn.test');
-    if (testBtn) testBtn.classList.add('loading');
-
-    const resultContainer = blockEl.querySelector('.test-result-container');
-    if (resultContainer) resultContainer.innerHTML = '';
-
-    try {
-        const conditionData = parseBlockElement(blockEl);
-        const response = await fetch('./api/test-condition', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ condition: conditionData })
-        });
-
-        const data = await response.json();
-        updateConditionTestResult(blockEl, data);
-    } catch (error) {
-        console.error('Error testing condition:', error);
-        updateConditionTestResult(blockEl, { success: false, error: error.message });
-    } finally {
-        if (testBtn) testBtn.classList.remove('loading');
-    }
-}
-
-/**
- * Test a group of nested conditions
- */
-async function testNestedSection(btn, role) {
-    const section = btn.closest('.nested-section') || btn.closest('.choose-option') || btn.closest('.condition-group');
-    const resultContainer = section.querySelector('.test-result-container');
-    btn.disabled = true;
-    btn.classList.add('loading');
-
-    if (resultContainer) resultContainer.innerHTML = '';
-
-    try {
-        // Collect all blocks in this section
-        const blocksContainer = section.querySelector('.nested-blocks');
-        const blocks = Array.from(blocksContainer.children).map(wrapper => {
-            const blockEl = wrapper.querySelector('.action-block');
-            return parseBlockElement(blockEl);
-        });
-
-        if (blocks.length === 0) {
-            updateConditionTestResult(section, { success: false, error: 'No conditions to test' });
-            return;
-        }
-
-        // Implicitly treat multiple conditions in a section as 'and'
-        const parentCondition = blocks.length === 1 ? blocks[0] : {
-            condition: 'and',
-            conditions: blocks
-        };
-
-        const response = await fetch('./api/test-condition', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ condition: parentCondition })
-        });
-
-        const data = await response.json();
-        updateConditionTestResult(section, data);
-    } catch (error) {
-        console.error('Error testing nested conditions:', error);
-        updateConditionTestResult(section, { success: false, error: error.message });
-    } finally {
-        btn.disabled = false;
-        btn.classList.remove('loading');
-    }
-}
-
-/**
- * Update the UI with the condition test result
- */
-function updateConditionTestResult(targetEl, data) {
-    const resultContainer = targetEl.querySelector('.test-result-container');
-    if (!resultContainer) return;
-
-    let html = '';
-    if (data.success && data.result) {
-        const result = data.result.result;
-        const className = result ? 'success' : 'fail';
-        const icon = result
-            ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>'
-            : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
-        const text = result ? 'Passes' : 'Fails';
-
-        html = `
-            <div class="test-result-indicator ${className}">
-                ${icon}
-                <span>${text}</span>
-            </div>
-        `;
-    } else {
-        const error = data.error || 'Unknown error';
-        html = `
-            <div class="test-result-indicator error" title="${error}">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                <span>Error</span>
-            </div>
-        `;
-    }
-
-    resultContainer.innerHTML = html;
-}
-
 async function toggleItemEnabled(item, enabled) {
     if (!item || item._type !== 'automation') {
         showToast('Enable/Disable is only available for automations', 'info');
@@ -1940,12 +1830,7 @@ function renderItemsList(items) {
     filtered = filtered.filter(item => {
         const name = (item.alias || item.id || '').toLowerCase();
         const desc = (item.description || '').toLowerCase();
-
-        // Advanced search: check entity and device IDs
-        const entityIds = collectAllEntityIds(item);
-        const idMatch = !search.text || entityIds.some(id => id.includes(search.text));
-
-        const textMatch = !search.text || name.includes(search.text) || desc.includes(search.text) || idMatch;
+        const textMatch = !search.text || name.includes(search.text) || desc.includes(search.text);
 
         if (!search.tags.length) return textMatch;
 
@@ -2025,39 +1910,6 @@ function getItemTags(item) {
         }
     });
     return { normalized, display };
-}
-
-function collectAllEntityIds(obj) {
-    if (!obj || typeof obj !== 'object') return [];
-
-    let ids = new Set();
-
-    // Check for entity_id or device_id in this object
-    if (obj.entity_id) {
-        if (Array.isArray(obj.entity_id)) {
-            obj.entity_id.forEach(id => ids.add(String(id).toLowerCase()));
-        } else {
-            ids.add(String(obj.entity_id).toLowerCase());
-        }
-    }
-
-    if (obj.device_id) {
-        if (Array.isArray(obj.device_id)) {
-            obj.device_id.forEach(id => ids.add(String(id).toLowerCase()));
-        } else {
-            ids.add(String(obj.device_id).toLowerCase());
-        }
-    }
-
-    // Recursively check all properties (for nested triggers/conditions/actions)
-    for (const key in obj) {
-        if (obj[key] && typeof obj[key] === 'object') {
-            const nestedIds = collectAllEntityIds(obj[key]);
-            nestedIds.forEach(id => ids.add(id));
-        }
-    }
-
-    return Array.from(ids);
 }
 
 function extractTagsFromText(text) {
@@ -2538,8 +2390,19 @@ function renderBlocks(section, blocks, expandedStates = null) {
 
     container.innerHTML = htmlParts.join('');
 
-    // Initialize all blocks (including deeply nested ones)
-    container.querySelectorAll('.action-block').forEach((blockEl, index) => {
+    // Add event listeners and apply collapse setting
+    Array.from(container.children).filter(el => el.classList.contains('action-block')).forEach((blockEl, index) => {
+        const header = blockEl.querySelector('.block-header');
+        const deleteBtn = blockEl.querySelector('.block-action-btn.delete');
+        const copyBtn = blockEl.querySelector('.block-action-btn.copy');
+        const aliasText = blockEl.querySelector('.block-alias-text');
+        const aliasInput = blockEl.querySelector('.block-title-input');
+
+        // Initial Tag Render
+        if (aliasText) {
+            renderBlockTags(blockEl, aliasText.textContent);
+        }
+
         // Apply collapse setting or restore state
         let shouldCollapse = state.settings.collapseBlocksByDefault;
         if (expandedStates && index < expandedStates.length) {
@@ -2549,7 +2412,121 @@ function renderBlocks(section, blocks, expandedStates = null) {
             blockEl.classList.add('collapsed');
         }
 
-        initializeBlockComponents(blockEl);
+        // Toggle Collapse on header click
+        header.addEventListener('click', (e) => {
+            if (blockEl.classList.contains('dragging-active')) return;
+            if (e.shiftKey && section === 'actions') {
+                e.preventDefault();
+                e.stopPropagation();
+                if (state.actionSelectionAnchor === null) {
+                    state.actionSelectionAnchor = index;
+                }
+                setActionSelectionRange(state.actionSelectionAnchor, index);
+                applyActionSelectionStyles(container);
+                return;
+            }
+            if (section === 'actions' && state.selectedActionIndices.size > 0) {
+                clearActionSelection();
+            }
+            if (e.target.closest('.block-action-btn') || e.target.closest('.block-menu-trigger') || e.target.closest('.block-title-input')) return;
+            blockEl.classList.toggle('collapsed');
+        });
+
+        if (section === 'actions') {
+            blockEl.addEventListener('click', (e) => {
+                if (!e.shiftKey) return;
+                if (e.target.closest('input, textarea, select, button, .block-menu-trigger, .block-action-btn')) return;
+                e.preventDefault();
+                e.stopPropagation();
+                if (state.actionSelectionAnchor === null) {
+                    state.actionSelectionAnchor = index;
+                }
+                setActionSelectionRange(state.actionSelectionAnchor, index);
+                applyActionSelectionStyles(container);
+            });
+        }
+
+        // Inline Alias Editing
+        if (aliasText && aliasInput) {
+            aliasText.addEventListener('click', (e) => {
+                e.stopPropagation();
+                aliasText.style.display = 'none';
+                aliasInput.style.display = 'block';
+                aliasInput.focus();
+            });
+
+            aliasInput.addEventListener('blur', () => {
+                const newValue = aliasInput.value.trim();
+                const defaultTitle = aliasInput.getAttribute('placeholder');
+                aliasText.textContent = newValue || defaultTitle;
+                if (!newValue) aliasText.classList.add('is-placeholder');
+                else aliasText.classList.remove('is-placeholder');
+                aliasInput.style.display = 'none';
+                aliasText.style.display = 'block';
+
+                // Update tags
+                renderBlockTags(blockEl, aliasText.textContent);
+
+                checkDirty();
+                updateYamlView();
+            });
+
+            aliasInput.addEventListener('input', () => {
+                checkDirty();
+                updateYamlView();
+            });
+
+            aliasInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') aliasInput.blur();
+                if (e.key === 'Escape') aliasInput.blur();
+            });
+
+            aliasInput.addEventListener('click', (e) => e.stopPropagation());
+        }
+
+        const duplicateBtn = blockEl.querySelector('.block-action-btn.duplicate');
+
+        copyBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const idx = parseInt(blockEl.dataset.index);
+            const sectionBlocks = getBlocksData(section);
+            state.clipboard = JSON.parse(JSON.stringify(sectionBlocks[idx]));
+            showToast('Block copied to clipboard', 'success');
+            updatePasteButtonsVisibility();
+        });
+
+        if (duplicateBtn) {
+            duplicateBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                pushToHistory();
+                const index = parseInt(blockEl.dataset.index);
+                const sectionBlocks = getBlocksData(section);
+                const clone = JSON.parse(JSON.stringify(sectionBlocks[index]));
+                sectionBlocks.splice(index + 1, 0, clone);
+                updateSectionBlocks(section, sectionBlocks);
+                checkDirty();
+                updateYamlView();
+                renderBlocks(section, sectionBlocks);
+            });
+        }
+
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            pushToHistory();
+            const idx = parseInt(blockEl.dataset.index);
+            const sectionBlocks = getBlocksData(section);
+            sectionBlocks.splice(idx, 1);
+            updateSectionBlocks(section, sectionBlocks);
+            checkDirty();
+            updateYamlView();
+            renderBlocks(section, sectionBlocks);
+        });
+
+        // Initialize drag and drop
+        initBlockDragAndDrop(blockEl, section, header);
+
+        // Initialize Context Menu
+        initBlockContextMenu(blockEl);
     });
 
     if (section === 'actions') {
@@ -2569,7 +2546,10 @@ function renderBlocks(section, blocks, expandedStates = null) {
         });
     });
 
-
+    // Initialize nested blocks (if any)
+    container.querySelectorAll('.action-block .nested-block-wrapper .action-block').forEach(nestedBlock => {
+        initializeBlockComponents(nestedBlock);
+    });
 
     container.querySelectorAll('.action-block').forEach(blockEl => {
         applyFieldValidation(blockEl);
@@ -2592,47 +2572,9 @@ function initializeBlockComponents(blockEl) {
 
     if (header) {
         header.addEventListener('click', (e) => {
-            if (blockEl.classList.contains('dragging-active')) return;
-
-            const container = blockEl.parentElement;
-            const section = container.id ? container.id.replace('-container', '') : null;
-            const index = Array.from(container.children).indexOf(blockEl);
-
-            if (e.shiftKey && section === 'actions') {
-                e.preventDefault();
-                e.stopPropagation();
-                if (state.actionSelectionAnchor === null) {
-                    state.actionSelectionAnchor = index;
-                }
-                setActionSelectionRange(state.actionSelectionAnchor, index);
-                applyActionSelectionStyles(container);
-                return;
-            }
-
-            if (section === 'actions' && state.selectedActionIndices.size > 0) {
-                clearActionSelection();
-            }
-
             if (e.target.closest('.block-action-btn') || e.target.closest('.block-menu-trigger') || e.target.closest('.block-title-input')) return;
             blockEl.classList.toggle('collapsed');
         });
-
-        const container = blockEl.parentElement;
-        const section = container.id ? container.id.replace('-container', '') : null;
-        if (section === 'actions') {
-            blockEl.addEventListener('click', (e) => {
-                if (!e.shiftKey) return;
-                if (e.target.closest('input, textarea, select, button, .block-menu-trigger, .block-action-btn')) return;
-                e.preventDefault();
-                e.stopPropagation();
-                const index = Array.from(container.children).indexOf(blockEl);
-                if (state.actionSelectionAnchor === null) {
-                    state.actionSelectionAnchor = index;
-                }
-                setActionSelectionRange(state.actionSelectionAnchor, index);
-                applyActionSelectionStyles(container);
-            });
-        }
     }
 
     if (aliasText && aliasInput) {
@@ -2684,14 +2626,6 @@ function initializeBlockComponents(blockEl) {
         });
     }
 
-    const testBtn = blockEl.querySelector('.block-action-btn.test');
-    if (testBtn) {
-        testBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            testCondition(blockEl);
-        });
-    }
-
     if (duplicateBtn) {
         duplicateBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -2731,12 +2665,7 @@ function initializeBlockComponents(blockEl) {
                 updateNestedWrapperIndices(container);
                 syncNestedEmpty(container);
             } else {
-                const container = blockEl.parentElement;
-                const section = container.id.replace('-container', '');
                 blockEl.remove();
-                if (container.children.length === 0) {
-                    container.innerHTML = `<div class="blocks-empty">No ${section} configured. Click + to add one.</div>`;
-                }
             }
             checkDirty();
             updateYamlView();
@@ -2780,23 +2709,10 @@ function initializeBlockComponents(blockEl) {
         refreshBlockTitle(blockEl);
     });
 
-    const container = blockEl.parentElement;
-    const section = container.id ? container.id.replace('-container', '') : null;
     const nestedWrapper = blockEl.closest('.nested-block-wrapper');
-
     if (nestedWrapper && header) {
         initNestedDragAndDrop(blockEl, header);
-    } else if (header && section) {
-        initBlockDragAndDrop(blockEl, section, header);
     }
-
-    // Initialize Context Menu for nested blocks too
-    initBlockContextMenu(blockEl);
-
-    // Recursively initialize any nested blocks within this block
-    blockEl.querySelectorAll('.action-block').forEach(nestedBlock => {
-        initializeBlockComponents(nestedBlock);
-    });
 }
 
 function initBlockDragAndDrop(blockEl, section, header) {
@@ -3100,16 +3016,8 @@ function initBlockContextMenu(blockEl) {
         } else if (menuTrigger) {
             // Position relative to trigger
             const rect = menuTrigger.getBoundingClientRect();
-            let menuLeft = rect.right - 140;
-            let menuTop = rect.bottom + 5;
-
-            // Ensure it's not off-screen
-            if (menuLeft < 10) menuLeft = 10;
-            if (menuLeft + 140 > window.innerWidth - 10) menuLeft = window.innerWidth - 150;
-            if (menuTop + 200 > window.innerHeight - 10) menuTop = rect.top - 205; // Open above if no space
-
-            menu.style.top = `${menuTop}px`;
-            menu.style.left = `${menuLeft}px`;
+            menu.style.top = `${rect.bottom + 5}px`;
+            menu.style.left = `${rect.right - 140}px`;
         }
 
         // Action Handlers
@@ -3203,23 +3111,15 @@ function initBlockContextMenu(blockEl) {
         menu.querySelector('.run-block').addEventListener('click', (me) => {
             me.stopPropagation();
             const container = blockEl.parentElement;
-            const isAction = blockEl.classList.contains('action');
+            const directBlocks = Array.from(container.children).filter(el => el.classList.contains('action-block'));
+            const index = directBlocks.indexOf(blockEl);
 
-            if (isAction) {
-                // If it's a top-level action and part of a selection, run the whole selection
-                if (container && container.id === 'actions-container') {
-                    const directBlocks = Array.from(container.children).filter(el => el.classList.contains('action-block'));
-                    const index = directBlocks.indexOf(blockEl);
-                    if (state.selectedActionIndices.size > 0 && state.selectedActionIndices.has(index)) {
-                        runActionIndices(Array.from(state.selectedActionIndices));
-                        menu.remove();
-                        return;
-                    }
+            if (container.id === 'actions-container') {
+                if (state.selectedActionIndices.size > 0 && state.selectedActionIndices.has(index)) {
+                    runActionIndices(Array.from(state.selectedActionIndices));
+                } else {
+                    runActionIndices([index]);
                 }
-
-                // Otherwise run just this block by parsing its current state
-                const blockData = parseBlockElement(blockEl);
-                runBlock(blockData);
             } else {
                 showToast('Run is only available for Action blocks', 'warning');
             }
@@ -3255,7 +3155,7 @@ function initBlockContextMenu(blockEl) {
         });
 
         const closeMenu = (clickEvent) => {
-            if (!menu.contains(clickEvent.target) && (!menuTrigger || !menuTrigger.contains(clickEvent.target))) {
+            if (!menu.contains(clickEvent.target) && (!menuTrigger || clickEvent.target !== menuTrigger)) {
                 menu.remove();
                 document.removeEventListener('click', closeMenu);
             }
@@ -3451,12 +3351,6 @@ function createBlockHtml(block, type, index, options = {}) {
         <div class="block-tags"></div>
         
         <div class="block-actions">
-          <button class="block-action-btn test" title="Test Condition" style="display: ${type === 'condition' ? 'flex' : 'none'}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-              <polyline points="22 4 12 14.01 9 11.01" />
-            </svg>
-          </button>
           <button class="block-action-btn copy" title="Copy">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
@@ -3478,7 +3372,6 @@ function createBlockHtml(block, type, index, options = {}) {
         </div>
 
         <span class="block-type-badge">${typeBadge}</span>
-        <div class="test-result-container" style="display: inline-block;"></div>
 
         <div class="block-menu-trigger">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -3527,13 +3420,6 @@ function renderNestedIfThenBlock(block) {
                     </svg>
                 </button>
                 <span class="section-label">If:</span>
-                <button type="button" class="test-action-btn" title="Test Conditions" onclick="testNestedSection(this, 'if')">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                        <polyline points="22 4 12 14.01 9 11.01" />
-                    </svg>
-                </button>
-                <div class="test-result-container" style="display: inline-block;"></div>
             </div>
             <div class="section-content">
                 <div class="nested-blocks" data-path="if" data-role="if" data-empty-text="No conditions yet.">
@@ -3618,13 +3504,6 @@ function renderConditionGroupBlock(block) {
         <div class="nested-section condition-group" data-section-type="conditions">
             <div class="section-header">
                 <span class="section-label">Conditions:</span>
-                <button type="button" class="test-action-btn" title="Test Conditions" onclick="testNestedSection(this, 'conditions')">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                        <polyline points="22 4 12 14.01 9 11.01" />
-                    </svg>
-                </button>
-                <div class="test-result-container" style="display: inline-block;"></div>
             </div>
             <div class="section-content">
                 <div class="nested-blocks" data-role="conditions" data-empty-text="No conditions yet.">
@@ -3723,13 +3602,6 @@ function renderChooseOption(option, index) {
             <div class="nested-section">
                 <div class="section-header">
                     <span class="section-label">Conditions:</span>
-                    <button type="button" class="test-action-btn" title="Test Conditions" onclick="testNestedSection(this, 'choose-conditions')">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                            <polyline points="22 4 12 14.01 9 11.01" />
-                        </svg>
-                    </button>
-                    <div class="test-result-container" style="display: inline-block;"></div>
                 </div>
                 <div class="section-content">
                     <div class="nested-blocks" data-role="choose-conditions" data-empty-text="No conditions yet.">
@@ -4678,12 +4550,6 @@ function getBlockIcon(block, type) {
 
 function getBlockFields(block, type) {
     const fields = [];
-
-    // Common Trigger ID for all triggers
-    if (type === 'trigger') {
-        fields.push(createFieldHtml('Trigger ID', 'id', block.id || ''));
-    }
-
     const coerceObject = (val) => {
         if (val && typeof val === 'object') return val;
         if (typeof val === 'string') {
@@ -6357,13 +6223,29 @@ function addBlock(section, type) {
     const blockHtml = createBlockHtml(block, blockClass, container.children.length);
     container.insertAdjacentHTML('beforeend', blockHtml);
 
+    // Add event listeners to new block
     const newBlock = container.lastElementChild;
+    const header = newBlock.querySelector('.block-header');
+    const deleteBtn = newBlock.querySelector('.block-action-btn.delete');
 
-    // Initialize the new block (this will also handle drag-and-drop via recursion/parentElement check)
-    initializeBlockComponents(newBlock);
+    header.addEventListener('click', (e) => {
+        if (!e.target.closest('.block-action-btn')) {
+            newBlock.classList.toggle('collapsed');
+        }
+    });
+
+    deleteBtn.addEventListener('click', () => {
+        newBlock.remove();
+        checkDirty();
+        if (container.children.length === 0) {
+            container.innerHTML = `<div class="blocks-empty">No ${section} configured. Click + to add one.</div>`;
+        }
+        updateYamlView();
+    });
+
+    initBlockContextMenu(newBlock);
 
     checkDirty();
-    updateYamlView();
 }
 
 function createEmptyBlock(blockType, type) {
@@ -7207,8 +7089,11 @@ function initEventListeners() {
     // View toggle
     elements.toggleBtns.forEach(btn => {
         btn.addEventListener('click', () => {
-            elements.toggleBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
+            elements.toggleBtns.forEach(b => {
+                const isClickedButton = b === btn;
+                b.classList.toggle('active', isClickedButton);
+                b.setAttribute('aria-pressed', isClickedButton);
+            });
             state.currentView = btn.dataset.view;
 
             if (state.selectedItem) {

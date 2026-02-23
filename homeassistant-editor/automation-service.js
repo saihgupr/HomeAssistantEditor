@@ -11,20 +11,68 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Cache for parsed YAML files to reduce I/O and parsing overhead
+const fileCache = new Map();
+
+/**
+ * Get cached file entry, refreshing if necessary
+ * @param {string} filePath - Path to file
+ * @returns {Promise<Object>} Cached entry { mtimeMs, content, data }
+ */
+async function getCachedFileEntry(filePath) {
+  try {
+    const stats = await fs.promises.stat(filePath);
+    const cached = fileCache.get(filePath);
+
+    if (cached && cached.mtimeMs === stats.mtimeMs) {
+      return cached;
+    }
+
+    const content = await fs.promises.readFile(filePath, 'utf-8');
+    const newCache = {
+      mtimeMs: stats.mtimeMs,
+      content,
+      data: undefined // Lazy parse
+    };
+    fileCache.set(filePath, newCache);
+    return newCache;
+  } catch (error) {
+    fileCache.delete(filePath);
+    throw error;
+  }
+}
+
+/**
+ * Get file content (cached if possible)
+ */
+async function getCachedContent(filePath) {
+  const entry = await getCachedFileEntry(filePath);
+  return entry.content;
+}
+
+/**
+ * Get parsed YAML data (cached if possible)
+ */
+async function getCachedYaml(filePath) {
+  const entry = await getCachedFileEntry(filePath);
+  if (entry.data === undefined) {
+    entry.data = yaml.load(entry.content);
+  }
+  return entry.data;
+}
+
 /**
  * Parse configuration.yaml to find automation and script file locations
  * @param {string} configPath - Path to the config directory
  * @returns {Object} Object with automationPaths and scriptPaths arrays
  */
 export async function getConfigFilePaths(configPath) {
-  console.log('[getConfigFilePaths] Looking for configuration.yaml in:', configPath);
   const configFile = path.join(configPath, 'configuration.yaml');
   const automationPaths = [];
   const scriptPaths = [];
 
   try {
-    const configContent = await fs.promises.readFile(configFile, 'utf-8');
-    console.log('[getConfigFilePaths] Found configuration.yaml, parsing...');
+    const configContent = await getCachedContent(configFile);
 
     const lines = configContent.split('\n');
     for (const line of lines) {
@@ -93,8 +141,6 @@ export async function getConfigFilePaths(configPath) {
     scriptPaths.push(path.join(configPath, 'scripts.yaml'));
   }
 
-  console.log('[getConfigFilePaths] Automation paths:', automationPaths);
-  console.log('[getConfigFilePaths] Script paths:', scriptPaths);
   return { automationPaths, scriptPaths };
 }
 
@@ -104,32 +150,26 @@ export async function getConfigFilePaths(configPath) {
  * @returns {Array} List of automation objects
  */
 export async function extractAutomations(configPath) {
-  const automations = [];
-
   try {
     const { automationPaths } = await getConfigFilePaths(configPath);
 
-    for (const filePath of automationPaths) {
+    // Combined: Process files in parallel and use cached file entry
+    const results = await Promise.all(automationPaths.map(async (filePath) => {
       try {
-        let fileStats;
-        try {
-          fileStats = await fs.promises.stat(filePath);
-        } catch (e) {
-          continue;
-        }
-
-        const content = await fs.promises.readFile(filePath, 'utf-8');
-        const data = yaml.load(content);
+        const content = await getCachedContent(filePath);
+        const data = await getCachedYaml(filePath);
+        const fileAutomations = [];
 
         if (data) {
           const relativeToConfigPath = path.relative(configPath, filePath);
+          const lines = content.split('\n');
 
           // Handle array format (standard HA automations.yaml)
           if (Array.isArray(data)) {
             data.forEach((auto, index) => {
               if (auto && (auto.alias || auto.id)) {
-                const lineNumber = findLineNumber(content.split('\n'), auto.id || `auto_${index}`, auto.alias, true);
-                automations.push({
+                const lineNumber = findLineNumber(lines, auto.id || `auto_${index}`, auto.alias, true);
+                fileAutomations.push({
                   id: auto.id || `auto_${index}`,
                   alias: auto.alias || `Automation ${index}`,
                   description: auto.description || '',
@@ -154,7 +194,7 @@ export async function extractAutomations(configPath) {
               if (auto && typeof auto === 'object') {
                 const hasTriggers = auto.triggers || auto.trigger;
                 if (hasTriggers) {
-                  automations.push({
+                  fileAutomations.push({
                     id: auto.id || key,
                     alias: auto.alias || key,
                     description: auto.description || '',
@@ -173,15 +213,21 @@ export async function extractAutomations(configPath) {
             });
           }
         }
+        return fileAutomations;
       } catch (error) {
-        console.log(`Skipping ${filePath}: ${error.message}`);
+        if (error.code !== 'ENOENT') {
+          console.log(`Skipping ${filePath}: ${error.message}`);
+        }
+        return [];
       }
-    }
+    }));
+
+    return results.flat();
+
   } catch (error) {
     console.error('Error extracting automations:', error);
+    return [];
   }
-
-  return automations;
 }
 
 /**
@@ -190,25 +236,19 @@ export async function extractAutomations(configPath) {
  * @returns {Array} List of script objects
  */
 export async function extractScripts(configPath) {
-  const scripts = [];
-
   try {
     const { scriptPaths } = await getConfigFilePaths(configPath);
 
-    for (const filePath of scriptPaths) {
+    // Combined: Process files in parallel and use cached file entry
+    const results = await Promise.all(scriptPaths.map(async (filePath) => {
       try {
-        let fileStats;
-        try {
-          fileStats = await fs.promises.stat(filePath);
-        } catch (e) {
-          continue;
-        }
-
-        const content = await fs.promises.readFile(filePath, 'utf-8');
-        const data = yaml.load(content);
+        const content = await getCachedContent(filePath);
+        const data = await getCachedYaml(filePath);
+        const fileScripts = [];
 
         if (data && typeof data === 'object') {
           const relativeToConfigPath = path.relative(configPath, filePath);
+          const lines = content.split('\n');
 
           Object.keys(data).forEach(key => {
             const script = data[key];
@@ -218,8 +258,8 @@ export async function extractScripts(configPath) {
 
               // Scripts have sequence but NOT triggers
               if (hasSequence && !hasTriggers) {
-                const lineNumber = findLineNumber(content.split('\n'), key, script.alias, false);
-                scripts.push({
+                const lineNumber = findLineNumber(lines, key, script.alias, false);
+                fileScripts.push({
                   id: key,
                   alias: script.alias || key,
                   description: script.description || '',
@@ -237,15 +277,21 @@ export async function extractScripts(configPath) {
             }
           });
         }
+        return fileScripts;
       } catch (error) {
-        console.log(`Skipping ${filePath}: ${error.message}`);
+        if (error.code !== 'ENOENT') {
+          console.log(`Skipping ${filePath}: ${error.message}`);
+        }
+        return [];
       }
-    }
+    }));
+
+    return results.flat();
+
   } catch (error) {
     console.error('Error extracting scripts:', error);
+    return [];
   }
-
-  return scripts;
 }
 
 /**
@@ -695,7 +741,7 @@ export async function getRawAutomationYaml(automationId, configPath) {
       return null;
     }
 
-    const content = await fs.promises.readFile(automation.fullPath, 'utf-8');
+    const content = await getCachedContent(automation.fullPath);
     const lines = content.split('\n');
 
     // Find start line of this automation
@@ -760,7 +806,7 @@ export async function getRawScriptYaml(scriptId, configPath) {
       return null;
     }
 
-    const content = await fs.promises.readFile(script.fullPath, 'utf-8');
+    const content = await getCachedContent(script.fullPath);
     const lines = content.split('\n');
 
     // Find start line of this script

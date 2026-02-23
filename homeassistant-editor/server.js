@@ -52,17 +52,21 @@ app.use((req, res, next) => {
     next();
 });
 
-// CORS and ingress support middleware
+// Security headers middleware
 app.use((req, res, next) => {
-    // Set CORS headers to prevent browser from making direct requests to HA
+    // Set security headers
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Content-Security-Policy', "frame-ancestors 'self' *;"); // Allow embedding in HA
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+
+    // CORS handling (needed for same-host but different port/IP access)
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
-    // Handle OPTIONS preflight requests
     if (req.method === 'OPTIONS') {
-        res.sendStatus(200);
-        return;
+        return res.sendStatus(200);
     }
 
     next();
@@ -1826,108 +1830,6 @@ app.delete('/api/orphaned/:type/:id', async (req, res) => {
         await cleanupOrphanedEntities();
         res.json({ success: true, message: 'Triggered orphaned entity cleanup' });
     } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// Helper to convert HA condition object to Jinja2 template for fallback evaluation
-function conditionToTemplate(condition) {
-    if (!condition || typeof condition !== 'object') return 'false';
-
-    try {
-        const type = condition.condition;
-
-        switch (type) {
-            case 'state':
-                return `is_state('${condition.entity_id}', '${condition.state}')`;
-            case 'numeric_state':
-                let str = `states('${condition.entity_id}') | float`;
-                if (condition.above !== undefined) str += ` > ${condition.above}`;
-                if (condition.below !== undefined) str += ` < ${condition.below}`;
-                return str;
-            case 'and':
-                if (!Array.isArray(condition.conditions)) return 'true';
-                return '(' + condition.conditions.map(c => conditionToTemplate(c)).join(' and ') + ')';
-            case 'or':
-                if (!Array.isArray(condition.conditions)) return 'false';
-                return '(' + condition.conditions.map(c => conditionToTemplate(c)).join(' or ') + ')';
-            case 'not':
-                return `not (${conditionToTemplate(condition.conditions || condition.condition)})`;
-            case 'template':
-                return `(${condition.value_template})`;
-            case 'sun':
-                if (condition.after === 'sunset') return "is_state('sun.sun', 'below_horizon')";
-                if (condition.after === 'sunrise') return "is_state('sun.sun', 'above_horizon')";
-                return 'true'; // Simplified
-            default:
-                // For unsupported types in fallback, we can't do much
-                return 'true';
-        }
-    } catch (e) {
-        return 'false';
-    }
-}
-
-// Test a condition via Home Assistant
-app.post('/api/test-condition', async (req, res) => {
-    const { condition, variables } = req.body;
-
-    if (!condition) {
-        return res.status(400).json({ success: false, error: 'Condition is required' });
-    }
-
-    console.log('[Test Condition] Evaluating condition:', JSON.stringify(condition));
-
-    try {
-        // Primary method: official config/automation/config/test (HA 2024.2+)
-        try {
-            const result = await callHAWebSocket({
-                type: 'config/automation/config/test',
-                config: condition,
-                variables: variables || {}
-            });
-            return res.json({ success: true, result });
-        } catch (wsError) {
-            if (!wsError.message.includes('Unknown command') && !wsError.message.includes('not found')) {
-                throw wsError; // Re-throw real errors
-            }
-            console.log('[Test Condition] Main command failed (likely old HA), trying REST API template fallback...');
-
-            // Fallback: Use HA REST API /api/template for one-off evaluation
-            const templateStr = `{{ ${conditionToTemplate(condition)} }}`;
-            const supervisorToken = process.env.SUPERVISOR_TOKEN;
-            const host = HA_URL ? null : await resolveSupervisorIP();
-            const templateUrl = HA_URL
-                ? `${HA_URL}/api/template`
-                : `http://${host || 'supervisor'}/core/api/template`;
-
-            const templateResponse = await fetch(templateUrl, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${supervisorToken}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ template: templateStr })
-            });
-
-            if (!templateResponse.ok) {
-                const errorText = await templateResponse.text();
-                throw new Error(`HA REST API error: ${errorText}`);
-            }
-
-            const templateResultText = await templateResponse.text();
-            console.log(`[Test Condition] Fallback template: "${templateStr}" result: "${templateResultText.trim()}"`);
-
-            // Note: render_template result is a string, so we check for 'true'
-            const resultValue = templateResultText.trim().toLowerCase() === 'true';
-            return res.json({
-                success: true,
-                result: { result: resultValue },
-                fallback: true
-            });
-        }
-    } catch (error) {
-        console.error('[Test Condition] Error:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });

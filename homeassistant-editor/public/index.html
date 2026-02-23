@@ -29,8 +29,8 @@
       </div>
       <div class="header-right">
         <div class="view-toggle">
-          <button class="toggle-btn active" data-view="visual">Visual</button>
-          <button class="toggle-btn" data-view="yaml">YAML</button>
+          <button class="toggle-btn active" data-view="visual" aria-pressed="true">Visual</button>
+          <button class="toggle-btn" data-view="yaml" aria-pressed="false">YAML</button>
         </div>
 
         <button class="btn-settings" id="btn-history-toggle" title="Toggle Run History" style="margin-right: 4px;">
@@ -115,7 +115,7 @@
               <circle cx="11" cy="11" r="8" />
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
-            <input type="text" id="search-input" placeholder="Search...">
+            <input type="text" id="search-input" placeholder="Search..." aria-label="Search automations and scripts">
             <button type="button" class="search-clear" id="search-clear" aria-label="Clear search">×</button>
           </div>
 

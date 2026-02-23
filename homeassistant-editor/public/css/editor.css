@@ -1850,84 +1850,6 @@ body.color-mode .action-block .block-icon {
 .block-action-btn:hover {
   color: white;
   opacity: 1;
-  background: var(--bg-hover);
-}
-
-.block-action-btn.test:hover {
-  color: var(--accent-green) !important;
-}
-
-.block-action-btn.test.loading svg {
-  animation: rotate 2s linear infinite;
-}
-
-@keyframes rotate {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.test-result-indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 4px;
-  margin-left: 8px;
-  transition: all 0.2s ease;
-  height: 20px;
-  vertical-align: middle;
-}
-
-.test-result-indicator.success {
-  background: rgba(34, 197, 94, 0.15);
-  color: #4ade80;
-}
-
-.test-result-indicator.fail {
-  background: rgba(239, 68, 68, 0.15);
-  color: #f87171;
-}
-
-.test-result-indicator.error {
-  background: rgba(245, 158, 11, 0.15);
-  color: #fbbf24;
-}
-
-.test-result-indicator svg {
-  width: 12px;
-  height: 12px;
-}
-
-/* Section specific test buttons */
-.section-header .test-action-btn {
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-  margin-left: 8px;
-}
-
-.section-header .test-action-btn:hover {
-  color: var(--accent-green);
-  background: var(--bg-hover);
-}
-
-.section-header .test-action-btn svg {
-  width: 14px;
-  height: 14px;
 }
 
 .block-action-btn.delete:hover {
@@ -2938,7 +2860,7 @@ body.light-theme .summary-item {
 
 .nested-section {
   margin: 8px 0;
-  border-left: none;
+  border-left: 2px solid rgba(255, 255, 255, 0.08);
   padding-left: 0;
 }
 
@@ -3060,12 +2982,12 @@ body.light-theme .section-header .section-label {
 .nested-block-wrapper .block {
   margin: 0;
   background: rgba(0, 0, 0, 0.1);
-  border-left: none;
+  border-left: 1px solid rgba(59, 130, 246, 0.3);
 }
 
 body.light-theme .nested-block-wrapper .block {
   background: rgba(0, 0, 0, 0.03);
-  border-left: none;
+  border-left-color: rgba(59, 130, 246, 0.2);
 }
 
 /* Add nested block buttons */
