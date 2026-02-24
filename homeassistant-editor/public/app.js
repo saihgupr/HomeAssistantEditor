@@ -2491,6 +2491,17 @@ function renderBlocks(section, blocks, expandedStates = null) {
             const idx = parseInt(blockEl.dataset.index);
             const sectionBlocks = getBlocksData(section);
             state.clipboard = JSON.parse(JSON.stringify(sectionBlocks[idx]));
+
+            // Visual feedback
+            const originalIcon = copyBtn.innerHTML;
+            copyBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>`;
+            copyBtn.classList.add('success');
+
+            setTimeout(() => {
+                copyBtn.innerHTML = originalIcon;
+                copyBtn.classList.remove('success');
+            }, 1500);
+
             showToast('Block copied to clipboard', 'success');
             updatePasteButtonsVisibility();
         });
@@ -2621,6 +2632,17 @@ function initializeBlockComponents(blockEl) {
             e.stopPropagation();
             const data = parseBlockElement(blockEl);
             state.clipboard = JSON.parse(JSON.stringify(data));
+
+            // Visual feedback
+            const originalIcon = copyBtn.innerHTML;
+            copyBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>`;
+            copyBtn.classList.add('success');
+
+            setTimeout(() => {
+                copyBtn.innerHTML = originalIcon;
+                copyBtn.classList.remove('success');
+            }, 1500);
+
             showToast('Block copied to clipboard', 'success');
             updatePasteButtonsVisibility();
         });
@@ -3351,19 +3373,19 @@ function createBlockHtml(block, type, index, options = {}) {
         <div class="block-tags"></div>
         
         <div class="block-actions">
-          <button class="block-action-btn copy" title="Copy">
+          <button class="block-action-btn copy" title="Copy" aria-label="Copy block">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
             </svg>
           </button>
-          <button class="block-action-btn duplicate" title="Duplicate">
+          <button class="block-action-btn duplicate" title="Duplicate" aria-label="Duplicate block">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
             </svg>
           </button>
-          <button class="block-action-btn delete" title="Delete">
+          <button class="block-action-btn delete" title="Delete" aria-label="Delete block">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="3 6 5 6 21 6"/>
               <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
@@ -6227,12 +6249,50 @@ function addBlock(section, type) {
     const newBlock = container.lastElementChild;
     const header = newBlock.querySelector('.block-header');
     const deleteBtn = newBlock.querySelector('.block-action-btn.delete');
+    const copyBtn = newBlock.querySelector('.block-action-btn.copy');
+    const duplicateBtn = newBlock.querySelector('.block-action-btn.duplicate');
 
     header.addEventListener('click', (e) => {
-        if (!e.target.closest('.block-action-btn')) {
+        if (!e.target.closest('.block-action-btn') && !e.target.closest('.block-menu-trigger') && !e.target.closest('.block-title-input')) {
             newBlock.classList.toggle('collapsed');
         }
     });
+
+    copyBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const blockData = parseBlockElement(newBlock, section);
+        state.clipboard = JSON.parse(JSON.stringify(blockData));
+
+        // Visual feedback
+        const originalIcon = copyBtn.innerHTML;
+        copyBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>`;
+        copyBtn.classList.add('success');
+
+        setTimeout(() => {
+            copyBtn.innerHTML = originalIcon;
+            copyBtn.classList.remove('success');
+        }, 1500);
+
+        showToast('Block copied to clipboard', 'success');
+        updatePasteButtonsVisibility();
+    });
+
+    if (duplicateBtn) {
+        duplicateBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            pushToHistory();
+            const blockData = parseBlockElement(newBlock, section);
+            const clone = JSON.parse(JSON.stringify(blockData));
+            const sectionBlocks = getBlocksData(section);
+            const index = Array.from(container.children).indexOf(newBlock);
+
+            sectionBlocks.splice(index + 1, 0, clone);
+            updateSectionBlocks(section, sectionBlocks);
+            checkDirty();
+            renderBlocks(section, sectionBlocks);
+            updateYamlView();
+        });
+    }
 
     deleteBtn.addEventListener('click', () => {
         newBlock.remove();
@@ -6243,7 +6303,25 @@ function addBlock(section, type) {
         updateYamlView();
     });
 
+    // Initialize block components (drag/drop, etc)
+    // Note: renderBlocks does this, but addBlock needs to do it manually or we'd need to re-render all
+    // For now, let's just init context menu and drag drop
+    initBlockDragAndDrop(newBlock, section, header);
     initBlockContextMenu(newBlock);
+
+    // Also apply validation logic
+    applyFieldValidation(newBlock);
+
+    // Attach input listeners for dirty checking
+    newBlock.querySelectorAll('input, textarea, select').forEach(input => {
+        if (input.classList.contains('block-title-input')) return;
+        input.addEventListener('input', () => {
+            checkDirty();
+            updateYamlView();
+            applyFieldValidation(newBlock);
+            refreshBlockTitle(newBlock);
+        });
+    });
 
     checkDirty();
 }

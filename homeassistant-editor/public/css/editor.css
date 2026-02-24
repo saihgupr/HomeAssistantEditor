@@ -1852,6 +1852,11 @@ body.color-mode .action-block .block-icon {
   opacity: 1;
 }
 
+.block-action-btn.success {
+  color: var(--accent-green);
+  opacity: 1;
+}
+
 .block-action-btn.delete:hover {
   color: #ef4444;
   opacity: 1;
