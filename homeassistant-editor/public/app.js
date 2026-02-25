@@ -251,6 +251,8 @@ const elements = {
     btnDuplicate: document.getElementById('btn-duplicate'),
     btnRun: document.getElementById('btn-run'),
     btnRunSelected: document.getElementById('btn-run-selected'),
+    btnUndo: document.getElementById('btn-undo'),
+    btnRedo: document.getElementById('btn-redo'),
 
     // Modal
     addBlockModal: document.getElementById('add-block-modal'),
@@ -2189,6 +2191,9 @@ function formatRelativeTime(timestamp) {
 
 function selectItem(id, forceType = null) {
     if (!id) return;
+
+    // Reset undo/redo history when switching items
+    clearHistory();
 
     // Find the item in our state
     // We cast both to string to be safe
@@ -7420,6 +7425,7 @@ function pushToHistory() {
     if (state.history.length > 50) state.history.shift();
 
     console.log('[History] Pushed state. History size:', state.history.length);
+    updateHistoryButtons();
 }
 
 function undo() {
@@ -7441,6 +7447,7 @@ function undo() {
     applyState(previous);
 
     console.log('[History] Undo performed. History:', state.history.length, 'Future:', state.future.length);
+    updateHistoryButtons();
 }
 
 function redo() {
@@ -7462,6 +7469,7 @@ function redo() {
     applyState(next);
 
     console.log('[History] Redo performed. History:', state.history.length, 'Future:', state.future.length);
+    updateHistoryButtons();
 }
 
 function applyState(snapshot) {
@@ -7471,6 +7479,17 @@ function applyState(snapshot) {
 
     populateEditor(state.selectedItem);
     showToast('Restored', 'info');
+}
+
+function updateHistoryButtons() {
+    if (elements.btnUndo) elements.btnUndo.disabled = state.history.length === 0;
+    if (elements.btnRedo) elements.btnRedo.disabled = state.future.length === 0;
+}
+
+function clearHistory() {
+    state.history = [];
+    state.future = [];
+    updateHistoryButtons();
 }
 
 // ============================================
@@ -7670,6 +7689,35 @@ function initEventListeners() {
             elements.searchInput.dispatchEvent(new Event('input'));
         });
     }
+
+    // Undo/Redo Buttons
+    if (elements.btnUndo) elements.btnUndo.addEventListener('click', undo);
+    if (elements.btnRedo) elements.btnRedo.addEventListener('click', redo);
+
+    // Smart History Capture for Fields
+    elements.visualEditor.addEventListener('focusin', (e) => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') {
+            // Store state as it was before they started editing this field
+            state._snapshotBeforeEdit = JSON.stringify(getEditorData());
+        }
+    });
+
+    elements.visualEditor.addEventListener('change', (e) => {
+        if (state._snapshotBeforeEdit) {
+            const currentDataStr = JSON.stringify(getEditorData());
+            if (currentDataStr !== state._snapshotBeforeEdit) {
+                // The field actually changed, push the BEFORE state to history
+                const beforeData = JSON.parse(state._snapshotBeforeEdit);
+                state.history.push({
+                    item: beforeData,
+                    isNewItem: state.isNewItem
+                });
+                state.future = [];
+                updateHistoryButtons();
+            }
+            state._snapshotBeforeEdit = null; // Reset for next interaction
+        }
+    });
 
     // New button
     elements.btnNew.addEventListener('click', createNewItem);

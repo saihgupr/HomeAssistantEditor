@@ -2801,6 +2801,42 @@ body.light-theme .number-input:focus {
    Editor Footer
    ============================================ */
 
+.history-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 8px;
+}
+
+.history-controls .btn-icon {
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.history-controls .btn-icon:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.history-controls .btn-icon:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.history-controls .btn-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
 .editor-footer {
   display: flex;
   align-items: center;

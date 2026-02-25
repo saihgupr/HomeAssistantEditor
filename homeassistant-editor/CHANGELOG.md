@@ -3,6 +3,8 @@
 ## [1.0.4] - 2026-02-25
 
 ### Added
+- **Session Undo/Redo**: Implemented full undo/redo support for the visual editor. Structural changes (adding, deleting, moving blocks) and field edits (dropdowns, checkboxes, entity pickers) can now be reversed.
+- **Undo/Redo UI Buttons**: Added dedicated Undo and Redo buttons to the editor footer with live state (disabled when no history is available).
 - **Condition Test Action**: Added a dedicated test icon on condition blocks to run pass/fail checks directly from the block header.
 - **Condition Test Feedback**: Added visual status feedback for test actions (`testing`, `pass`, `fail`, `unsupported`) with updated icon coloring.
 - **Template Condition API**: Added backend endpoint for testing template conditions (`POST /api/test_template`).
@@ -21,6 +23,7 @@
 ### Fixed
 - **NaN in Block Titles**: Fixed a bug where `numeric_state` blocks could display "NaN" in their title while editing empty number fields.
 - **Stale Context Menu Data**: Fixed an issue where context menu actions (like Show YAML) would use old data instead of the latest unsaved visual edits.
+- **Reliable Redo Shortcut**: Ensured `Cmd+Shift+Z` and `Cmd+Y` work consistently for redoing changes.
 - **Paste Restrictions by Section**: Condition/trigger/action blocks can now only be pasted into matching sections.
 - **Paste Button Visibility**: Section paste buttons now only appear when the clipboard contains a compatible block type for that section.
 - **Context Menu Paste Guardrails**: Block and item context menu paste actions now honor clipboard type compatibility.
