@@ -2263,9 +2263,10 @@ body.light-theme .entity-picker-input::placeholder {
 .entity-tag {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 0 8px;
-  background: #1a1a1a !important;
+  gap: 8px;
+  padding: 0 10px;
+  background: var(--input-bg) !important;
+  /* Match input backgrounds (33,33,33) to be distinguishable from block body */
   /* Match block primary bg */
   color: var(--text-primary);
   border-radius: var(--block-radius);
