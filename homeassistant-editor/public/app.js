@@ -1699,36 +1699,22 @@ function showEditor() {
     updatePasteButtonsVisibility();
 }
 
-async function loadItems() {
-    console.log('>>> [loadItems] START. Group:', state.currentGroup, 'Folder:', state.selectedFolder);
-
+function renderCurrentItems() {
     const search = parseSearchInput(elements.searchInput.value);
     const useUnified = !!state.selectedFolder || !!state.selectedTagGroup || search.tags.length > 0;
-
-    // Fetch items, states, and folders in parallel
-    const promises = [
-        fetchHAStates(),
-        state.folders.length === 0 ? fetchFolders() : Promise.resolve()
-    ];
-
-    if (useUnified) {
-        // Unified view: fetch both automations and scripts
-        promises.push(fetchAutomations());
-        promises.push(fetchScripts());
-    } else {
-        promises.push(state.currentGroup === 'automations' ? fetchAutomations() : fetchScripts());
-    }
-
-    await Promise.all(promises);
 
     let items = [];
     if (useUnified) {
         // Mark types for state matching and icons
-        state.automations.forEach(a => a._type = 'automation');
-        state.scripts.forEach(s => s._type = 'script');
-        items = [...state.automations, ...state.scripts];
+        const automations = state.automations || [];
+        const scripts = state.scripts || [];
+        automations.forEach(a => a._type = 'automation');
+        scripts.forEach(s => s._type = 'script');
+        items = [...automations, ...scripts];
     } else {
         items = state.currentGroup === 'automations' ? state.automations : state.scripts;
+        // Safety check if items is undefined (e.g. initial load failed or something)
+        if (!items) items = [];
         items.forEach(i => i._type = state.currentGroup === 'automations' ? 'automation' : 'script');
     }
 
@@ -1788,8 +1774,6 @@ async function loadItems() {
             // Fallback (keep what we guessed, or null)
             item.last_triggered = null;
             item.entity_id = entityId;
-            // If we have an entity_id but no state, don't automatically mark as disabled
-            // if the server already claimed it was enabled (initial_state: true)
         }
     });
 
@@ -1802,6 +1786,31 @@ async function loadItems() {
 
     renderItemsList(items);
     renderTagGroups();
+}
+
+async function loadItems() {
+    console.log('>>> [loadItems] START. Group:', state.currentGroup, 'Folder:', state.selectedFolder);
+
+    const search = parseSearchInput(elements.searchInput.value);
+    const useUnified = !!state.selectedFolder || !!state.selectedTagGroup || search.tags.length > 0;
+
+    // Fetch items, states, and folders in parallel
+    const promises = [
+        fetchHAStates(),
+        state.folders.length === 0 ? fetchFolders() : Promise.resolve()
+    ];
+
+    if (useUnified) {
+        // Unified view: fetch both automations and scripts
+        promises.push(fetchAutomations());
+        promises.push(fetchScripts());
+    } else {
+        promises.push(state.currentGroup === 'automations' ? fetchAutomations() : fetchScripts());
+    }
+
+    await Promise.all(promises);
+
+    renderCurrentItems();
 }
 
 function renderItemsList(items) {
@@ -6926,6 +6935,21 @@ function escapeHtml(str) {
         .replace(/"/g, '&quot;');
 }
 
+/**
+ * Debounce function to limit rate of execution
+ */
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
 // ============================================
 // Undo/Redo Functions
 // ============================================
@@ -7184,12 +7208,11 @@ function initEventListeners() {
     });
 
     // Search
-    elements.searchInput.addEventListener('input', () => {
+    elements.searchInput.addEventListener('input', debounce(() => {
         state.selectedTagGroup = null;
         updateSearchClear();
         loadItems();
-        renderTagGroups();
-    });
+    }, 300));
     if (elements.searchClear) {
         elements.searchClear.addEventListener('click', () => {
             elements.searchInput.value = '';
