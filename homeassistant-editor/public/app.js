@@ -2846,6 +2846,9 @@ function initializeBlockComponents(blockEl) {
     if (nestedWrapper && header) {
         initNestedDragAndDrop(blockEl, header);
     }
+
+    // Nested blocks need their own three-dot context menu wiring
+    initBlockContextMenu(blockEl);
 }
 
 function initBlockDragAndDrop(blockEl, section, header) {
