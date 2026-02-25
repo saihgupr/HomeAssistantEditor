@@ -12,6 +12,10 @@
 - **Paste Restrictions by Section**: Condition/trigger/action blocks can now only be pasted into matching sections.
 - **Paste Button Visibility**: Section paste buttons now only appear when the clipboard contains a compatible block type for that section.
 - **Context Menu Paste Guardrails**: Block and item context menu paste actions now honor clipboard type compatibility.
+- **Settings Theme Overhaul**: Replaced separate `Dark Mode` and `Follow Browser Theme` toggles with a unified 3-way `Theme` selector (`Auto`, `Light`, `Dark`).
+- **Sort Control Relocation**: Moved item sort mode from the main list header into Settings under `Sort Items By`.
+- **Settings Sort Row Layout**: Updated sort setting layout so label/description and dropdown align on one row for a cleaner settings panel.
+- **Settings Select Polish**: Refined settings dropdown styling (custom chevron, hover/focus states, and better visual fit with existing UI components).
 
 ## [1.0.3] - 2026-02-23
 
