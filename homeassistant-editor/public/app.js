@@ -149,6 +149,7 @@ const _state = {
         collapseBlocksByDefault: localStorage.getItem('ha-editor-collapse-blocks') !== 'false', // Default to true
         colorModeEnabled: localStorage.getItem('ha-editor-color-mode') === 'true', // Default to false
         miniListMode: localStorage.getItem('ha-editor-mini-list') === 'true',
+        autoSaveDangerously: localStorage.getItem('ha-editor-autosave-danger') === 'true',
         showRequiredBadges: localStorage.getItem('ha-editor-show-required') !== 'false'
     },
     clipboard: null, // For copy/paste blocks
@@ -175,11 +176,14 @@ const _state = {
 
 const state = new Proxy(_state, {
     set(target, prop, value) {
+        if (prop === 'isDirty') {
+            target[prop] = value;
+            updateSaveButtonStatus(value);
+            scheduleLiveAutosave();
+            return true;
+        }
         if (target[prop] === value) return true; // Avoid redundant triggers
         target[prop] = value;
-        if (prop === 'isDirty') {
-            updateSaveButtonStatus(value);
-        }
         return true;
     }
 });
@@ -247,6 +251,7 @@ const elements = {
     settingCollapseBlocks: document.getElementById('setting-collapse-blocks'),
     settingColorMode: document.getElementById('setting-color-mode'),
     settingMiniList: document.getElementById('setting-mini-list'),
+    settingAutoSaveDanger: document.getElementById('setting-autosave-danger'),
 
     // Trace Panel
     panelTrace: document.getElementById('panel-trace'),
@@ -1972,6 +1977,8 @@ function getVariableTags(vars) {
 }
 
 let tagsAutosaveTimeout = null;
+let liveAutosaveTimeout = null;
+let liveAutosaveInFlight = false;
 let activeInlineTagText = null;
 
 function scheduleTagsAutosave() {
@@ -1992,6 +1999,52 @@ function scheduleTagsAutosave() {
 
         await saveItem({ silent: true });
     }, 300);
+}
+
+function scheduleLiveAutosave() {
+    if (!state.settings.autoSaveDangerously) {
+        if (liveAutosaveTimeout) {
+            clearTimeout(liveAutosaveTimeout);
+            liveAutosaveTimeout = null;
+        }
+        return;
+    }
+
+    if (!state.selectedItem || state.isNewItem) return;
+    if (state.versionControl.previewMode) return;
+    if (state.currentView === 'yaml') return;
+    if (!state.isDirty) return;
+
+    if (liveAutosaveTimeout) clearTimeout(liveAutosaveTimeout);
+    liveAutosaveTimeout = setTimeout(async () => {
+        liveAutosaveTimeout = null;
+
+        if (!state.settings.autoSaveDangerously) return;
+        if (!state.selectedItem || state.isNewItem) return;
+        if (state.versionControl.previewMode) return;
+        if (state.currentView === 'yaml') return;
+
+        checkDirty();
+        if (!state.isDirty) return;
+
+        const validation = validateEditorFields();
+        if (!validation.valid) return;
+
+        if (liveAutosaveInFlight) {
+            scheduleLiveAutosave();
+            return;
+        }
+
+        liveAutosaveInFlight = true;
+        try {
+            await saveItem({ silent: true });
+        } finally {
+            liveAutosaveInFlight = false;
+            if (state.isDirty) {
+                scheduleLiveAutosave();
+            }
+        }
+    }, 700);
 }
 
 function startInlineTagEdit(tagEl, tagValue) {
@@ -7854,6 +7907,21 @@ function initEventListeners() {
             state.settings.miniListMode = e.target.checked;
             localStorage.setItem('ha-editor-mini-list', e.target.checked);
             elements.panelMiddle.classList.toggle('mini-list', e.target.checked);
+        });
+    }
+
+    // Settings - Live dangerously autosave toggle
+    if (elements.settingAutoSaveDanger) {
+        elements.settingAutoSaveDanger.checked = state.settings.autoSaveDangerously;
+        elements.settingAutoSaveDanger.addEventListener('change', (e) => {
+            state.settings.autoSaveDangerously = e.target.checked;
+            localStorage.setItem('ha-editor-autosave-danger', e.target.checked);
+            scheduleLiveAutosave();
+            if (e.target.checked) {
+                showToast('Autosave enabled (Live Dangerously)', 'warning');
+            } else {
+                showToast('Autosave disabled', 'info');
+            }
         });
     }
 
