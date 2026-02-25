@@ -1972,7 +1972,7 @@ body.color-mode .action-block .block-icon {
 
 .block-body {
   position: relative;
-  padding: 4px 16px 16px;
+  padding: 15px 16px;
   display: grid;
   gap: 12px;
   /* Slight darken overlay for body differentiation */
@@ -2919,7 +2919,7 @@ body.light-theme .summary-item {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 0;
+  padding: 0;
   background: transparent;
   border-radius: 4px;
   font-size: 11px;
@@ -2927,7 +2927,7 @@ body.light-theme .summary-item {
   color: rgba(255, 255, 255, 0.6);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
 body.light-theme .nested-section .section-header {
