@@ -4,8 +4,8 @@
  */
 
 :root {
-  --input-bg: rgba(0, 0, 0, 0.2);
-  --input-bg-focus: rgba(0, 0, 0, 0.35);
+  --input-bg: #212121;
+  --input-bg-focus: #2a2a2a;
   /* Colors */
   --bg-primary: #1a1a1a;
   --bg-secondary: #1b1b1b;
@@ -1988,12 +1988,7 @@ body.color-mode .action-block .block-icon {
   background: var(--bg-secondary);
 }
 
-.action-block.action .block-field input,
-.action-block.action .block-field select,
-.action-block.action .block-field textarea {
-  background: #212121;
-  /* 33, 33, 33 per user request */
-}
+/* Block Body Colors - Colorful (when color-mode enabled) */
 
 /* Block Body Colors - Colorful (when color-mode enabled) */
 body.color-mode .action-block.trigger .block-body {
@@ -2270,7 +2265,8 @@ body.light-theme .entity-picker-input::placeholder {
   align-items: center;
   gap: 4px;
   padding: 0 8px;
-  background: var(--bg-tertiary) !important;
+  background: #1a1a1a !important;
+  /* Match block primary bg */
   color: var(--text-primary);
   border-radius: var(--block-radius);
   font-size: 12px;
@@ -5634,10 +5630,10 @@ body.light-theme .service-picker-input::placeholder {
   flex-direction: column;
   gap: 8px;
   width: 100%;
-  background: rgba(0, 0, 0, 0.1);
-  padding: 8px;
+  background: transparent;
+  padding: 0;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-color);
+  border: none;
 }
 
 .target-tabs {
@@ -5713,7 +5709,7 @@ body.light-theme .target-tab-btn.active {
 }
 
 .target-freeform {
-  background: rgba(0, 0, 0, 0.2);
+  background: #212121;
   border: none;
   border-radius: var(--radius-sm);
   padding: 8px 12px;
