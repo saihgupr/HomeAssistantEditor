@@ -2313,7 +2313,7 @@ body.light-theme .entity-picker-input::placeholder {
 .duration-field input {
   width: 48px;
   text-align: center;
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--input-bg);
   border: none;
   border-radius: var(--radius-sm);
   padding: 8px 4px;
@@ -2331,7 +2331,7 @@ body.light-theme .entity-picker-input::placeholder {
 }
 
 .duration-field input:focus {
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--input-bg-focus);
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
@@ -2868,7 +2868,7 @@ body.light-theme .summary-item {
 
 .nested-section {
   margin: 8px 0;
-  border-left: 2px solid rgba(255, 255, 255, 0.08);
+  border-left: none;
   padding-left: 0;
 }
 
@@ -2880,8 +2880,8 @@ body.light-theme .summary-item {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
-  background: rgba(0, 0, 0, 0.15);
+  padding: 8px 0;
+  background: transparent;
   border-radius: 4px;
   font-size: 11px;
   font-weight: 600;
