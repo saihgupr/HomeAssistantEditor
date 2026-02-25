@@ -4714,11 +4714,17 @@ function getBlockFields(block, type) {
         fields.push(createFieldHtml('To State', 'to', block.to || ''));
         fields.push(createFieldHtml('For Duration', 'for', block.for || '', 'duration'));
         if (block.attribute !== undefined) fields.push(createFieldHtml('Attribute', 'attribute', block.attribute));
+
+        const ids = Array.isArray(block.id) ? block.id.join(', ') : block.id;
+        fields.push(createFieldHtml('Trigger ID', 'id', ids || ''));
     }
 
     // Time trigger fields
     if (block.trigger === 'time' || block.platform === 'time') {
         fields.push(createFieldHtml('At', 'at', block.at || '', 'time'));
+
+        const ids = Array.isArray(block.id) ? block.id.join(', ') : block.id;
+        fields.push(createFieldHtml('Trigger ID', 'id', ids || ''));
     }
 
     // Numeric state trigger fields
@@ -4732,6 +4738,9 @@ function getBlockFields(block, type) {
         if (block.value_template !== undefined) {
             fields.push(createFieldHtml('Value Template', 'value_template', block.value_template, 'textarea'));
         }
+
+        const idsNS = Array.isArray(block.id) ? block.id.join(', ') : block.id;
+        fields.push(createFieldHtml('Trigger ID', 'id', idsNS || ''));
     }
 
     // Sun trigger fields
@@ -4743,12 +4752,18 @@ function getBlockFields(block, type) {
             ]
         }));
         fields.push(createFieldHtml('Offset', 'offset', block.offset || '', 'duration'));
+
+        const ids = Array.isArray(block.id) ? block.id.join(', ') : block.id;
+        fields.push(createFieldHtml('Trigger ID', 'id', ids || ''));
     }
 
     // Template trigger fields
     if (block.trigger === 'template' || block.platform === 'template') {
         fields.push(createFieldHtml('Value Template', 'value_template', block.value_template || '', 'textarea'));
         fields.push(createFieldHtml('For Duration', 'for', block.for || '', 'duration'));
+
+        const idsTP = Array.isArray(block.id) ? block.id.join(', ') : block.id;
+        fields.push(createFieldHtml('Trigger ID', 'id', idsTP || ''));
     }
 
     // Zone trigger fields
@@ -4762,6 +4777,9 @@ function getBlockFields(block, type) {
                 { value: 'leave', label: 'Leave' }
             ]
         }));
+
+        const idsZT = Array.isArray(block.id) ? block.id.join(', ') : block.id;
+        fields.push(createFieldHtml('Trigger ID', 'id', idsZT || ''));
     }
 
     // Event trigger fields
@@ -4781,6 +4799,9 @@ function getBlockFields(block, type) {
         if (block._invalid_event_data) {
             fields.push(`<div class="block-field invalid-json">Event Data must be valid JSON.</div>`);
         }
+
+        const idsEV = Array.isArray(block.id) ? block.id.join(', ') : block.id;
+        fields.push(createFieldHtml('Trigger ID', 'id', idsEV || ''));
     }
 
     // Persistent notification trigger fields
@@ -4793,6 +4814,9 @@ function getBlockFields(block, type) {
             ]
         }));
         fields.push(createFieldHtml('Notification ID (optional)', 'notification_id', block.notification_id || ''));
+
+        const ids = Array.isArray(block.id) ? block.id.join(', ') : block.id;
+        fields.push(createFieldHtml('Trigger ID', 'id', ids || ''));
     }
 
     // Homeassistant trigger fields (start, shutdown, update)
@@ -4804,6 +4828,9 @@ function getBlockFields(block, type) {
                 { value: 'update', label: 'Update' }
             ]
         }));
+
+        const idsHA = Array.isArray(block.id) ? block.id.join(', ') : block.id;
+        fields.push(createFieldHtml('Trigger ID', 'id', idsHA || ''));
     }
 
     // MQTT trigger fields
@@ -4813,6 +4840,9 @@ function getBlockFields(block, type) {
         if (block.value_template) {
             fields.push(createFieldHtml('Value Template', 'value_template', block.value_template, 'textarea'));
         }
+
+        const ids = Array.isArray(block.id) ? block.id.join(', ') : block.id;
+        fields.push(createFieldHtml('Trigger ID', 'id', ids || ''));
     }
 
     // Webhook trigger fields
@@ -4820,6 +4850,9 @@ function getBlockFields(block, type) {
         fields.push(createFieldHtml('Webhook ID', 'webhook_id', block.webhook_id || ''));
         const methodsValue = Array.isArray(block.allowed_methods) ? block.allowed_methods.join(', ') : (block.allowed_methods || '');
         fields.push(createFieldHtml('Allowed Methods', 'allowed_methods', methodsValue, 'input', { placeholder: 'GET, POST, PUT...' }));
+
+        const ids = Array.isArray(block.id) ? block.id.join(', ') : block.id;
+        fields.push(createFieldHtml('Trigger ID', 'id', ids || ''));
     }
 
     // Device trigger fields
@@ -4836,6 +4869,9 @@ function getBlockFields(block, type) {
         if (block._invalid_device_extra) {
             fields.push(`<div class="block-field invalid-json">Device Extra must be valid JSON.</div>`);
         }
+
+        const idsDV = Array.isArray(block.id) ? block.id.join(', ') : block.id;
+        fields.push(createFieldHtml('Trigger ID', 'id', idsDV || ''));
     }
 
     // Time pattern trigger (cron-like)
@@ -4843,6 +4879,9 @@ function getBlockFields(block, type) {
         fields.push(createFieldHtml('Hours', 'hours', block.hours || '*'));
         fields.push(createFieldHtml('Minutes', 'minutes', block.minutes || '*'));
         fields.push(createFieldHtml('Seconds', 'seconds', block.seconds || '0'));
+
+        const ids = Array.isArray(block.id) ? block.id.join(', ') : block.id;
+        fields.push(createFieldHtml('Trigger ID', 'id', ids || ''));
     }
 
     // If/Then blocks - NESTED RENDERING (not summary)
@@ -4982,7 +5021,7 @@ function getBlockFields(block, type) {
     }
     if (block.condition === 'trigger') {
         const ids = Array.isArray(block.id) ? block.id.join(', ') : block.id;
-        fields.push(createFieldHtml('Trigger IDs', 'id', ids || ''));
+        fields.push(createFieldHtml('Trigger ID', 'id', ids || ''));
     }
     if (block.condition === 'template') {
         fields.push(createFieldHtml('Template', 'value_template', block.value_template || '', 'textarea'));
