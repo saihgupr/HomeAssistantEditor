@@ -1972,7 +1972,7 @@ body.color-mode .action-block .block-icon {
 
 .block-body {
   position: relative;
-  padding: 16px;
+  padding: 4px 16px 16px;
   display: grid;
   gap: 12px;
   /* Slight darken overlay for body differentiation */
@@ -5853,7 +5853,7 @@ body.color-mode .data-value-input::placeholder {
 .data-key-input {
   font-weight: 500;
   font-family: var(--font-mono);
-  color: var(--accent-purple);
+  color: var(--text-primary);
   max-width: 40%;
   /* Key usually shorter */
 }
