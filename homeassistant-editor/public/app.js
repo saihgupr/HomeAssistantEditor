@@ -3368,7 +3368,13 @@ function initBlockContextMenu(blockEl) {
     if (menuTrigger) {
         menuTrigger.addEventListener('click', (e) => openMenu(e, false));
     }
-    blockEl.addEventListener('contextmenu', (e) => openMenu(e, true));
+    
+    const header = blockEl.querySelector('.block-header');
+    if (header) {
+        header.addEventListener('contextmenu', (e) => openMenu(e, true));
+    } else {
+        blockEl.addEventListener('contextmenu', (e) => openMenu(e, true));
+    }
 }
 
 function findItemById(id, typeHint = null) {

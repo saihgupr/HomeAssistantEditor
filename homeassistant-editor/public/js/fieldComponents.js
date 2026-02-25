@@ -1409,8 +1409,17 @@ async function initServiceArgsEditor(id, serviceId, currentData, options) {
 
         let inputHtml = '';
         const label = fieldDef.name || fieldKey;
-        const description = fieldDef.description || '';
+        let description = fieldDef.description || '';
         const selector = fieldDef.selector || {};
+
+        // Filter out noisy/redundant descriptions requested by user
+        const noisyDescriptions = [
+            'The amount to increase the input number with. If not provided, the step of the number entity will be used.',
+            'The amount to decrease the input number with. If not provided, the step of the number entity will be used.'
+        ];
+        if (noisyDescriptions.includes(description)) {
+            description = '';
+        }
 
         if (selector.boolean) {
             inputHtml = createToggle(fieldKey, value, { label, description });

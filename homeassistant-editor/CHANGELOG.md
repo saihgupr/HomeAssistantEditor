@@ -14,6 +14,8 @@
 - **Auto-Detect Time Format**: The time picker now automatically defaults to the user's browser locale (12h or 24h preference).
 - **Forced Block Expansion**: Newly added or duplicated blocks (triggers, conditions, actions) now always appear expanded by default for immediate editing, regardless of the global "Collapse blocks by default" setting.
 - **Instant YAML View**: Individual block "Show YAML" action now works instantly for new or modified items without requiring a save first.
+- **Refined Field Descriptions**: Removed redundant helper text from `input_number.increment` and `input_number.decrement` actions to reduce visual noise.
+- **Restricted Block Context Menu**: Right-click context menus are now only triggered by clicking on the block header (action bar), preventing accidental popups while editing fields in the block body.
 - **Clipboard Type Safety**: Block clipboard data is now section-aware (`triggers`, `conditions`, `actions`) and separated from item clipboard data.
 
 ### Fixed
