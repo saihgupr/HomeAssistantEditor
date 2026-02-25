@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.0.4] - 2026-02-25
+## [1.1.0-beta.1] - 2026-02-25
 
 ### Added
 - **Session Undo/Redo**: Implemented full undo/redo support for the visual editor. Structural changes (adding, deleting, moving blocks) and field edits (dropdowns, checkboxes, entity pickers) can now be reversed.
