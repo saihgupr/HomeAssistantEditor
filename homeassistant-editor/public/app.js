@@ -2404,6 +2404,7 @@ function renderBlocks(section, blocks, expandedStates = null) {
         const header = blockEl.querySelector('.block-header');
         const deleteBtn = blockEl.querySelector('.block-action-btn.delete');
         const copyBtn = blockEl.querySelector('.block-action-btn.copy');
+        const testConditionBtn = blockEl.querySelector('.block-action-btn.test-condition');
         const aliasText = blockEl.querySelector('.block-alias-text');
         const aliasInput = blockEl.querySelector('.block-title-input');
 
@@ -2495,6 +2496,25 @@ function renderBlocks(section, blocks, expandedStates = null) {
 
         const duplicateBtn = blockEl.querySelector('.block-action-btn.duplicate');
 
+        if (testConditionBtn) {
+            testConditionBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const idx = parseInt(blockEl.dataset.index, 10);
+                let blockData = null;
+                if (!Number.isNaN(idx)) {
+                    const sectionBlocks = getBlocksData(section);
+                    if (idx >= 0 && idx < sectionBlocks.length) {
+                        blockData = sectionBlocks[idx];
+                    }
+                }
+                if (!blockData) {
+                    const guessedSection = section === 'conditions' ? 'condition' : (section === 'triggers' ? 'trigger' : 'action');
+                    blockData = parseBlockElement(blockEl, guessedSection);
+                }
+                await runConditionTest(blockData, testConditionBtn);
+            });
+        }
+
         copyBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             const idx = parseInt(blockEl.dataset.index);
@@ -2583,6 +2603,7 @@ function initializeBlockComponents(blockEl) {
     const header = blockEl.querySelector('.block-header');
     const deleteBtn = blockEl.querySelector('.block-action-btn.delete');
     const copyBtn = blockEl.querySelector('.block-action-btn.copy');
+    const testConditionBtn = blockEl.querySelector('.block-action-btn.test-condition');
     const aliasText = blockEl.querySelector('.block-alias-text');
     const aliasInput = blockEl.querySelector('.block-title-input');
 
@@ -2635,6 +2656,17 @@ function initializeBlockComponents(blockEl) {
     }
 
     const duplicateBtn = blockEl.querySelector('.block-action-btn.duplicate');
+
+    if (testConditionBtn) {
+        testConditionBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const guessedSection = blockEl.classList.contains('condition')
+                ? 'condition'
+                : (blockEl.classList.contains('trigger') ? 'trigger' : 'action');
+            const blockData = parseBlockElement(blockEl, guessedSection);
+            await runConditionTest(blockData, testConditionBtn);
+        });
+    }
 
     if (copyBtn) {
         copyBtn.addEventListener('click', (e) => {
@@ -3437,6 +3469,7 @@ function createBlockHtml(block, type, index, options = {}) {
     const shouldCollapse = options.forceCollapsed === true;
 
     const blockTypeKey = getBlockTypeKey(block, type);
+    const isConditionBlock = type === 'condition' || !!block.condition;
 
     return `
     <div class="action-block ${blockClass} ${!isEnabled ? 'is-disabled' : ''} ${shouldCollapse ? 'collapsed' : ''}" data-index="${index}" data-block-type="${escapeHtml(blockTypeKey)}">
@@ -3457,6 +3490,14 @@ function createBlockHtml(block, type, index, options = {}) {
         <div class="block-tags"></div>
         
         <div class="block-actions">
+          ${isConditionBlock ? `
+          <button class="block-action-btn test-condition" title="Test Condition" aria-label="Test condition">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="9"/>
+              <polyline points="9 12 11 14 15 10"/>
+            </svg>
+          </button>
+          ` : ''}
           <button class="block-action-btn copy" title="Copy" aria-label="Copy block">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
@@ -7841,6 +7882,526 @@ async function runBlock(blockData) {
 
     } catch (e) {
         showToast('Error executing action: ' + e.message, 'error');
+    }
+}
+
+function setConditionTestButtonState(button, status) {
+    if (!button) return;
+
+    button.classList.remove('testing', 'result-pass', 'result-fail', 'result-unsupported');
+    if (button._conditionTestTimer) {
+        clearTimeout(button._conditionTestTimer);
+        button._conditionTestTimer = null;
+    }
+
+    if (status === 'testing') {
+        button.classList.add('testing');
+        return;
+    }
+
+    const statusClass = status === 'pass'
+        ? 'result-pass'
+        : status === 'fail'
+            ? 'result-fail'
+            : status === 'unsupported'
+                ? 'result-unsupported'
+                : '';
+    if (!statusClass) return;
+
+    button.classList.add(statusClass);
+    button._conditionTestTimer = setTimeout(() => {
+        button.classList.remove(statusClass);
+        button._conditionTestTimer = null;
+    }, 1800);
+}
+
+function normalizeEntityIds(entityIdValue) {
+    if (Array.isArray(entityIdValue)) {
+        return entityIdValue.flatMap(v => normalizeEntityIds(v));
+    }
+    if (typeof entityIdValue !== 'string') return [];
+    return entityIdValue.split(',').map(v => v.trim()).filter(Boolean);
+}
+
+function getStateAttributeValue(attributes, attributePath) {
+    if (!attributes || typeof attributes !== 'object' || !attributePath) return undefined;
+
+    if (Object.prototype.hasOwnProperty.call(attributes, attributePath)) {
+        return attributes[attributePath];
+    }
+
+    return String(attributePath)
+        .split('.')
+        .reduce((acc, key) => {
+            if (acc && typeof acc === 'object' && Object.prototype.hasOwnProperty.call(acc, key)) {
+                return acc[key];
+            }
+            return undefined;
+        }, attributes);
+}
+
+function getConditionEntityValue(entityId, attributePath = '') {
+    const entityState = state.haStates?.[entityId];
+    if (!entityState) {
+        return { success: false, message: `Entity "${entityId}" not found` };
+    }
+
+    let currentValue = entityState.state;
+    if (attributePath) {
+        currentValue = getStateAttributeValue(entityState.attributes || {}, attributePath);
+        if (currentValue === undefined) {
+            return {
+                success: false,
+                message: `Attribute "${attributePath}" not found on ${entityId}`
+            };
+        }
+    }
+
+    return { success: true, entity: entityState, value: currentValue };
+}
+
+function parseDurationToMs(durationValue) {
+    if (!durationValue) return 0;
+
+    if (typeof durationValue === 'object') {
+        const hours = Number(durationValue.hours || 0);
+        const minutes = Number(durationValue.minutes || 0);
+        const seconds = Number(durationValue.seconds || 0);
+        const milliseconds = Number(durationValue.milliseconds || 0);
+        return ((hours * 3600 + minutes * 60 + seconds) * 1000) + milliseconds;
+    }
+
+    if (typeof durationValue !== 'string') return 0;
+    const trimmed = durationValue.trim();
+    if (!trimmed) return 0;
+
+    const shorthandMatch = trimmed.match(/^(\d+)\s*([hms])$/i);
+    if (shorthandMatch) {
+        const num = Number(shorthandMatch[1]);
+        const unit = shorthandMatch[2].toLowerCase();
+        if (unit === 'h') return num * 3600000;
+        if (unit === 'm') return num * 60000;
+        if (unit === 's') return num * 1000;
+    }
+
+    const clockMatch = trimmed.match(/^(\d+):(\d{2})(?::(\d{2}))?$/);
+    if (clockMatch) {
+        const hours = Number(clockMatch[1]);
+        const minutes = Number(clockMatch[2]);
+        const seconds = Number(clockMatch[3] || 0);
+        return ((hours * 3600) + (minutes * 60) + seconds) * 1000;
+    }
+
+    const numeric = Number(trimmed);
+    if (Number.isFinite(numeric) && numeric >= 0) {
+        return numeric * 1000;
+    }
+
+    return 0;
+}
+
+function isForDurationSatisfied(entityState, forValue) {
+    const requiredMs = parseDurationToMs(forValue);
+    if (!requiredMs) return true;
+
+    const lastChanged = entityState?.last_changed;
+    if (!lastChanged) return false;
+
+    const lastChangedTs = Date.parse(lastChanged);
+    if (Number.isNaN(lastChangedTs)) return false;
+
+    return (Date.now() - lastChangedTs) >= requiredMs;
+}
+
+function parseTimeToSeconds(value) {
+    if (typeof value !== 'string' || !value.trim()) return null;
+
+    const match = value.trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    if (!match) return null;
+
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    const seconds = Number(match[3] || 0);
+
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59 || seconds < 0 || seconds > 59) {
+        return null;
+    }
+
+    return (hours * 3600) + (minutes * 60) + seconds;
+}
+
+function normalizeWeekdays(weekdayValue) {
+    if (!weekdayValue) return [];
+    if (Array.isArray(weekdayValue)) {
+        return weekdayValue.map(v => String(v).trim().toLowerCase()).filter(Boolean);
+    }
+    if (typeof weekdayValue === 'string') {
+        return weekdayValue.split(',').map(v => v.trim().toLowerCase()).filter(Boolean);
+    }
+    return [];
+}
+
+function resolveNumericValue(rawValue) {
+    if (typeof rawValue === 'number' && Number.isFinite(rawValue)) {
+        return { success: true, value: rawValue };
+    }
+
+    if (typeof rawValue !== 'string') {
+        return { success: false, message: 'Numeric value is missing' };
+    }
+
+    const trimmed = rawValue.trim();
+    if (!trimmed) {
+        return { success: false, message: 'Numeric value is empty' };
+    }
+
+    const referencedEntity = state.haStates?.[trimmed];
+    if (referencedEntity) {
+        const entityNumber = Number(referencedEntity.state);
+        if (Number.isFinite(entityNumber)) {
+            return { success: true, value: entityNumber };
+        }
+        return {
+            success: false,
+            message: `Entity "${trimmed}" does not have a numeric state`
+        };
+    }
+
+    const parsed = Number(trimmed);
+    if (Number.isFinite(parsed)) {
+        return { success: true, value: parsed };
+    }
+
+    return { success: false, message: `"${rawValue}" is not numeric` };
+}
+
+async function evaluateConditionBlock(conditionBlock, depth = 0) {
+    if (!conditionBlock || typeof conditionBlock !== 'object') {
+        return { supported: false, passed: false, message: 'Invalid condition data' };
+    }
+    if (depth > 12) {
+        return { supported: false, passed: false, message: 'Condition nesting is too deep' };
+    }
+
+    const conditionType = String(conditionBlock.condition || '').trim().toLowerCase();
+    if (!conditionType) {
+        return { supported: false, passed: false, message: 'Condition type is missing' };
+    }
+
+    if (conditionType === 'state') {
+        const entityIds = normalizeEntityIds(conditionBlock.entity_id);
+        if (entityIds.length === 0) {
+            return { supported: false, passed: false, message: 'State condition needs an entity' };
+        }
+        if (conditionBlock.state === undefined || conditionBlock.state === null || String(conditionBlock.state) === '') {
+            return { supported: false, passed: false, message: 'State condition needs a target state' };
+        }
+
+        const expectedState = String(conditionBlock.state);
+        for (const entityId of entityIds) {
+            const entityResult = getConditionEntityValue(entityId, conditionBlock.attribute);
+            if (!entityResult.success) {
+                return { supported: true, passed: false, message: entityResult.message };
+            }
+
+            const actualState = entityResult.value === undefined || entityResult.value === null
+                ? ''
+                : String(entityResult.value);
+            if (actualState !== expectedState) {
+                return {
+                    supported: true,
+                    passed: false,
+                    message: `${entityId} is "${actualState}" (expected "${expectedState}")`
+                };
+            }
+
+            if (!isForDurationSatisfied(entityResult.entity, conditionBlock.for)) {
+                return {
+                    supported: true,
+                    passed: false,
+                    message: `${entityId} has not matched long enough for "for"`
+                };
+            }
+        }
+
+        return { supported: true, passed: true, message: 'State condition passed' };
+    }
+
+    if (conditionType === 'numeric_state') {
+        if (conditionBlock.value_template) {
+            return {
+                supported: false,
+                passed: false,
+                message: 'Numeric state with value_template is not testable yet'
+            };
+        }
+
+        const entityIds = normalizeEntityIds(conditionBlock.entity_id);
+        if (entityIds.length === 0) {
+            return { supported: false, passed: false, message: 'Numeric state needs an entity' };
+        }
+
+        const hasAbove = conditionBlock.above !== undefined && conditionBlock.above !== null && String(conditionBlock.above).trim() !== '';
+        const hasBelow = conditionBlock.below !== undefined && conditionBlock.below !== null && String(conditionBlock.below).trim() !== '';
+        if (!hasAbove && !hasBelow) {
+            return { supported: false, passed: false, message: 'Numeric state needs above and/or below values' };
+        }
+
+        const above = hasAbove ? resolveNumericValue(conditionBlock.above) : null;
+        const below = hasBelow ? resolveNumericValue(conditionBlock.below) : null;
+        if (above && !above.success) {
+            return { supported: false, passed: false, message: `Invalid "above": ${above.message}` };
+        }
+        if (below && !below.success) {
+            return { supported: false, passed: false, message: `Invalid "below": ${below.message}` };
+        }
+
+        for (const entityId of entityIds) {
+            const entityResult = getConditionEntityValue(entityId, conditionBlock.attribute);
+            if (!entityResult.success) {
+                return { supported: true, passed: false, message: entityResult.message };
+            }
+
+            const actualNumber = Number(entityResult.value);
+            if (!Number.isFinite(actualNumber)) {
+                return { supported: true, passed: false, message: `${entityId} is not numeric` };
+            }
+
+            if (above && !(actualNumber > above.value)) {
+                return {
+                    supported: true,
+                    passed: false,
+                    message: `${entityId} is ${actualNumber} (must be > ${above.value})`
+                };
+            }
+
+            if (below && !(actualNumber < below.value)) {
+                return {
+                    supported: true,
+                    passed: false,
+                    message: `${entityId} is ${actualNumber} (must be < ${below.value})`
+                };
+            }
+
+            if (!isForDurationSatisfied(entityResult.entity, conditionBlock.for)) {
+                return {
+                    supported: true,
+                    passed: false,
+                    message: `${entityId} has not matched long enough for "for"`
+                };
+            }
+        }
+
+        return { supported: true, passed: true, message: 'Numeric state condition passed' };
+    }
+
+    if (conditionType === 'time') {
+        const weekdays = normalizeWeekdays(conditionBlock.weekday);
+        const dayCodeMap = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+        const now = new Date();
+        const todayCode = dayCodeMap[now.getDay()];
+
+        if (weekdays.length > 0 && !weekdays.includes(todayCode)) {
+            return { supported: true, passed: false, message: `Today (${todayCode}) is not in weekday filter` };
+        }
+
+        const hasAfter = typeof conditionBlock.after === 'string' && conditionBlock.after.trim() !== '';
+        const hasBefore = typeof conditionBlock.before === 'string' && conditionBlock.before.trim() !== '';
+        const afterSeconds = hasAfter ? parseTimeToSeconds(conditionBlock.after) : null;
+        const beforeSeconds = hasBefore ? parseTimeToSeconds(conditionBlock.before) : null;
+
+        if (hasAfter && afterSeconds === null) {
+            return { supported: false, passed: false, message: 'Invalid "after" time' };
+        }
+        if (hasBefore && beforeSeconds === null) {
+            return { supported: false, passed: false, message: 'Invalid "before" time' };
+        }
+
+        if (hasAfter || hasBefore) {
+            const nowSeconds = (now.getHours() * 3600) + (now.getMinutes() * 60) + now.getSeconds();
+            let inWindow = true;
+
+            if (hasAfter && hasBefore) {
+                if (afterSeconds <= beforeSeconds) {
+                    inWindow = nowSeconds >= afterSeconds && nowSeconds <= beforeSeconds;
+                } else {
+                    inWindow = nowSeconds >= afterSeconds || nowSeconds <= beforeSeconds;
+                }
+            } else if (hasAfter) {
+                inWindow = nowSeconds >= afterSeconds;
+            } else if (hasBefore) {
+                inWindow = nowSeconds <= beforeSeconds;
+            }
+
+            if (!inWindow) {
+                return { supported: true, passed: false, message: 'Current time is outside the allowed window' };
+            }
+        }
+
+        return { supported: true, passed: true, message: 'Time condition passed' };
+    }
+
+    if (conditionType === 'zone') {
+        const zoneId = typeof conditionBlock.zone === 'string' ? conditionBlock.zone.trim() : '';
+        const entityIds = normalizeEntityIds(conditionBlock.entity_id);
+        if (!zoneId || entityIds.length === 0) {
+            return { supported: false, passed: false, message: 'Zone condition needs zone and entity values' };
+        }
+
+        const zoneObjectId = zoneId.includes('.') ? zoneId.split('.').pop() : zoneId;
+        const zoneState = state.haStates?.[zoneId];
+        const expectedStates = new Set([zoneId.toLowerCase(), zoneObjectId.toLowerCase()]);
+        const zoneFriendlyName = zoneState?.attributes?.friendly_name;
+        if (zoneFriendlyName) {
+            expectedStates.add(String(zoneFriendlyName).toLowerCase());
+        }
+
+        for (const entityId of entityIds) {
+            const entityResult = getConditionEntityValue(entityId);
+            if (!entityResult.success) {
+                return { supported: true, passed: false, message: entityResult.message };
+            }
+
+            const entityState = String(entityResult.value || '').toLowerCase();
+            if (!expectedStates.has(entityState)) {
+                return {
+                    supported: true,
+                    passed: false,
+                    message: `${entityId} is "${entityResult.value}" (expected zone "${zoneId}")`
+                };
+            }
+        }
+
+        return { supported: true, passed: true, message: 'Zone condition passed' };
+    }
+
+    if (conditionType === 'template') {
+        const valueTemplate = typeof conditionBlock.value_template === 'string'
+            ? conditionBlock.value_template.trim()
+            : '';
+        if (!valueTemplate) {
+            return { supported: false, passed: false, message: 'Template condition is empty' };
+        }
+
+        try {
+            const response = await fetch('./api/test_template', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ template: valueTemplate })
+            });
+            const data = await response.json();
+            if (!data.success) {
+                return {
+                    supported: false,
+                    passed: false,
+                    message: data.error || 'Template test failed'
+                };
+            }
+
+            return {
+                supported: true,
+                passed: data.passed === true,
+                message: data.passed ? 'Template condition passed' : 'Template condition failed'
+            };
+        } catch (error) {
+            return {
+                supported: false,
+                passed: false,
+                message: `Template test failed: ${error.message}`
+            };
+        }
+    }
+
+    if (conditionType === 'and' || conditionType === 'or' || conditionType === 'not') {
+        const children = Array.isArray(conditionBlock.conditions)
+            ? conditionBlock.conditions
+            : (conditionBlock.conditions ? [conditionBlock.conditions] : []);
+        if (children.length === 0) {
+            return { supported: false, passed: false, message: `${conditionType.toUpperCase()} has no nested conditions` };
+        }
+
+        if (conditionType === 'and') {
+            let hasUnsupported = false;
+            for (const child of children) {
+                const childResult = await evaluateConditionBlock(child, depth + 1);
+                if (!childResult.supported) {
+                    hasUnsupported = true;
+                    continue;
+                }
+                if (!childResult.passed) {
+                    return { supported: true, passed: false, message: childResult.message || 'One nested condition failed' };
+                }
+            }
+            if (hasUnsupported) {
+                return { supported: false, passed: false, message: 'One or more nested conditions are not testable yet' };
+            }
+            return { supported: true, passed: true, message: 'AND condition passed' };
+        }
+
+        if (conditionType === 'or') {
+            let hasUnsupported = false;
+            for (const child of children) {
+                const childResult = await evaluateConditionBlock(child, depth + 1);
+                if (!childResult.supported) {
+                    hasUnsupported = true;
+                    continue;
+                }
+                if (childResult.passed) {
+                    return { supported: true, passed: true, message: 'OR condition passed' };
+                }
+            }
+            if (hasUnsupported) {
+                return { supported: false, passed: false, message: 'One or more nested conditions are not testable yet' };
+            }
+            return { supported: true, passed: false, message: 'No nested condition passed' };
+        }
+
+        const andResult = await evaluateConditionBlock({ condition: 'and', conditions: children }, depth + 1);
+        if (!andResult.supported) {
+            return andResult;
+        }
+        if (andResult.passed) {
+            return { supported: true, passed: false, message: 'NOT condition failed' };
+        }
+        return { supported: true, passed: true, message: 'NOT condition passed' };
+    }
+
+    return {
+        supported: false,
+        passed: false,
+        message: `Testing for "${conditionType}" conditions is not supported yet`
+    };
+}
+
+async function runConditionTest(blockData, button) {
+    if (!blockData || typeof blockData !== 'object' || !blockData.condition) {
+        showToast('This block is not a condition', 'warning');
+        return;
+    }
+
+    setConditionTestButtonState(button, 'testing');
+
+    try {
+        await fetchHAStates();
+        const result = await evaluateConditionBlock(blockData);
+
+        if (!result.supported) {
+            setConditionTestButtonState(button, 'unsupported');
+            showToast(result.message || 'This condition type is not testable yet', 'warning');
+            return;
+        }
+
+        if (result.passed) {
+            setConditionTestButtonState(button, 'pass');
+            showToast(result.message || 'Condition passed', 'success');
+        } else {
+            setConditionTestButtonState(button, 'fail');
+            showToast(result.message || 'Condition failed', 'error');
+        }
+    } catch (error) {
+        console.error('[Condition Test] Error:', error);
+        setConditionTestButtonState(button, 'unsupported');
+        showToast(`Condition test error: ${error.message}`, 'error');
     }
 }
 

@@ -1857,6 +1857,31 @@ body.color-mode .action-block .block-icon {
   opacity: 1;
 }
 
+.block-action-btn.test-condition:hover {
+  color: var(--accent-green);
+  opacity: 1;
+}
+
+.block-action-btn.test-condition.testing {
+  color: var(--accent-blue);
+  opacity: 1;
+}
+
+.block-action-btn.test-condition.result-pass {
+  color: var(--accent-green);
+  opacity: 1;
+}
+
+.block-action-btn.test-condition.result-fail {
+  color: var(--accent-red);
+  opacity: 1;
+}
+
+.block-action-btn.test-condition.result-unsupported {
+  color: var(--accent-orange);
+  opacity: 1;
+}
+
 .block-action-btn.delete:hover {
   color: #ef4444;
   opacity: 1;
@@ -4280,6 +4305,27 @@ body.light-theme .block-action-btn {
 body.light-theme .block-action-btn:hover {
   color: rgba(0, 0, 0, 0.85);
   background: rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .block-action-btn.test-condition:hover {
+  color: var(--accent-green);
+  background: rgba(34, 197, 94, 0.12);
+}
+
+body.light-theme .block-action-btn.test-condition.testing {
+  color: var(--accent-blue);
+}
+
+body.light-theme .block-action-btn.test-condition.result-pass {
+  color: var(--accent-green);
+}
+
+body.light-theme .block-action-btn.test-condition.result-fail {
+  color: var(--accent-red);
+}
+
+body.light-theme .block-action-btn.test-condition.result-unsupported {
+  color: var(--accent-orange);
 }
 
 body.light-theme .block-action-btn.delete:hover {

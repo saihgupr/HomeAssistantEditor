@@ -1582,6 +1582,64 @@ app.get('/api/services', async (req, res) => {
     }
 });
 
+// Evaluate a template and return boolean pass/fail for template conditions
+app.post('/api/test_template', async (req, res) => {
+    const supervisorToken = process.env.SUPERVISOR_TOKEN;
+    const template = typeof req.body?.template === 'string' ? req.body.template.trim() : '';
+
+    if (!template) {
+        return res.status(400).json({ success: false, error: 'Template is required' });
+    }
+
+    if (!supervisorToken) {
+        console.log('[API] No supervisor token available - simulating template test');
+        return res.json({ success: true, rendered: 'true', passed: true, message: 'Dev mode template test' });
+    }
+
+    try {
+        const host = HA_URL ? null : await resolveSupervisorIP();
+        const apiUrl = HA_URL
+            ? `${HA_URL}/api/template`
+            : `http://${host}/core/api/template`;
+
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${supervisorToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ template })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HA API returned ${response.status}: ${errorText}`);
+        }
+
+        const rendered = await response.text();
+        const normalized = String(rendered || '').trim().toLowerCase();
+
+        const truthyValues = new Set(['true', 'on', 'yes', '1']);
+        const falsyValues = new Set(['', 'false', 'off', 'no', '0', 'none', 'null', 'unknown', 'unavailable']);
+
+        let passed = false;
+        if (truthyValues.has(normalized)) {
+            passed = true;
+        } else if (falsyValues.has(normalized)) {
+            passed = false;
+        } else if (normalized !== '' && !Number.isNaN(Number(normalized))) {
+            passed = Number(normalized) !== 0;
+        } else {
+            passed = normalized.length > 0;
+        }
+
+        res.json({ success: true, rendered, passed });
+    } catch (error) {
+        console.error('[API] Error testing template:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // Get devices list for device picker
 app.get('/api/devices', async (req, res) => {
     const supervisorToken = process.env.SUPERVISOR_TOKEN;
