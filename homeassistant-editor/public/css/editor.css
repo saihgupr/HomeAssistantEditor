@@ -871,6 +871,32 @@ body.resizing {
   background: var(--bg-hover);
 }
 
+.items-sort-wrap {
+  flex-shrink: 0;
+}
+
+.items-sort {
+  height: 34px;
+  min-width: 104px;
+  padding: 0 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  outline: none;
+  transition: var(--transition-fast);
+}
+
+.items-sort:hover {
+  color: var(--text-primary);
+}
+
+.items-sort:focus {
+  border-color: var(--selection-ring);
+}
+
 .btn-new {
   display: flex;
   align-items: center;
@@ -4486,6 +4512,11 @@ body.light-theme .search-box input {
 
 body.light-theme .search-box input::placeholder {
   color: var(--text-muted);
+}
+
+body.light-theme .items-sort {
+  background: rgba(0, 0, 0, 0.04);
+  color: rgba(0, 0, 0, 0.7);
 }
 
 /* Light theme - Trace panel */

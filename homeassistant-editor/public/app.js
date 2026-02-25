@@ -145,6 +145,7 @@ const _state = {
     filters: {
         searchFields: 'all' // 'all', 'name', 'description', 'entities'
     },
+    itemSortMode: localStorage.getItem('ha-editor-item-sort') || 'recent',
     settings: {
         followBrowserTheme: localStorage.getItem('ha-editor-follow-browser-theme') !== 'false',
         collapseBlocksByDefault: localStorage.getItem('ha-editor-collapse-blocks') !== 'false', // Default to true
@@ -203,6 +204,7 @@ const elements = {
     searchInput: document.getElementById('search-input'),
     searchClear: document.getElementById('search-clear'),
     searchBox: document.querySelector('.search-box'),
+    itemsSort: document.getElementById('items-sort'),
     btnNew: document.getElementById('btn-new'),
     itemsList: document.getElementById('items-list'),
 
@@ -1784,12 +1786,22 @@ function renderCurrentItems() {
         }
     });
 
-    // Sort by last_triggered (most recent first)
-    items.sort((a, b) => {
-        if (!a.last_triggered) return 1;
-        if (!b.last_triggered) return -1;
-        return new Date(b.last_triggered) - new Date(a.last_triggered);
-    });
+    const sortMode = state.itemSortMode || 'recent';
+    if (sortMode === 'name_asc' || sortMode === 'name_desc') {
+        const direction = sortMode === 'name_asc' ? 1 : -1;
+        items.sort((a, b) => {
+            const nameA = (a.alias || a.id || '').toLowerCase();
+            const nameB = (b.alias || b.id || '').toLowerCase();
+            return nameA.localeCompare(nameB, undefined, { numeric: true }) * direction;
+        });
+    } else {
+        // Default: last_triggered (most recent first)
+        items.sort((a, b) => {
+            if (!a.last_triggered) return 1;
+            if (!b.last_triggered) return -1;
+            return new Date(b.last_triggered) - new Date(a.last_triggered);
+        });
+    }
 
     renderItemsList(items);
     renderTagGroups();
@@ -7571,6 +7583,20 @@ function initEventListeners() {
         updateSearchClear();
         loadItems();
     }, 300));
+    if (elements.itemsSort) {
+        const allowed = new Set(['recent', 'name_asc', 'name_desc']);
+        if (!allowed.has(state.itemSortMode)) {
+            state.itemSortMode = 'recent';
+            localStorage.setItem('ha-editor-item-sort', 'recent');
+        }
+        elements.itemsSort.value = state.itemSortMode;
+        elements.itemsSort.addEventListener('change', () => {
+            const mode = elements.itemsSort.value;
+            state.itemSortMode = mode;
+            localStorage.setItem('ha-editor-item-sort', mode);
+            renderCurrentItems();
+        });
+    }
     if (elements.searchClear) {
         elements.searchClear.addEventListener('click', () => {
             elements.searchInput.value = '';
