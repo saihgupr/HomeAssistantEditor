@@ -121,14 +121,6 @@
             <button type="button" class="search-clear" id="search-clear" aria-label="Clear search">×</button>
           </div>
 
-          <div class="items-sort-wrap">
-            <select id="items-sort" class="items-sort" aria-label="Sort items">
-              <option value="recent">Last Run</option>
-              <option value="name_asc">Name A-Z</option>
-              <option value="name_desc">Name Z-A</option>
-            </select>
-          </div>
-
           <button class="btn-new" id="btn-new" aria-label="Create new automation or script">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="12" y1="5" x2="12" y2="19" />
@@ -452,25 +444,33 @@
                 <span class="settings-description">Blocks will be collapsed when opening an automation or script</span>
               </div>
             </label>
-            <div class="settings-divider" style="height: 1px; background: var(--border-color); margin: 12px 0;"></div>
-            <label class="settings-toggle">
-              <input type="checkbox" id="setting-dark-mode">
-              <span class="toggle-slider"></span>
+            <div class="settings-divider"></div>
+            <div class="settings-item">
               <div class="settings-label">
-                <span class="settings-title">Dark Mode</span>
-                <span class="settings-description">Toggle between dark and light themes</span>
+                <span class="settings-title">Theme</span>
+                <span class="settings-description">Choose Auto, Light, or Dark mode</span>
               </div>
-            </label>
-            <div class="settings-divider" style="height: 1px; background: var(--border-color); margin: 12px 0;"></div>
-            <label class="settings-toggle">
-              <input type="checkbox" id="setting-follow-browser-theme">
-              <span class="toggle-slider"></span>
+              <div class="settings-control-area settings-segmented" role="radiogroup" aria-label="Theme Mode">
+                <button type="button" class="settings-segment-btn" data-theme-mode="auto" role="radio" aria-checked="false">Auto</button>
+                <button type="button" class="settings-segment-btn" data-theme-mode="light" role="radio" aria-checked="false">Light</button>
+                <button type="button" class="settings-segment-btn" data-theme-mode="dark" role="radio" aria-checked="false">Dark</button>
+              </div>
+            </div>
+            <div class="settings-divider"></div>
+            <div class="settings-item">
               <div class="settings-label">
-                <span class="settings-title">Follow Browser Theme</span>
-                <span class="settings-description">Automatically match your system/browser light or dark mode</span>
+                <span class="settings-title">Sort Items By</span>
+                <span class="settings-description">Choose default ordering for automations and scripts</span>
               </div>
-            </label>
-            <div class="settings-divider" style="height: 1px; background: var(--border-color); margin: 12px 0;"></div>
+              <div class="settings-control-area">
+                <select id="setting-item-sort" class="settings-select" aria-label="Sort items by">
+                  <option value="recent">Last Run</option>
+                  <option value="name_asc">Name A-Z</option>
+                  <option value="name_desc">Name Z-A</option>
+                </select>
+              </div>
+            </div>
+            <div class="settings-divider"></div>
             <label class="settings-toggle">
               <input type="checkbox" id="setting-color-mode">
               <span class="toggle-slider"></span>
@@ -480,7 +480,7 @@
                   monochrome</span>
               </div>
             </label>
-            <div class="settings-divider" style="height: 1px; background: var(--border-color); margin: 12px 0;"></div>
+            <div class="settings-divider"></div>
             <label class="settings-toggle">
               <input type="checkbox" id="setting-mini-list">
               <span class="toggle-slider"></span>
@@ -489,7 +489,7 @@
                 <span class="settings-description">Compact automation/script list to title-only rows</span>
               </div>
             </label>
-            <div class="settings-divider" style="height: 1px; background: var(--border-color); margin: 12px 0;"></div>
+            <div class="settings-divider"></div>
             <label class="settings-toggle">
               <input type="checkbox" id="setting-autosave-danger">
               <span class="toggle-slider"></span>

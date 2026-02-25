@@ -871,32 +871,6 @@ body.resizing {
   background: var(--bg-hover);
 }
 
-.items-sort-wrap {
-  flex-shrink: 0;
-}
-
-.items-sort {
-  height: 34px;
-  min-width: 104px;
-  padding: 0 10px;
-  border-radius: var(--radius-md);
-  border: 1px solid transparent;
-  background: var(--bg-tertiary);
-  color: var(--text-secondary);
-  font-size: 12px;
-  cursor: pointer;
-  outline: none;
-  transition: var(--transition-fast);
-}
-
-.items-sort:hover {
-  color: var(--text-primary);
-}
-
-.items-sort:focus {
-  border-color: var(--selection-ring);
-}
-
 .btn-new {
   display: flex;
   align-items: center;
@@ -3454,6 +3428,18 @@ body.light-theme .nested-block-wrapper .block {
   background: var(--bg-hover);
 }
 
+.settings-item {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 12px;
+  border-radius: 10px;
+}
+
+.settings-item:hover {
+  background: var(--bg-hover);
+}
+
 .settings-toggle input {
   display: none;
 }
@@ -3511,6 +3497,58 @@ body.light-theme .nested-block-wrapper .block {
   font-size: 11.5px;
   color: var(--text-secondary);
   line-height: 1.4;
+}
+
+.settings-control-area {
+  width: 100%;
+}
+
+.settings-segmented {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding: 4px;
+  border-radius: 10px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+}
+
+.settings-segment-btn {
+  border: none;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: transparent;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.settings-segment-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.settings-segment-btn.active {
+  color: #fff;
+  background: var(--accent-blue);
+}
+
+.settings-select {
+  width: 100%;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 12px;
+  outline: none;
+}
+
+.settings-select:focus {
+  border-color: var(--selection-ring);
 }
 
 .settings-divider {
@@ -3883,58 +3921,6 @@ body.light-theme {
 }
 
 .light-theme .btn-theme .icon-moon {
-  display: block;
-}
-
-/* ============================================
-   Filter Button and Dropdown
-   ============================================ */
-
-.btn-filter {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  background: var(--bg-tertiary);
-  border: none;
-  border-radius: var(--radius-md);
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: var(--transition-fast);
-  flex-shrink: 0;
-}
-
-.btn-filter:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-
-.btn-filter.active {
-  background: var(--accent-blue);
-  color: white;
-}
-
-.btn-filter svg {
-  width: 16px;
-  height: 16px;
-}
-
-.filter-dropdown {
-  display: none;
-  position: absolute;
-  top: 100%;
-  left: var(--spacing-md);
-  right: var(--spacing-md);
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: var(--spacing-sm);
-  z-index: 100;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-.filter-dropdown.active {
   display: block;
 }
 
@@ -4477,8 +4463,7 @@ body.light-theme .modal-footer {
 
 /* Light theme - Dropdowns */
 body.light-theme .dropdown-menu,
-body.light-theme .context-menu,
-body.light-theme .filter-dropdown {
+body.light-theme .context-menu {
   background: var(--bg-secondary);
   border-color: var(--border-color);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
@@ -4512,11 +4497,6 @@ body.light-theme .search-box input {
 
 body.light-theme .search-box input::placeholder {
   color: var(--text-muted);
-}
-
-body.light-theme .items-sort {
-  background: rgba(0, 0, 0, 0.04);
-  color: rgba(0, 0, 0, 0.7);
 }
 
 /* Light theme - Trace panel */

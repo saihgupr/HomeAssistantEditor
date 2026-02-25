@@ -119,6 +119,18 @@ function cleanupInternalFields(obj) {
     return cleaned;
 }
 
+function getInitialThemeMode() {
+    const saved = localStorage.getItem('ha-editor-theme-mode');
+    if (saved === 'auto' || saved === 'light' || saved === 'dark') return saved;
+
+    // Backward compatibility with older separate theme controls.
+    const legacyFollow = localStorage.getItem('ha-editor-follow-browser-theme');
+    if (legacyFollow === 'false') {
+        return localStorage.getItem('ha-editor-theme') === 'light' ? 'light' : 'dark';
+    }
+    return 'auto';
+}
+
 const _state = {
     currentGroup: 'automations', // 'automations' or 'scripts'
     currentView: 'visual', // 'visual' or 'yaml'
@@ -147,7 +159,7 @@ const _state = {
     },
     itemSortMode: localStorage.getItem('ha-editor-item-sort') || 'recent',
     settings: {
-        followBrowserTheme: localStorage.getItem('ha-editor-follow-browser-theme') !== 'false',
+        themeMode: getInitialThemeMode(),
         collapseBlocksByDefault: localStorage.getItem('ha-editor-collapse-blocks') !== 'false', // Default to true
         colorModeEnabled: localStorage.getItem('ha-editor-color-mode') === 'true', // Default to false
         miniListMode: localStorage.getItem('ha-editor-mini-list') === 'true',
@@ -204,7 +216,6 @@ const elements = {
     searchInput: document.getElementById('search-input'),
     searchClear: document.getElementById('search-clear'),
     searchBox: document.querySelector('.search-box'),
-    itemsSort: document.getElementById('items-sort'),
     btnNew: document.getElementById('btn-new'),
     itemsList: document.getElementById('items-list'),
 
@@ -249,9 +260,8 @@ const elements = {
     // Settings Modal
     settingsModal: document.getElementById('settings-modal'),
     btnSettings: document.getElementById('btn-settings'),
-    // btnTheme removed from header, now checkbox in settings
-    settingDarkMode: document.getElementById('setting-dark-mode'),
-    settingFollowBrowserTheme: document.getElementById('setting-follow-browser-theme'),
+    settingThemeModeButtons: document.querySelectorAll('.settings-segment-btn[data-theme-mode]'),
+    settingItemSort: document.getElementById('setting-item-sort'),
     settingCollapseBlocks: document.getElementById('setting-collapse-blocks'),
     settingColorMode: document.getElementById('setting-color-mode'),
     settingMiniList: document.getElementById('setting-mini-list'),
@@ -7583,20 +7593,6 @@ function initEventListeners() {
         updateSearchClear();
         loadItems();
     }, 300));
-    if (elements.itemsSort) {
-        const allowed = new Set(['recent', 'name_asc', 'name_desc']);
-        if (!allowed.has(state.itemSortMode)) {
-            state.itemSortMode = 'recent';
-            localStorage.setItem('ha-editor-item-sort', 'recent');
-        }
-        elements.itemsSort.value = state.itemSortMode;
-        elements.itemsSort.addEventListener('change', () => {
-            const mode = elements.itemsSort.value;
-            state.itemSortMode = mode;
-            localStorage.setItem('ha-editor-item-sort', mode);
-            renderCurrentItems();
-        });
-    }
     if (elements.searchClear) {
         elements.searchClear.addEventListener('click', () => {
             elements.searchInput.value = '';
@@ -7894,19 +7890,29 @@ function initEventListeners() {
     // Settings button
     elements.btnSettings.addEventListener('click', openSettingsModal);
 
-    // Theme toggle checkbox
-    if (elements.settingDarkMode) {
-        elements.settingDarkMode.addEventListener('change', toggleTheme);
+    if (elements.settingThemeModeButtons && elements.settingThemeModeButtons.length) {
+        elements.settingThemeModeButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                setThemeMode(btn.dataset.themeMode);
+            });
+        });
     }
-    if (elements.settingFollowBrowserTheme) {
-        elements.settingFollowBrowserTheme.checked = state.settings.followBrowserTheme;
-        elements.settingFollowBrowserTheme.addEventListener('change', (e) => {
-            state.settings.followBrowserTheme = e.target.checked;
-            localStorage.setItem('ha-editor-follow-browser-theme', e.target.checked);
-            syncThemeControls();
-            if (state.settings.followBrowserTheme) {
-                applyTheme(getSystemPrefersDark());
+
+    const validSortModes = ['recent', 'name_asc', 'name_desc'];
+    if (!validSortModes.includes(state.itemSortMode)) {
+        state.itemSortMode = 'recent';
+        localStorage.setItem('ha-editor-item-sort', 'recent');
+    }
+    if (elements.settingItemSort) {
+        elements.settingItemSort.value = state.itemSortMode;
+        elements.settingItemSort.addEventListener('change', (e) => {
+            const mode = validSortModes.includes(e.target.value) ? e.target.value : 'recent';
+            state.itemSortMode = mode;
+            localStorage.setItem('ha-editor-item-sort', mode);
+            if (elements.settingItemSort.value !== mode) {
+                elements.settingItemSort.value = mode;
             }
+            renderCurrentItems();
         });
     }
 
@@ -8848,6 +8854,10 @@ function loadPanelWidths() {
 // ============================================
 
 function openSettingsModal() {
+    syncThemeModeControls();
+    if (elements.settingItemSort) {
+        elements.settingItemSort.value = state.itemSortMode || 'recent';
+    }
     elements.settingsModal.classList.add('active');
 }
 
@@ -8867,10 +8877,6 @@ function applyTheme(isDark) {
     } else {
         document.body.classList.add('light-theme');
     }
-
-    if (elements.settingDarkMode && elements.settingDarkMode.checked !== isDark) {
-        elements.settingDarkMode.checked = isDark;
-    }
 }
 
 function getSystemPrefersDark() {
@@ -8880,63 +8886,49 @@ function getSystemPrefersDark() {
     return true;
 }
 
-function syncThemeControls() {
-    const follow = state.settings.followBrowserTheme === true;
-    if (elements.settingFollowBrowserTheme) {
-        elements.settingFollowBrowserTheme.checked = follow;
-    }
-    if (elements.settingDarkMode) {
-        elements.settingDarkMode.disabled = follow;
-    }
+function resolveDarkModeFromThemeMode(mode) {
+    if (mode === 'light') return false;
+    if (mode === 'dark') return true;
+    return getSystemPrefersDark();
+}
+
+function syncThemeModeControls() {
+    if (!elements.settingThemeModeButtons || !elements.settingThemeModeButtons.length) return;
+    const currentMode = state.settings.themeMode || 'auto';
+    elements.settingThemeModeButtons.forEach(btn => {
+        const isActive = btn.dataset.themeMode === currentMode;
+        btn.classList.toggle('active', isActive);
+        btn.setAttribute('aria-checked', isActive ? 'true' : 'false');
+    });
+}
+
+function setThemeMode(mode) {
+    const normalized = mode === 'light' || mode === 'dark' ? mode : 'auto';
+    state.settings.themeMode = normalized;
+    localStorage.setItem('ha-editor-theme-mode', normalized);
+    syncThemeModeControls();
+    applyTheme(resolveDarkModeFromThemeMode(normalized));
 }
 
 function initTheme() {
-    // Check localStorage first, then system preference
-    const savedTheme = localStorage.getItem('ha-editor-theme');
-    const followBrowserTheme = state.settings.followBrowserTheme !== false;
-    let isDark = true; // Default to dark
-
-    if (followBrowserTheme) {
-        isDark = getSystemPrefersDark();
-    } else if (savedTheme === 'light') {
-        isDark = false;
-    } else if (savedTheme === 'dark') {
-        isDark = true;
+    if (!['auto', 'light', 'dark'].includes(state.settings.themeMode)) {
+        state.settings.themeMode = 'auto';
     }
 
-    applyTheme(isDark);
-    syncThemeControls();
+    syncThemeModeControls();
+    applyTheme(resolveDarkModeFromThemeMode(state.settings.themeMode));
 
     if (window.matchMedia) {
         if (!themeMediaQuery) {
             themeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
             themeMediaQuery.addEventListener('change', (e) => {
-                if (!state.settings.followBrowserTheme) return;
+                if (state.settings.themeMode !== 'auto') return;
                 applyTheme(e.matches);
             });
-        } else if (state.settings.followBrowserTheme) {
+        } else if (state.settings.themeMode === 'auto') {
             applyTheme(themeMediaQuery.matches);
         }
     }
-}
-
-function toggleTheme() {
-    if (state.settings.followBrowserTheme) {
-        applyTheme(getSystemPrefersDark());
-        return;
-    }
-
-    // If called from checkbox event
-    let isDark;
-    if (this && this.type === 'checkbox') {
-        isDark = this.checked;
-    } else {
-        // Fallback (shouldn't be needed with checkbox)
-        isDark = !document.body.classList.contains('light-theme');
-    }
-
-    applyTheme(isDark);
-    localStorage.setItem('ha-editor-theme', isDark ? 'dark' : 'light');
 }
 
 function initSidebar() {
