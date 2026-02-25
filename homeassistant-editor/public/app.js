@@ -2796,7 +2796,7 @@ function initializeBlockComponents(blockEl) {
             const clone = JSON.parse(JSON.stringify(blockData));
 
             const newIndex = parseInt(wrapper.dataset.index) + 1;
-            const html = renderNestedBlockInline(clone, newIndex, parentPath, type);
+            const html = renderNestedBlockInline(clone, newIndex, parentPath, type, { forceCollapsed: false });
             wrapper.insertAdjacentHTML('afterend', html);
 
             const nextWrapper = wrapper.nextElementSibling;
@@ -4279,11 +4279,12 @@ function renderServiceBlock(block) {
 /**
  * Renders a nested block inline (recursively handles nested if/then, choose, etc.)
  */
-function renderNestedBlockInline(blockData, index, parentPath, type) {
+function renderNestedBlockInline(blockData, index, parentPath, type, options = {}) {
     // Create a mini block element for this nested item
     // We reuse createBlockHtml but with an index relative to its parent container if needed
     // IMPORTANT: createBlockHtml expects (block, type, index)
-    const blockHtml = createBlockHtml(blockData, type, index, { forceCollapsed: state.settings.collapseBlocksByDefault });
+    const shouldCollapse = options.forceCollapsed !== undefined ? options.forceCollapsed : state.settings.collapseBlocksByDefault;
+    const blockHtml = createBlockHtml(blockData, type, index, { forceCollapsed: shouldCollapse });
     return `
         <div class="nested-block-wrapper" data-index="${index}" data-parent-path="${parentPath}">
             ${blockHtml}
@@ -4316,7 +4317,7 @@ function addNestedBlockToSection(button, type) {
         const index = container.querySelectorAll('.nested-block-wrapper').length;
 
         // Render and append
-        const html = renderNestedBlockInline(newBlock, index, parentPath, type);
+        const html = renderNestedBlockInline(newBlock, index, parentPath, type, { forceCollapsed: false });
         container.insertAdjacentHTML('beforeend', html);
 
         // Initialize the new block's components
@@ -6683,7 +6684,7 @@ function addBlock(section, type) {
     const blockClass = section === 'triggers' ? 'trigger' :
         section === 'conditions' ? 'condition' : 'action';
 
-    const blockHtml = createBlockHtml(block, blockClass, container.children.length);
+    const blockHtml = createBlockHtml(block, blockClass, container.children.length, { forceCollapsed: false });
     container.insertAdjacentHTML('beforeend', blockHtml);
 
     // Add event listeners to new block

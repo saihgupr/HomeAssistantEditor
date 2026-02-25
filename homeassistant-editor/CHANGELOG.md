@@ -6,8 +6,10 @@
 - **Condition Test Action**: Added a dedicated test icon on condition blocks to run pass/fail checks directly from the block header.
 - **Condition Test Feedback**: Added visual status feedback for test actions (`testing`, `pass`, `fail`, `unsupported`) with updated icon coloring.
 - **Template Condition API**: Added backend endpoint for testing template conditions (`POST /api/test_template`).
+- **Live Trigger ID Suggestions**: Added real-time autocomplete suggestions for Trigger IDs in conditions, dynamically gathered from the current unsaved state of triggers in the automation.
 
 ### Changed
+- **Forced Block Expansion**: Newly added or duplicated blocks (triggers, conditions, actions) now always appear expanded by default for immediate editing, regardless of the global "Collapse blocks by default" setting.
 - **Clipboard Type Safety**: Block clipboard data is now section-aware (`triggers`, `conditions`, `actions`) and separated from item clipboard data.
 - **Paste Restrictions by Section**: Condition/trigger/action blocks can now only be pasted into matching sections.
 - **Paste Button Visibility**: Section paste buttons now only appear when the clipboard contains a compatible block type for that section.
