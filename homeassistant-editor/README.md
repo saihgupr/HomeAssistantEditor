@@ -43,7 +43,8 @@ There are two ways to install Home Assistant Editor: as a Home Assistant add-on 
 3.  **Start:** Start the add-on and click **Open Web UI**.
 
 > [!TIP]
-> **Beta Repository:** If you'd like to track the latest development changes, you can also add `https://github.com/saihgupr/ha-addons-beta` — this repository tracks the `develop` branch.
+> **Beta Version Available:** To try the latest experimental builds, use the beta add-on repository: [https://github.com/saihgupr/ha-addons-beta](https://github.com/saihgupr/ha-addons-beta).  
+> The beta repo tracks the `develop` branch.
 
 ### 2. Standalone Docker Installation
 
