@@ -19,18 +19,17 @@
 - **Refined Field Descriptions**: Removed redundant helper text from `input_number.increment` and `input_number.decrement` actions to reduce visual noise.
 - **Restricted Block Context Menu**: Right-click context menus are now only triggered by clicking on the block header (action bar), preventing accidental popups while editing fields in the block body.
 - **Clipboard Type Safety**: Block clipboard data is now section-aware (`triggers`, `conditions`, `actions`) and separated from item clipboard data.
+- **Settings & UI Overhaul**: Unified theme selection, moved item sorting to settings, and refined component styling across the application.
 
 ### Fixed
+- **Undo Disappearing Bug**: Fixed a critical bug where undoing a block reorder would cause all actions to disappear from the visual editor.
 - **NaN in Block Titles**: Fixed a bug where `numeric_state` blocks could display "NaN" in their title while editing empty number fields.
 - **Stale Context Menu Data**: Fixed an issue where context menu actions (like Show YAML) would use old data instead of the latest unsaved visual edits.
 - **Reliable Redo Shortcut**: Ensured `Cmd+Shift+Z` and `Cmd+Y` work consistently for redoing changes.
-- **Paste Restrictions by Section**: Condition/trigger/action blocks can now only be pasted into matching sections.
-- **Paste Button Visibility**: Section paste buttons now only appear when the clipboard contains a compatible block type for that section.
-- **Context Menu Paste Guardrails**: Block and item context menu paste actions now honor clipboard type compatibility.
-- **Settings Theme Overhaul**: Replaced separate `Dark Mode` and `Follow Browser Theme` toggles with a unified 3-way `Theme` selector (`Auto`, `Light`, `Dark`).
-- **Sort Control Relocation**: Moved item sort mode from the main list header into Settings under `Sort Items By`.
-- **Settings Sort Row Layout**: Updated sort setting layout so label/description and dropdown align on one row for a cleaner settings panel.
-- **Settings Select Polish**: Refined settings dropdown styling (custom chevron, hover/focus states, and better visual fit with existing UI components).
+- **Nested Drag Undo**: Added missing undo/redo support for moving blocks within nested sections (like inside an `if` or `choose` action).
+- **Expansion State Persistence**: Undo/Redo now correctly restores the expanded/collapsed state of all blocks.
+- **Paste Guardrails**: Section paste buttons now only appear when the clipboard contains a compatible block type for that section.
+- **Settings Row Layout**: Refined the settings panel layout for better readability.
 
 ## [1.0.3] - 2026-02-23
 

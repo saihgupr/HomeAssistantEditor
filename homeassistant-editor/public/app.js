@@ -2358,8 +2358,10 @@ function getExpansionState() {
     const getState = (section) => {
         const container = document.getElementById(`${section}-container`);
         if (!container) return [];
-        const states = Array.from(container.querySelectorAll('.action-block')).map(el => !el.classList.contains('collapsed'));
-        // console.log(`[Expansion] Captured ${section}:`, states);
+        
+        // Fix: Only look at top-level blocks in this section
+        const topLevelBlocks = Array.from(container.children).filter(el => el.classList.contains('action-block'));
+        const states = topLevelBlocks.map(el => !el.classList.contains('collapsed'));
         return states;
     };
 
@@ -3065,6 +3067,7 @@ function initNestedDragAndDrop(blockEl, header) {
         };
 
         const startDrag = () => {
+            pushToHistory();
             isDragging = true;
             rect = wrapper.getBoundingClientRect();
             placeholder = document.createElement('div');
@@ -6050,7 +6053,9 @@ function getEditorData() {
         id: state.selectedItem?.id || `new_${Date.now()}`,
         alias: elements.editorAlias.value,
         description: buildDescriptionWithTags(elements.editorDescription.value),
-        mode: state.selectedItem?.mode || 'single'
+        mode: state.selectedItem?.mode || 'single',
+        _type: state.selectedItem?._type || (isAutomation ? 'automation' : 'script'),
+        entity_id: state.selectedItem?.entity_id
     };
 
     const variables = { ...(state.selectedItem?.variables || {}) };
@@ -7413,9 +7418,11 @@ function pushToHistory() {
 
     // Capture current state from DOM/Model
     const currentData = getEditorData();
+    const currentExpansion = getExpansionState();
     const snapshot = {
         item: JSON.parse(JSON.stringify(currentData)),
-        isNewItem: state.isNewItem
+        isNewItem: state.isNewItem,
+        expansionState: currentExpansion
     };
 
     state.history.push(snapshot);
@@ -7438,7 +7445,8 @@ function undo() {
     const currentData = getEditorData();
     const currentSnapshot = {
         item: JSON.parse(JSON.stringify(currentData)),
-        isNewItem: state.isNewItem
+        isNewItem: state.isNewItem,
+        expansionState: getExpansionState()
     };
     state.future.push(currentSnapshot);
 
@@ -7460,7 +7468,8 @@ function redo() {
     const currentData = getEditorData();
     const currentSnapshot = {
         item: JSON.parse(JSON.stringify(currentData)),
-        isNewItem: state.isNewItem
+        isNewItem: state.isNewItem,
+        expansionState: getExpansionState()
     };
     state.history.push(currentSnapshot);
 
@@ -7477,7 +7486,7 @@ function applyState(snapshot) {
     state.isNewItem = snapshot.isNewItem;
     checkDirty();
 
-    populateEditor(state.selectedItem);
+    populateEditor(state.selectedItem, snapshot.expansionState);
     showToast('Restored', 'info');
 }
 
