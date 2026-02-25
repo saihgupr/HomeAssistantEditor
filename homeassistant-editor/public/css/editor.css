@@ -6454,12 +6454,6 @@ body.light-theme .composer-title-input:focus {
   /* Match input height roughly */
 }
 
-.time-format-toggle:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-  border-color: var(--text-muted);
-}
-
 .time-ampm {
   margin-left: 6px;
   display: flex;

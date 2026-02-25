@@ -872,7 +872,22 @@ function createTimePicker(name, value, options = {}) {
     }
 
     // Determine default mode based on browser locale if not specified
-    const use24Hour = options.use24Hour !== undefined ? options.use24Hour : !new Date().toLocaleTimeString().match(/am|pm/i);
+    const browserUses12h = !!new Date().toLocaleTimeString().match(/am|pm/i);
+    const use24Hour = options.use24Hour !== undefined ? options.use24Hour : !browserUses12h;
+
+    // Initial display hours and ampm mode
+    let displayHours = hours;
+    let ampm = '24h';
+
+    if (!use24Hour) {
+        if (hours >= 12) {
+            ampm = 'PM';
+            displayHours = hours > 12 ? hours - 12 : 12;
+        } else {
+            ampm = 'AM';
+            displayHours = hours === 0 ? 12 : hours;
+        }
+    }
 
     const id = `time-picker-${name}-${Date.now()}`;
 
@@ -880,7 +895,7 @@ function createTimePicker(name, value, options = {}) {
         <div class="time-picker" id="${id}" data-mode="${use24Hour ? '24h' : '12h'}">
             <div class="time-fields">
                 <div class="time-field">
-                    <input type="text" inputmode="numeric" class="time-hours" maxlength="2" value="${String(hours).padStart(2, '0')}" placeholder="00">
+                    <input type="text" inputmode="numeric" class="time-hours" maxlength="2" value="${String(displayHours).padStart(2, '0')}" placeholder="00">
                     <label>h</label>
                 </div>
                 <span class="time-sep">:</span>
@@ -893,18 +908,15 @@ function createTimePicker(name, value, options = {}) {
                     <input type="text" inputmode="numeric" class="time-seconds" maxlength="2" value="${String(seconds).padStart(2, '0')}" placeholder="00">
                     <label>s</label>
                 </div>
-                <div class="time-ampm" style="display: ${use24Hour ? 'none' : 'flex'}">
+                <div class="time-ampm">
                     <select class="ampm-select">
-                        <option value="AM">AM</option>
-                        <option value="PM">PM</option>
+                        <option value="AM" ${ampm === 'AM' ? 'selected' : ''}>AM</option>
+                        <option value="PM" ${ampm === 'PM' ? 'selected' : ''}>PM</option>
+                        <option value="24h" ${ampm === '24h' ? 'selected' : ''}>24h</option>
                     </select>
                 </div>
             </div>
             
-            <button type="button" class="time-format-toggle" title="Switch 12/24h">
-                ${use24Hour ? '24h' : '12h'}
-            </button>
-
             <input type="hidden" name="${name}" value="">
         </div>
     `;
@@ -920,21 +932,18 @@ function initTimePicker(id) {
     const hidden = picker.querySelector('input[type="hidden"]');
     const inputs = picker.querySelectorAll('input[type="text"]');
     const ampmSelect = picker.querySelector('.ampm-select');
-    const formatToggle = picker.querySelector('.time-format-toggle');
-    const ampmContainer = picker.querySelector('.time-ampm');
     const hoursInput = picker.querySelector('.time-hours');
 
-    let is24h = picker.dataset.mode === '24h';
+    let currentMode = ampmSelect.value; // 'AM', 'PM', or '24h'
 
     function updateValue() {
-        let h = parseInt(picker.querySelector('.time-hours')?.value || '0');
+        let h = parseInt(hoursInput?.value || '0');
         const m = (picker.querySelector('.time-minutes')?.value || '0').padStart(2, '0');
         const s = (picker.querySelector('.time-seconds')?.value || '0').padStart(2, '0');
 
-        if (!is24h) {
-            const ampm = ampmSelect.value;
-            if (ampm === 'PM' && h < 12) h += 12;
-            if (ampm === 'AM' && h === 12) h = 0;
+        if (currentMode !== '24h') {
+            if (currentMode === 'PM' && h < 12) h += 12;
+            if (currentMode === 'AM' && h === 12) h = 0;
         }
 
         const val = `${String(h).padStart(2, '0')}:${m}:${s}`;
@@ -947,21 +956,20 @@ function initTimePicker(id) {
         }));
     }
 
-    function toggleFormat() {
-        is24h = !is24h;
-        picker.dataset.mode = is24h ? '24h' : '12h';
-        formatToggle.textContent = is24h ? '24h' : '12h';
-        ampmContainer.style.display = is24h ? 'none' : 'flex';
-
-        // Convert current visual value
+    ampmSelect.addEventListener('change', () => {
+        const newMode = ampmSelect.value;
+        const oldMode = currentMode;
+        
         let h = parseInt(hoursInput.value || '0');
-        if (is24h) {
+
+        if (newMode === '24h' && oldMode !== '24h') {
             // 12h -> 24h
-            const ampm = ampmSelect.value;
-            if (ampm === 'PM' && h < 12) h += 12;
-            if (ampm === 'AM' && h === 12) h = 0;
-        } else {
+            if (oldMode === 'PM' && h < 12) h += 12;
+            else if (oldMode === 'AM' && h === 12) h = 0;
+            picker.dataset.mode = '24h';
+        } else if (newMode !== '24h' && oldMode === '24h') {
             // 24h -> 12h
+            picker.dataset.mode = '12h';
             if (h === 0) {
                 h = 12;
                 ampmSelect.value = 'AM';
@@ -974,29 +982,11 @@ function initTimePicker(id) {
                 ampmSelect.value = 'AM';
             }
         }
+        
+        currentMode = ampmSelect.value;
         hoursInput.value = String(h).padStart(2, '0');
         updateValue();
-    }
-
-    // Set initial AM/PM state if starting in 12h mode
-    if (!is24h) {
-        let h = parseInt(hoursInput.value || '0');
-        if (h === 0) {
-            h = 12;
-            ampmSelect.value = 'AM';
-        } else if (h === 12) {
-            ampmSelect.value = 'PM';
-        } else if (h > 12) {
-            h -= 12;
-            ampmSelect.value = 'PM';
-        } else {
-            ampmSelect.value = 'AM';
-        }
-        hoursInput.value = String(h).padStart(2, '0');
-    }
-
-    if (formatToggle) formatToggle.addEventListener('click', toggleFormat);
-    if (ampmSelect) ampmSelect.addEventListener('change', updateValue);
+    });
 
     inputs.forEach(input => {
         input.addEventListener('input', (e) => {
@@ -1013,11 +1003,8 @@ function initTimePicker(id) {
         });
     });
 
-    // Set initial value without triggering change
-    const h = (picker.querySelector('.time-hours')?.value || '0').padStart(2, '0');
-    const m = (picker.querySelector('.time-minutes')?.value || '0').padStart(2, '0');
-    const s = (picker.querySelector('.time-seconds')?.value || '0').padStart(2, '0');
-    hidden.value = `${h}:${m}:${s}`;
+    // Set initial value
+    updateValue();
 }
 
 // ============================================

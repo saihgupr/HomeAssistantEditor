@@ -9,6 +9,8 @@
 - **Live Trigger ID Suggestions**: Added real-time autocomplete suggestions for Trigger IDs in conditions, dynamically gathered from the current unsaved state of triggers in the automation.
 
 ### Changed
+- **Unified Time Picker**: Integrated the 12h/24h toggle into the AM/PM dropdown for a cleaner UI.
+- **Auto-Detect Time Format**: The time picker now automatically defaults to the user's browser locale (12h or 24h preference).
 - **Forced Block Expansion**: Newly added or duplicated blocks (triggers, conditions, actions) now always appear expanded by default for immediate editing, regardless of the global "Collapse blocks by default" setting.
 - **Clipboard Type Safety**: Block clipboard data is now section-aware (`triggers`, `conditions`, `actions`) and separated from item clipboard data.
 - **Paste Restrictions by Section**: Condition/trigger/action blocks can now only be pasted into matching sections.
