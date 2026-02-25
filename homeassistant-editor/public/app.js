@@ -7844,8 +7844,7 @@ function initEventListeners() {
 
     // Listen for custom picker-change events from EntityPicker and DurationPicker components
     document.addEventListener('picker-change', (e) => {
-        state.isDirty = true;
-        updateSaveButtonStatus(true);
+        checkDirty();
         const block = e.target.closest('.action-block');
         if (block) refreshBlockTitle(block);
     });

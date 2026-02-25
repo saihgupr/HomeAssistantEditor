@@ -2936,6 +2936,47 @@ body.light-theme .summary-item {
   padding-left: 0;
 }
 
+.choose-block-layout .choose-options {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+
+.choose-option {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 12px 12px 10px 12px;
+}
+
+.choose-option-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.choose-option .block-field {
+  margin-bottom: 10px;
+}
+
+.choose-option .nested-section {
+  margin: 12px 0 10px;
+}
+
+.choose-option .section-header {
+  margin-bottom: 8px;
+}
+
+.choose-option .section-content {
+  padding-left: 12px;
+}
+
 .choose-option-remove {
   display: none;
 }
@@ -2968,6 +3009,15 @@ body.light-theme .notification-block-layout .section-header {
 
 body.light-theme .nested-section {
   border-left: none;
+}
+
+body.light-theme .choose-option {
+  border-color: rgba(0, 0, 0, 0.12);
+  background: rgba(0, 0, 0, 0.03);
+}
+
+body.light-theme .choose-option-header {
+  color: var(--text-secondary);
 }
 
 body.light-theme .section-header,
