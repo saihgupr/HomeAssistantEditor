@@ -1028,7 +1028,7 @@ function renderTracePanel(traces) {
                             <div class="trace-trigger">${escapeHtml(trigger)}</div>
                         </div>
                         ${trace.steps && trace.steps.length > 0 ? `
-                        <button class="trace-replay-btn" title="Replay this run" data-run-id="${trace.run_id}">
+                        <button class="trace-replay-btn" title="Replay this run" aria-label="Replay this run" data-run-id="${trace.run_id}">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polygon points="5 3 19 12 5 21 5 3"/>
                             </svg>
@@ -2358,7 +2358,7 @@ function getExpansionState() {
     const getState = (section) => {
         const container = document.getElementById(`${section}-container`);
         if (!container) return [];
-        
+
         // Fix: Only look at top-level blocks in this section
         const topLevelBlocks = Array.from(container.children).filter(el => el.classList.contains('action-block'));
         const states = topLevelBlocks.map(el => !el.classList.contains('collapsed'));
@@ -3376,7 +3376,7 @@ function initBlockContextMenu(blockEl) {
     if (menuTrigger) {
         menuTrigger.addEventListener('click', (e) => openMenu(e, false));
     }
-    
+
     const header = blockEl.querySelector('.block-header');
     if (header) {
         header.addEventListener('contextmenu', (e) => openMenu(e, true));
@@ -4940,7 +4940,7 @@ function getAvailableTriggerIdsForSelectedAutomation() {
             // We use a simplified version of getBlocksData to avoid potential recursion or dependency issues
             const container = document.getElementById('triggers-container');
             const blocks = Array.from(container.children).filter(el => el.classList.contains('action-block'));
-            
+
             triggerBlocks = blocks.map(blockEl => {
                 const idInput = blockEl.querySelector('input[name="id"]');
                 return { id: idInput ? idInput.value : undefined };
@@ -4957,10 +4957,10 @@ function getAvailableTriggerIdsForSelectedAutomation() {
 
     triggerBlocks.forEach(trigger => {
         if (!trigger || trigger.id === undefined || trigger.id === null) return;
-        
+
         // Handle potential comma-separated IDs in a single string, or an array of IDs
         const rawValues = Array.isArray(trigger.id) ? trigger.id : String(trigger.id).split(',');
-        
+
         rawValues.forEach(val => {
             const text = String(val).trim();
             if (text) ids.add(text);
@@ -5621,7 +5621,7 @@ function createFieldHtml(label, name, value, type = 'input', options = {}) {
         ? options.suggestions.map(s => String(s).trim()).filter(Boolean)
         : [];
     const uniqueSuggestions = Array.from(new Set(suggestions));
-    
+
     // Always create a datalist if we have a suggestion type, or if we have suggestions
     const datalistId = (uniqueSuggestions.length || options.suggestionType)
         ? `field-suggest-${name}-${Math.random().toString(36).slice(2, 8)}`
@@ -6981,10 +6981,10 @@ function renderFolders() {
                 </svg>
                 <span class="folder-name">${escapeHtml(folder.name)}</span>
                 <div class="folder-actions">
-                    <button class="folder-action-btn edit-folder" title="Edit Folder" type="button">
+                    <button class="folder-action-btn edit-folder" title="Edit Folder" aria-label="Edit Folder" type="button">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            <circle cx="12" cy="12" r="3" />
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
                         </svg>
                     </button>
                 </div>
@@ -7062,10 +7062,10 @@ function renderTagGroups() {
                 </svg>
                 <span class="folder-name">${escapeHtml(group.name)}</span>
                 <div class="folder-actions">
-                    <button class="folder-action-btn edit-tag-group" title="Edit Tag Section" type="button">
+                    <button class="folder-action-btn edit-tag-group" title="Edit Tag Section" aria-label="Edit Tag Section" type="button">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            <circle cx="12" cy="12" r="3" />
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
                         </svg>
                     </button>
                 </div>
@@ -8142,7 +8142,7 @@ function initEventListeners() {
             if (!datalist) return;
 
             const triggerIds = getAvailableTriggerIdsForSelectedAutomation();
-            
+
             // Update datalist options
             datalist.innerHTML = triggerIds
                 .map(id => `<option value="${escapeHtml(id)}"></option>`)

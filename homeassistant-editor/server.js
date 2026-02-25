@@ -140,7 +140,26 @@ async function fetchWithTimeout(url, options = {}, timeout = 5000) {
 // Helper function to call Home Assistant services
 // ============================================
 
+/**
+ * Validates that a string is a safe identifier (alphanumeric, underscores, hyphens)
+ * to prevent path traversal and SSRF attacks.
+ * @param {string} name
+ * @returns {boolean}
+ */
+function isValidIdentifier(name) {
+    if (!name || typeof name !== 'string') return false;
+    return /^[a-z0-9_-]+$/i.test(name);
+}
+
 async function callHomeAssistantService(domain, service, serviceData = {}) {
+    // Validate inputs to prevent SSRF/Path Traversal
+    if (!isValidIdentifier(domain)) {
+        throw new Error(`Invalid domain format: ${domain}`);
+    }
+    if (!isValidIdentifier(service)) {
+        throw new Error(`Invalid service format: ${service}`);
+    }
+
     const supervisorToken = process.env.SUPERVISOR_TOKEN;
 
     if (!supervisorToken) {
@@ -1728,41 +1747,11 @@ app.get('/api/areas', async (req, res) => {
 
 // Execute a specific service (for "Run" context menu)
 app.post('/api/execute_service', async (req, res) => {
-    const supervisorToken = process.env.SUPERVISOR_TOKEN;
     const { domain, service, serviceData } = req.body;
 
-    if (!supervisorToken) {
-        console.log('[API] No supervisor token available - executing mock service');
-        console.log(`[Mock Run] Calling ${domain}.${service} with:`, serviceData);
-        // Simulate success delay
-        await new Promise(r => setTimeout(r, 500));
-        return res.json({ success: true, message: 'Mock service executed' });
-    }
-
     try {
-        console.log(`[API] Executing service ${domain}.${service}`, serviceData);
-
-        const host = HA_URL ? null : await resolveSupervisorIP();
-        const apiUrl = HA_URL
-            ? `${HA_URL}/api/services/${domain}/${service}`
-            : `http://${host}/core/api/services/${domain}/${service}`;
-
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${supervisorToken}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(serviceData || {})
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`HA API returned ${response.status}: ${errorText}`);
-        }
-
-        const result = await response.json();
-        res.json({ success: true, result });
+        const response = await callHomeAssistantService(domain, service, serviceData);
+        res.json({ success: true, result: response.data || response });
     } catch (error) {
         console.error('[API] Error executing service:', error);
         res.status(500).json({ success: false, error: error.message });

@@ -81,7 +81,7 @@
 
         <div class="sidebar-header sidebar-header-folders">
           <h2>Folders</h2>
-          <button class="btn-add-folder" id="btn-add-folder" title="Add Folder">
+          <button class="btn-add-folder" id="btn-add-folder" title="Add Folder" aria-label="Add Folder">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
@@ -94,7 +94,7 @@
 
         <div class="sidebar-header sidebar-header-folders">
           <h2>Tags</h2>
-          <button class="btn-add-folder" id="btn-add-tag" title="Add Tag Section">
+          <button class="btn-add-folder" id="btn-add-tag" title="Add Tag Section" aria-label="Add Tag Section">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
@@ -134,19 +134,20 @@
         <!-- Bulk Action Toolbar (hidden by default) -->
         <div class="bulk-actions" id="bulk-actions" style="display: none;">
           <span class="bulk-count" id="bulk-count">0 selected</span>
-          <button class="btn-bulk" id="btn-bulk-enable" title="Enable Selected">
+          <button class="btn-bulk" id="btn-bulk-enable" title="Enable Selected" aria-label="Enable Selected">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
               <polyline points="22 4 12 14.01 9 11.01" />
             </svg>
           </button>
-          <button class="btn-bulk" id="btn-bulk-disable" title="Disable Selected">
+          <button class="btn-bulk" id="btn-bulk-disable" title="Disable Selected" aria-label="Disable Selected">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10" />
               <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
             </svg>
           </button>
-          <button class="btn-bulk btn-bulk-danger" id="btn-bulk-delete" title="Delete Selected">
+          <button class="btn-bulk btn-bulk-danger" id="btn-bulk-delete" title="Delete Selected"
+            aria-label="Delete Selected">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="3 6 5 6 21 6" />
               <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
@@ -211,7 +212,7 @@
                   Triggers
                 </div>
                 <div class="section-actions">
-                  <button class="btn-add-item" data-section="triggers">
+                  <button class="btn-add-item" data-section="triggers" title="Add Trigger" aria-label="Add Trigger">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <line x1="12" y1="5" x2="12" y2="19" />
                       <line x1="5" y1="12" x2="19" y2="12" />
@@ -238,7 +239,8 @@
                   <span class="optional-badge">optional</span>
                 </div>
                 <div class="section-actions">
-                  <button class="btn-add-item" data-section="conditions">
+                  <button class="btn-add-item" data-section="conditions" title="Add Condition"
+                    aria-label="Add Condition">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <line x1="12" y1="5" x2="12" y2="19" />
                       <line x1="5" y1="12" x2="19" y2="12" />
@@ -262,12 +264,13 @@
                   Actions
                 </div>
                 <div class="section-actions">
-                  <button class="btn-run-selected" id="btn-run-selected" title="Run selected actions">
+                  <button class="btn-run-selected" id="btn-run-selected" title="Run selected actions"
+                    aria-label="Run selected actions">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <polygon points="5 3 19 12 5 21 5 3" />
                     </svg>
                   </button>
-                  <button class="btn-add-item" data-section="actions">
+                  <button class="btn-add-item" data-section="actions" title="Add Action" aria-label="Add Action">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <line x1="12" y1="5" x2="12" y2="19" />
                       <line x1="5" y1="12" x2="19" y2="12" />
@@ -467,9 +470,12 @@
                 <span class="settings-description">Choose Auto, Light, or Dark mode</span>
               </div>
               <div class="settings-control-area settings-segmented" role="radiogroup" aria-label="Theme Mode">
-                <button type="button" class="settings-segment-btn" data-theme-mode="auto" role="radio" aria-checked="false">Auto</button>
-                <button type="button" class="settings-segment-btn" data-theme-mode="light" role="radio" aria-checked="false">Light</button>
-                <button type="button" class="settings-segment-btn" data-theme-mode="dark" role="radio" aria-checked="false">Dark</button>
+                <button type="button" class="settings-segment-btn" data-theme-mode="auto" role="radio"
+                  aria-checked="false">Auto</button>
+                <button type="button" class="settings-segment-btn" data-theme-mode="light" role="radio"
+                  aria-checked="false">Light</button>
+                <button type="button" class="settings-segment-btn" data-theme-mode="dark" role="radio"
+                  aria-checked="false">Dark</button>
               </div>
             </div>
             <div class="settings-divider"></div>
