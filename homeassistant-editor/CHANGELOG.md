@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.0.4] - 2026-02-25
+
+### Added
+- **Condition Test Action**: Added a dedicated test icon on condition blocks to run pass/fail checks directly from the block header.
+- **Condition Test Feedback**: Added visual status feedback for test actions (`testing`, `pass`, `fail`, `unsupported`) with updated icon coloring.
+- **Template Condition API**: Added backend endpoint for testing template conditions (`POST /api/test_template`).
+
+### Changed
+- **Clipboard Type Safety**: Block clipboard data is now section-aware (`triggers`, `conditions`, `actions`) and separated from item clipboard data.
+- **Paste Restrictions by Section**: Condition/trigger/action blocks can now only be pasted into matching sections.
+- **Paste Button Visibility**: Section paste buttons now only appear when the clipboard contains a compatible block type for that section.
+- **Context Menu Paste Guardrails**: Block and item context menu paste actions now honor clipboard type compatibility.
+
 ## [1.0.3] - 2026-02-23
 
 ### Added

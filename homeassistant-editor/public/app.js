@@ -2519,7 +2519,7 @@ function renderBlocks(section, blocks, expandedStates = null) {
             e.stopPropagation();
             const idx = parseInt(blockEl.dataset.index);
             const sectionBlocks = getBlocksData(section);
-            state.clipboard = JSON.parse(JSON.stringify(sectionBlocks[idx]));
+            setClipboardBlock(section, sectionBlocks[idx]);
 
             // Visual feedback
             const originalIcon = copyBtn.innerHTML;
@@ -2672,7 +2672,8 @@ function initializeBlockComponents(blockEl) {
         copyBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             const data = parseBlockElement(blockEl);
-            state.clipboard = JSON.parse(JSON.stringify(data));
+            const blockSection = inferBlockSectionFromElement(blockEl);
+            setClipboardBlock(blockSection, data);
 
             // Visual feedback
             const originalIcon = copyBtn.innerHTML;
@@ -3020,6 +3021,8 @@ function initBlockContextMenu(blockEl) {
 
         // Create menu
         const isItemEnabled = !blockEl.classList.contains('is-disabled');
+        const targetSection = inferBlockSectionFromElement(blockEl);
+        const canPasteHere = canPasteBlockSection(targetSection);
         const menu = document.createElement('div');
         menu.className = 'block-context-menu show';
         menu.innerHTML = `
@@ -3043,7 +3046,7 @@ function initBlockContextMenu(blockEl) {
                 </svg>
                 <span>Copy</span>
             </div>
-            <div class="block-menu-item paste-block ${!state.clipboard ? 'is-disabled' : ''}">
+            <div class="block-menu-item paste-block ${!canPasteHere ? 'is-disabled' : ''}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
                     <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
@@ -3109,25 +3112,29 @@ function initBlockContextMenu(blockEl) {
         menu.querySelector('.copy-block').addEventListener('click', (me) => {
             me.stopPropagation();
             menu.remove();
-            const container = blockEl.parentElement;
-            const sectionId = container.id.replace('-container', '');
-            const section = sectionId === 'triggers' ? 'triggers' : (sectionId === 'conditions' ? 'conditions' : 'actions');
-            const idx = parseInt(blockEl.dataset.index);
-            const sectionBlocks = getBlocksData(section);
-            state.clipboard = JSON.parse(JSON.stringify(sectionBlocks[idx]));
+            const section = inferBlockSectionFromElement(blockEl);
+            const parseSection = section === 'triggers' ? 'trigger' : (section === 'conditions' ? 'condition' : 'action');
+            const blockData = parseBlockElement(blockEl, parseSection);
+            setClipboardBlock(section, blockData);
             showToast('Block copied to clipboard', 'success');
         });
 
         menu.querySelector('.paste-block').addEventListener('click', (me) => {
             me.stopPropagation();
-            if (!state.clipboard) return;
+            const section = inferBlockSectionFromElement(blockEl);
+            if (!canPasteBlockSection(section)) {
+                if (state.clipboard?.kind === 'block' && state.clipboard.section) {
+                    showToast(`Clipboard has a ${state.clipboard.section.replace(/s$/, '')} block. Paste into ${state.clipboard.section}.`, 'warning');
+                }
+                return;
+            }
             menu.remove();
             const container = blockEl.parentElement;
-            const sectionId = container.id.replace('-container', '');
-            const section = sectionId === 'triggers' ? 'triggers' : (sectionId === 'conditions' ? 'conditions' : 'actions');
             const index = Array.from(container.children).indexOf(blockEl);
             const sectionBlocks = getBlocksData(section);
-            sectionBlocks.splice(index + 1, 0, JSON.parse(JSON.stringify(state.clipboard)));
+            const pasteData = getClipboardBlockData(section);
+            if (!pasteData) return;
+            sectionBlocks.splice(index + 1, 0, pasteData);
             updateSectionBlocks(section, sectionBlocks);
             renderBlocks(section, sectionBlocks);
             checkDirty();
@@ -3330,7 +3337,7 @@ function openItemContextMenu(card, event) {
             </svg>
             <span>Copy</span>
         </div>
-        <div class="block-menu-item paste-item ${!state.clipboard ? 'is-disabled' : ''}">
+        <div class="block-menu-item paste-item ${!canPasteItem() ? 'is-disabled' : ''}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
                 <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
@@ -3386,15 +3393,16 @@ function openItemContextMenu(card, event) {
     menu.querySelector('.copy-item').addEventListener('click', (me) => {
         me.stopPropagation();
         menu.remove();
-        state.clipboard = JSON.parse(JSON.stringify(item));
+        setClipboardItem(item);
         showToast('Item copied to clipboard', 'success');
     });
 
     menu.querySelector('.paste-item').addEventListener('click', (me) => {
         me.stopPropagation();
-        if (!state.clipboard) return;
+        const pastedItem = getClipboardItemData();
+        if (!pastedItem) return;
         menu.remove();
-        const duplicate = JSON.parse(JSON.stringify(state.clipboard));
+        const duplicate = pastedItem;
         duplicate.id = `${duplicate.id}_copy_${Date.now()}`;
         if (duplicate.alias) duplicate.alias = `${duplicate.alias} (Copy)`;
         state.selectedItem = duplicate;
@@ -3429,19 +3437,79 @@ function updateSectionBlocks(section, newBlocks) {
     }
 }
 
+function normalizeBlockSection(section) {
+    if (section === 'trigger') return 'triggers';
+    if (section === 'condition') return 'conditions';
+    if (section === 'action') return 'actions';
+    return section;
+}
+
+function inferBlockSectionFromElement(blockEl) {
+    if (!blockEl) return null;
+    if (blockEl.classList.contains('trigger')) return 'triggers';
+    if (blockEl.classList.contains('condition')) return 'conditions';
+    return 'actions';
+}
+
+function setClipboardBlock(section, blockData) {
+    const normalizedSection = normalizeBlockSection(section);
+    state.clipboard = {
+        kind: 'block',
+        section: normalizedSection,
+        data: JSON.parse(JSON.stringify(blockData))
+    };
+    updatePasteButtonsVisibility();
+}
+
+function setClipboardItem(itemData) {
+    state.clipboard = {
+        kind: 'item',
+        data: JSON.parse(JSON.stringify(itemData))
+    };
+    updatePasteButtonsVisibility();
+}
+
+function canPasteBlockSection(section) {
+    const normalizedSection = normalizeBlockSection(section);
+    return !!(state.clipboard
+        && state.clipboard.kind === 'block'
+        && state.clipboard.section === normalizedSection
+        && state.clipboard.data);
+}
+
+function getClipboardBlockData(section) {
+    if (!canPasteBlockSection(section)) return null;
+    return JSON.parse(JSON.stringify(state.clipboard.data));
+}
+
+function canPasteItem() {
+    return !!(state.clipboard && state.clipboard.kind === 'item' && state.clipboard.data);
+}
+
+function getClipboardItemData() {
+    if (!canPasteItem()) return null;
+    return JSON.parse(JSON.stringify(state.clipboard.data));
+}
+
 function handlePasteBlock(section) {
-    if (!state.clipboard) {
-        showToast('Clipboard is empty', 'warning');
+    const normalizedSection = normalizeBlockSection(section);
+    const pasteData = getClipboardBlockData(normalizedSection);
+    if (!pasteData) {
+        if (state.clipboard && state.clipboard.kind === 'block' && state.clipboard.section) {
+            showToast(`Clipboard has a ${state.clipboard.section.replace(/s$/, '')} block. Paste into ${state.clipboard.section}.`, 'warning');
+        } else {
+            showToast('Clipboard is empty', 'warning');
+        }
         return;
     }
 
     pushToHistory(); // Save state before pasting
 
-    const sectionBlocks = getBlocksData(section);
-    sectionBlocks.push(JSON.parse(JSON.stringify(state.clipboard)));
+    const sectionBlocks = getBlocksData(normalizedSection);
+    sectionBlocks.push(pasteData);
 
-    updateSectionBlocks(section, sectionBlocks);
-    renderBlocks(section, sectionBlocks); // Render first so DOM is updated
+    updateSectionBlocks(normalizedSection, sectionBlocks);
+    renderBlocks(normalizedSection, sectionBlocks); // Render first so DOM is updated
     updateYamlView();
     checkDirty(); // Check dirty after DOM is updated
 
@@ -3452,9 +3520,9 @@ function handlePasteBlock(section) {
 }
 
 function updatePasteButtonsVisibility() {
-    const hasClipboard = !!state.clipboard;
     document.querySelectorAll('.btn-paste-item').forEach(btn => {
-        btn.style.display = hasClipboard ? 'flex' : 'none';
+        const section = btn.dataset.section;
+        btn.style.display = canPasteBlockSection(section) ? 'flex' : 'none';
     });
 }
 
@@ -6419,7 +6487,7 @@ function addBlock(section, type) {
     copyBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         const blockData = parseBlockElement(newBlock, section);
-        state.clipboard = JSON.parse(JSON.stringify(blockData));
+        setClipboardBlock(section, blockData);
 
         // Visual feedback
         const originalIcon = copyBtn.innerHTML;
