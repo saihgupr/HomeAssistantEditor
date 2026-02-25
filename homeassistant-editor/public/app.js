@@ -2957,8 +2957,9 @@ function initBlockDragAndDrop(blockEl, section, header) {
                         state.actionSelectionAnchor = null;
                     }
                     updateSectionBlocks(section, reorderedData);
-                    checkDirty();
                     renderBlocks(section, reorderedData);
+                    // Re-check dirty after render so data-index/order state is normalized
+                    checkDirty();
                     updateYamlView();
                 } else renderBlocks(section, currentBlocks);
             }
