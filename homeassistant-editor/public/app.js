@@ -2404,6 +2404,7 @@ function renderBlocks(section, blocks, expandedStates = null) {
         const header = blockEl.querySelector('.block-header');
         const deleteBtn = blockEl.querySelector('.block-action-btn.delete');
         const copyBtn = blockEl.querySelector('.block-action-btn.copy');
+        const pasteBtn = blockEl.querySelector('.block-action-btn.paste');
         const testConditionBtn = blockEl.querySelector('.block-action-btn.test-condition');
         const aliasText = blockEl.querySelector('.block-alias-text');
         const aliasInput = blockEl.querySelector('.block-title-input');
@@ -2495,6 +2496,13 @@ function renderBlocks(section, blocks, expandedStates = null) {
         }
 
         const duplicateBtn = blockEl.querySelector('.block-action-btn.duplicate');
+
+        if (pasteBtn) {
+            pasteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                pasteBlockAfterElement(blockEl);
+            });
+        }
 
         if (testConditionBtn) {
             testConditionBtn.addEventListener('click', async (e) => {
@@ -2603,6 +2611,7 @@ function initializeBlockComponents(blockEl) {
     const header = blockEl.querySelector('.block-header');
     const deleteBtn = blockEl.querySelector('.block-action-btn.delete');
     const copyBtn = blockEl.querySelector('.block-action-btn.copy');
+    const pasteBtn = blockEl.querySelector('.block-action-btn.paste');
     const testConditionBtn = blockEl.querySelector('.block-action-btn.test-condition');
     const aliasText = blockEl.querySelector('.block-alias-text');
     const aliasInput = blockEl.querySelector('.block-title-input');
@@ -2656,6 +2665,13 @@ function initializeBlockComponents(blockEl) {
     }
 
     const duplicateBtn = blockEl.querySelector('.block-action-btn.duplicate');
+
+    if (pasteBtn) {
+        pasteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            pasteBlockAfterElement(blockEl);
+        });
+    }
 
     if (testConditionBtn) {
         testConditionBtn.addEventListener('click', async (e) => {
@@ -3491,6 +3507,49 @@ function getClipboardItemData() {
     return JSON.parse(JSON.stringify(state.clipboard.data));
 }
 
+function pasteBlockAfterElement(blockEl) {
+    const section = inferBlockSectionFromElement(blockEl);
+    const pasteData = getClipboardBlockData(section);
+    if (!pasteData) {
+        if (state.clipboard?.kind === 'block' && state.clipboard.section) {
+            showToast(`Clipboard has a ${state.clipboard.section.replace(/s$/, '')} block. Paste into ${state.clipboard.section}.`, 'warning');
+        }
+        return;
+    }
+
+    pushToHistory();
+
+    const nestedWrapper = blockEl.closest('.nested-block-wrapper');
+    if (nestedWrapper) {
+        const parentContainer = nestedWrapper.parentElement;
+        const parentPath = nestedWrapper.dataset.parentPath;
+        const type = section === 'triggers' ? 'trigger' : (section === 'conditions' ? 'condition' : 'action');
+        const newIndex = parseInt(nestedWrapper.dataset.index, 10) + 1;
+        const html = renderNestedBlockInline(pasteData, newIndex, parentPath, type);
+        nestedWrapper.insertAdjacentHTML('afterend', html);
+
+        const nextWrapper = nestedWrapper.nextElementSibling;
+        const nextBlockEl = nextWrapper?.querySelector('.action-block');
+        if (nextBlockEl) {
+            initializeBlockComponents(nextBlockEl);
+        }
+
+        updateNestedWrapperIndices(parentContainer);
+        syncNestedEmpty(parentContainer);
+    } else {
+        const container = blockEl.parentElement;
+        const index = Array.from(container.children).indexOf(blockEl);
+        const sectionBlocks = getBlocksData(section);
+        sectionBlocks.splice(index + 1, 0, pasteData);
+        updateSectionBlocks(section, sectionBlocks);
+        renderBlocks(section, sectionBlocks);
+    }
+
+    checkDirty();
+    updateYamlView();
+    showToast('Block pasted', 'success');
+}
+
 function handlePasteBlock(section) {
     const normalizedSection = normalizeBlockSection(section);
     const pasteData = getClipboardBlockData(normalizedSection);
@@ -3524,6 +3583,13 @@ function updatePasteButtonsVisibility() {
         const section = btn.dataset.section;
         btn.style.display = canPasteBlockSection(section) ? 'flex' : 'none';
     });
+
+    document.querySelectorAll('.action-block').forEach(blockEl => {
+        const pasteBtn = blockEl.querySelector('.block-action-btn.paste');
+        if (!pasteBtn) return;
+        const section = inferBlockSectionFromElement(blockEl);
+        pasteBtn.style.display = canPasteBlockSection(section) ? 'flex' : 'none';
+    });
 }
 
 function createBlockHtml(block, type, index, options = {}) {
@@ -3538,6 +3604,7 @@ function createBlockHtml(block, type, index, options = {}) {
 
     const blockTypeKey = getBlockTypeKey(block, type);
     const isConditionBlock = type === 'condition' || !!block.condition;
+    const canPasteThisType = canPasteBlockSection(type);
 
     return `
     <div class="action-block ${blockClass} ${!isEnabled ? 'is-disabled' : ''} ${shouldCollapse ? 'collapsed' : ''}" data-index="${index}" data-block-type="${escapeHtml(blockTypeKey)}">
@@ -3558,6 +3625,12 @@ function createBlockHtml(block, type, index, options = {}) {
         <div class="block-tags"></div>
         
         <div class="block-actions">
+          <button class="block-action-btn paste" title="Paste After" aria-label="Paste after block" style="${canPasteThisType ? '' : 'display: none;'}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+              <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+            </svg>
+          </button>
           ${isConditionBlock ? `
           <button class="block-action-btn test-condition" title="Test Condition" aria-label="Test condition">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -6476,6 +6549,7 @@ function addBlock(section, type) {
     const header = newBlock.querySelector('.block-header');
     const deleteBtn = newBlock.querySelector('.block-action-btn.delete');
     const copyBtn = newBlock.querySelector('.block-action-btn.copy');
+    const pasteBtn = newBlock.querySelector('.block-action-btn.paste');
     const duplicateBtn = newBlock.querySelector('.block-action-btn.duplicate');
 
     header.addEventListener('click', (e) => {
@@ -6502,6 +6576,13 @@ function addBlock(section, type) {
         showToast('Block copied to clipboard', 'success');
         updatePasteButtonsVisibility();
     });
+
+    if (pasteBtn) {
+        pasteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            pasteBlockAfterElement(newBlock);
+        });
+    }
 
     if (duplicateBtn) {
         duplicateBtn.addEventListener('click', (e) => {
