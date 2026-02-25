@@ -22,6 +22,7 @@
 - **Settings & UI Overhaul**: Unified theme selection, moved item sorting to settings, and refined component styling across the application.
 
 ### Fixed
+- **Docker Build Stability**: Fixed a build failure in GitHub Actions by switching to `npm ci` and adding necessary build tools (`build-base`, `python3`) for reliable multi-architecture (AMD64/ARM64) image builds.
 - **Undo Disappearing Bug**: Fixed a critical bug where undoing a block reorder would cause all actions to disappear from the visual editor.
 - **NaN in Block Titles**: Fixed a bug where `numeric_state` blocks could display "NaN" in their title while editing empty number fields.
 - **Stale Context Menu Data**: Fixed an issue where context menu actions (like Show YAML) would use old data instead of the latest unsaved visual edits.

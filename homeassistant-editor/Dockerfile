@@ -1,14 +1,14 @@
 FROM node:20-alpine
 
-# Install git, curl and other dependencies
-RUN apk add --no-cache git curl
+# Install build tools and other dependencies
+RUN apk add --no-cache git curl build-base python3
 
 # Create app directory
 WORKDIR /app
 
 # Copy package files and install dependencies
 COPY package*.json ./
-RUN npm install --production
+RUN npm ci --production
 
 # Copy the rest of the application
 COPY . .
