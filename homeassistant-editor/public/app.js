@@ -3004,6 +3004,20 @@ function initBlockContextMenu(blockEl) {
                 </svg>
                 <span>Duplicate</span>
             </div>
+            <div class="block-menu-item copy-block">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                </svg>
+                <span>Copy</span>
+            </div>
+            <div class="block-menu-item paste-block ${!state.clipboard ? 'is-disabled' : ''}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+                </svg>
+                <span>Paste</span>
+            </div>
             <div class="block-menu-item show-yaml">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="16 18 22 12 16 6" />
@@ -3058,6 +3072,34 @@ function initBlockContextMenu(blockEl) {
             checkDirty();
             menu.remove();
             updateYamlView();
+        });
+
+        menu.querySelector('.copy-block').addEventListener('click', (me) => {
+            me.stopPropagation();
+            menu.remove();
+            const container = blockEl.parentElement;
+            const sectionId = container.id.replace('-container', '');
+            const section = sectionId === 'triggers' ? 'triggers' : (sectionId === 'conditions' ? 'conditions' : 'actions');
+            const idx = parseInt(blockEl.dataset.index);
+            const sectionBlocks = getBlocksData(section);
+            state.clipboard = JSON.parse(JSON.stringify(sectionBlocks[idx]));
+            showToast('Block copied to clipboard', 'success');
+        });
+
+        menu.querySelector('.paste-block').addEventListener('click', (me) => {
+            me.stopPropagation();
+            if (!state.clipboard) return;
+            menu.remove();
+            const container = blockEl.parentElement;
+            const sectionId = container.id.replace('-container', '');
+            const section = sectionId === 'triggers' ? 'triggers' : (sectionId === 'conditions' ? 'conditions' : 'actions');
+            const index = Array.from(container.children).indexOf(blockEl);
+            const sectionBlocks = getBlocksData(section);
+            sectionBlocks.splice(index + 1, 0, JSON.parse(JSON.stringify(state.clipboard)));
+            updateSectionBlocks(section, sectionBlocks);
+            renderBlocks(section, sectionBlocks);
+            checkDirty();
+            showToast('Block pasted', 'success');
         });
 
         menu.querySelector('.duplicate-block').addEventListener('click', (me) => {
@@ -3249,6 +3291,20 @@ function openItemContextMenu(card, event) {
             </svg>
             <span>Duplicate</span>
         </div>
+        <div class="block-menu-item copy-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            <span>Copy</span>
+        </div>
+        <div class="block-menu-item paste-item ${!state.clipboard ? 'is-disabled' : ''}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+            </svg>
+            <span>Paste</span>
+        </div>
         <div class="block-menu-item danger delete-item">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="3 6 5 6 21 6" />
@@ -3293,6 +3349,25 @@ function openItemContextMenu(card, event) {
         me.stopPropagation();
         duplicateItem();
         menu.remove();
+    });
+
+    menu.querySelector('.copy-item').addEventListener('click', (me) => {
+        me.stopPropagation();
+        menu.remove();
+        state.clipboard = JSON.parse(JSON.stringify(item));
+        showToast('Item copied to clipboard', 'success');
+    });
+
+    menu.querySelector('.paste-item').addEventListener('click', (me) => {
+        me.stopPropagation();
+        if (!state.clipboard) return;
+        menu.remove();
+        const duplicate = JSON.parse(JSON.stringify(state.clipboard));
+        duplicate.id = `${duplicate.id}_copy_${Date.now()}`;
+        if (duplicate.alias) duplicate.alias = `${duplicate.alias} (Copy)`;
+        state.selectedItem = duplicate;
+        populateEditor(duplicate);
+        showToast('Item pasted from clipboard', 'info');
     });
 
     menu.querySelector('.delete-item').addEventListener('click', (me) => {
