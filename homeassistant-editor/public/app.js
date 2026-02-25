@@ -3604,6 +3604,7 @@ function createBlockHtml(block, type, index, options = {}) {
 
     const blockTypeKey = getBlockTypeKey(block, type);
     const isConditionBlock = type === 'condition' || !!block.condition;
+    const isIfBlock = type === 'action' && block && block.if !== undefined;
     const canPasteThisType = canPasteBlockSection(type);
 
     return `
@@ -3631,7 +3632,7 @@ function createBlockHtml(block, type, index, options = {}) {
               <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
             </svg>
           </button>
-          ${isConditionBlock ? `
+          ${(isConditionBlock || isIfBlock) ? `
           <button class="block-action-btn test-condition" title="Test Condition" aria-label="Test condition">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="9"/>
@@ -8263,6 +8264,26 @@ function resolveNumericValue(rawValue) {
     return { success: false, message: `"${rawValue}" is not numeric` };
 }
 
+function getConfiguredTriggerIds() {
+    const configuredIds = new Set();
+    const triggers = getBlocksData('triggers');
+
+    triggers.forEach(trigger => {
+        const triggerId = trigger?.id;
+        if (Array.isArray(triggerId)) {
+            triggerId
+                .map(v => String(v).trim())
+                .filter(Boolean)
+                .forEach(v => configuredIds.add(v));
+        } else if (triggerId !== undefined && triggerId !== null) {
+            const value = String(triggerId).trim();
+            if (value) configuredIds.add(value);
+        }
+    });
+
+    return configuredIds;
+}
+
 async function evaluateConditionBlock(conditionBlock, depth = 0) {
     if (!conditionBlock || typeof conditionBlock !== 'object') {
         return { supported: false, passed: false, message: 'Invalid condition data' };
@@ -8500,6 +8521,31 @@ async function evaluateConditionBlock(conditionBlock, depth = 0) {
         }
     }
 
+    if (conditionType === 'trigger') {
+        const triggerIds = Array.isArray(conditionBlock.id)
+            ? conditionBlock.id.map(v => String(v).trim()).filter(Boolean)
+            : String(conditionBlock.id || '')
+                .split(',')
+                .map(v => v.trim())
+                .filter(Boolean);
+
+        if (triggerIds.length === 0) {
+            return { supported: false, passed: false, message: 'Trigger condition needs one or more trigger IDs' };
+        }
+
+        const configuredIds = getConfiguredTriggerIds();
+        const hasMatch = triggerIds.some(id => configuredIds.has(id));
+        if (!hasMatch) {
+            return {
+                supported: true,
+                passed: false,
+                message: `No configured trigger IDs match (${triggerIds.join(', ')})`
+            };
+        }
+
+        return { supported: true, passed: true, message: 'Trigger condition passed' };
+    }
+
     if (conditionType === 'and' || conditionType === 'or' || conditionType === 'not') {
         const children = Array.isArray(conditionBlock.conditions)
             ? conditionBlock.conditions
@@ -8562,7 +8608,17 @@ async function evaluateConditionBlock(conditionBlock, depth = 0) {
 }
 
 async function runConditionTest(blockData, button) {
-    if (!blockData || typeof blockData !== 'object' || !blockData.condition) {
+    if (!blockData || typeof blockData !== 'object') {
+        showToast('This block is not a condition', 'warning');
+        return;
+    }
+
+    const hasNestedIfConditions = blockData.if !== undefined;
+    const normalizedIfConditions = hasNestedIfConditions
+        ? (Array.isArray(blockData.if) ? blockData.if : [blockData.if]).filter(Boolean)
+        : [];
+
+    if (!blockData.condition && !hasNestedIfConditions) {
         showToast('This block is not a condition', 'warning');
         return;
     }
@@ -8571,7 +8627,9 @@ async function runConditionTest(blockData, button) {
 
     try {
         await fetchHAStates();
-        const result = await evaluateConditionBlock(blockData);
+        const result = hasNestedIfConditions
+            ? await evaluateConditionBlock({ condition: 'and', conditions: normalizedIfConditions })
+            : await evaluateConditionBlock(blockData);
 
         if (!result.supported) {
             setConditionTestButtonState(button, 'unsupported');
