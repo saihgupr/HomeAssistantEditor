@@ -6205,7 +6205,7 @@ body.light-theme .composer-title-input:focus {
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  padding: 8px 30px 8px 12px;
+  padding: 0 30px 0 12px;
   color: var(--text-primary);
   font-size: 13px;
   outline: none;
