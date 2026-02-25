@@ -3295,15 +3295,8 @@ function initBlockContextMenu(blockEl) {
             const sectionId = container.id.replace('-container', '');
             let sectionName = sectionId === 'triggers' ? 'triggers' : (sectionId === 'conditions' ? 'conditions' : 'actions');
 
-            let blockData = null;
-            if (state.selectedItem) {
-                if (sectionName === 'triggers') blockData = state.selectedItem.triggers[index];
-                else if (sectionName === 'conditions') blockData = state.selectedItem.conditions[index];
-                else {
-                    const actionsList = state.currentGroup === 'automations' ? state.selectedItem.actions : state.selectedItem.sequence;
-                    blockData = actionsList[index];
-                }
-            }
+            const parseSection = sectionName === 'triggers' ? 'trigger' : (sectionName === 'conditions' ? 'condition' : 'action');
+            const blockData = parseBlockElement(blockEl, parseSection);
 
             if (blockData) {
                 openBlockYamlModal(blockData, (newYaml) => {
@@ -4475,7 +4468,10 @@ function refreshBlockTitle(blockEl) {
         if (!input.name) return;
 
         let value = input.value;
-        if (input.type === 'number') value = parseFloat(value);
+        if (input.type === 'number') {
+            const trimmed = String(value).trim();
+            value = trimmed === '' ? '' : parseFloat(trimmed);
+        }
         if (input.type === 'checkbox') value = input.checked;
 
         // Handle nested paths (though usually simpler for titles)
@@ -4695,8 +4691,8 @@ function getBlockTitle(block, type) {
     }
     if (block.platform === 'numeric_state' || block.trigger === 'numeric_state') {
         const entity = getEntityName(block.entity_id);
-        const above = (block.above !== undefined && block.above !== '') ? block.above : null;
-        const below = (block.below !== undefined && block.below !== '') ? block.below : null;
+        const above = (block.above !== undefined && block.above !== '' && !Number.isNaN(block.above)) ? block.above : null;
+        const below = (block.below !== undefined && block.below !== '' && !Number.isNaN(block.below)) ? block.below : null;
 
         if (above !== null && below !== null) {
             return `${entity} is between ${above} and ${below}`;
@@ -4804,8 +4800,8 @@ function getBlockTitle(block, type) {
     }
     if (block.condition === 'numeric_state') {
         const entity = getEntityName(block.entity_id);
-        const above = (block.above !== undefined && block.above !== '') ? block.above : null;
-        const below = (block.below !== undefined && block.below !== '') ? block.below : null;
+        const above = (block.above !== undefined && block.above !== '' && !Number.isNaN(block.above)) ? block.above : null;
+        const below = (block.below !== undefined && block.below !== '' && !Number.isNaN(block.below)) ? block.below : null;
 
         if (above !== null && below !== null) {
             return `${entity} is between ${above} and ${below}`;

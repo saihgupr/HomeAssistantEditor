@@ -13,7 +13,12 @@
 - **Unified Time Picker**: Integrated the 12h/24h toggle into the AM/PM dropdown for a cleaner UI.
 - **Auto-Detect Time Format**: The time picker now automatically defaults to the user's browser locale (12h or 24h preference).
 - **Forced Block Expansion**: Newly added or duplicated blocks (triggers, conditions, actions) now always appear expanded by default for immediate editing, regardless of the global "Collapse blocks by default" setting.
+- **Instant YAML View**: Individual block "Show YAML" action now works instantly for new or modified items without requiring a save first.
 - **Clipboard Type Safety**: Block clipboard data is now section-aware (`triggers`, `conditions`, `actions`) and separated from item clipboard data.
+
+### Fixed
+- **NaN in Block Titles**: Fixed a bug where `numeric_state` blocks could display "NaN" in their title while editing empty number fields.
+- **Stale Context Menu Data**: Fixed an issue where context menu actions (like Show YAML) would use old data instead of the latest unsaved visual edits.
 - **Paste Restrictions by Section**: Condition/trigger/action blocks can now only be pasted into matching sections.
 - **Paste Button Visibility**: Section paste buttons now only appear when the clipboard contains a compatible block type for that section.
 - **Context Menu Paste Guardrails**: Block and item context menu paste actions now honor clipboard type compatibility.
