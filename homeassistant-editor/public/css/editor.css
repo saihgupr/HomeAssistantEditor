@@ -2107,7 +2107,40 @@ body.color-mode .block-field textarea::placeholder {
 }
 
 .checkbox-field input[type="checkbox"] {
-  accent-color: var(--accent-blue);
+  appearance: none;
+  -webkit-appearance: none;
+  width: 32px;
+  height: 18px;
+  background: #212121;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.checkbox-field input[type="checkbox"]::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 50%;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.checkbox-field input[type="checkbox"]:checked {
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+}
+
+.checkbox-field input[type="checkbox"]:checked::before {
+  left: 16px;
+  background: white;
 }
 
 .invalid-json {
