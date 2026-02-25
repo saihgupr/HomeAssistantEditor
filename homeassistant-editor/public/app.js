@@ -4912,6 +4912,47 @@ function getBlockIcon(block, type) {
     return icons[type] || icons.action;
 }
 
+function getAvailableTriggerIdsForSelectedAutomation() {
+    const isAutomation = state.currentGroup === 'automations' || state.selectedItem?._type === 'automation';
+    if (!isAutomation) return [];
+
+    // Prefer live data from DOM if we are in visual mode
+    let triggerBlocks = [];
+    if (state.currentView === 'visual' && document.getElementById('triggers-container')) {
+        try {
+            // We use a simplified version of getBlocksData to avoid potential recursion or dependency issues
+            const container = document.getElementById('triggers-container');
+            const blocks = Array.from(container.children).filter(el => el.classList.contains('action-block'));
+            
+            triggerBlocks = blocks.map(blockEl => {
+                const idInput = blockEl.querySelector('input[name="id"]');
+                return { id: idInput ? idInput.value : undefined };
+            });
+        } catch (e) {
+            console.warn('[getAvailableTriggerIds] Failed to get live triggers:', e);
+            triggerBlocks = normalizeArray(state.selectedItem?.triggers);
+        }
+    } else {
+        triggerBlocks = normalizeArray(state.selectedItem?.triggers);
+    }
+
+    const ids = new Set();
+
+    triggerBlocks.forEach(trigger => {
+        if (!trigger || trigger.id === undefined || trigger.id === null) return;
+        
+        // Handle potential comma-separated IDs in a single string, or an array of IDs
+        const rawValues = Array.isArray(trigger.id) ? trigger.id : String(trigger.id).split(',');
+        
+        rawValues.forEach(val => {
+            const text = String(val).trim();
+            if (text) ids.add(text);
+        });
+    });
+
+    return Array.from(ids);
+}
+
 function getBlockFields(block, type) {
     const fields = [];
     const coerceObject = (val) => {
@@ -5244,7 +5285,11 @@ function getBlockFields(block, type) {
     }
     if (block.condition === 'trigger') {
         const ids = Array.isArray(block.id) ? block.id.join(', ') : block.id;
-        fields.push(createFieldHtml('Trigger ID', 'id', ids || ''));
+        fields.push(createFieldHtml('Trigger ID', 'id', ids || '', 'input', {
+            placeholder: 'Pick or type trigger_id (comma-separated)',
+            suggestions: getAvailableTriggerIdsForSelectedAutomation(),
+            suggestionType: 'trigger_id'
+        }));
     }
     if (block.condition === 'template') {
         fields.push(createFieldHtml('Template', 'value_template', block.value_template || '', 'textarea'));
@@ -5554,11 +5599,26 @@ function createFieldHtml(label, name, value, type = 'input', options = {}) {
     }
 
     const placeholder = options.placeholder ? `placeholder="${escapeHtml(options.placeholder)}"` : '';
+    const suggestionType = options.suggestionType ? `data-suggestion-type="${escapeHtml(options.suggestionType)}"` : '';
+    const suggestions = Array.isArray(options.suggestions)
+        ? options.suggestions.map(s => String(s).trim()).filter(Boolean)
+        : [];
+    const uniqueSuggestions = Array.from(new Set(suggestions));
+    
+    // Always create a datalist if we have a suggestion type, or if we have suggestions
+    const datalistId = (uniqueSuggestions.length || options.suggestionType)
+        ? `field-suggest-${name}-${Math.random().toString(36).slice(2, 8)}`
+        : '';
+    const listAttr = datalistId ? `list="${datalistId}"` : '';
+    const datalistHtml = datalistId
+        ? `<datalist id="${datalistId}">${uniqueSuggestions.map(s => `<option value="${escapeHtml(s)}"></option>`).join('')}</datalist>`
+        : '';
 
     return `
     <div class="block-field">
       <label>${label}</label>
-      <input type="text" name="${name}" value="${escaped}" ${placeholder}>
+      <input type="text" name="${name}" value="${escaped}" ${placeholder} ${listAttr} ${suggestionType}>
+      ${datalistHtml}
     </div>
   `;
 }
@@ -8004,6 +8064,23 @@ function initEventListeners() {
 
         if (!isActionBlock && !isMenuTrigger && !isContextMenuItem && !isHistoryPanel && !isVersionNav && !isModal) {
             clearActionSelection();
+        }
+    });
+
+    // Delegated listener for live suggestions (Trigger IDs)
+    elements.visualEditor.addEventListener('focusin', (e) => {
+        const input = e.target;
+        if (input.tagName === 'INPUT' && input.dataset.suggestionType === 'trigger_id') {
+            const listId = input.getAttribute('list');
+            const datalist = document.getElementById(listId);
+            if (!datalist) return;
+
+            const triggerIds = getAvailableTriggerIdsForSelectedAutomation();
+            
+            // Update datalist options
+            datalist.innerHTML = triggerIds
+                .map(id => `<option value="${escapeHtml(id)}"></option>`)
+                .join('');
         }
     });
 }
