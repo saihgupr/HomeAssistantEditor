@@ -7,6 +7,7 @@
 - **Condition Test Feedback**: Added visual status feedback for test actions (`testing`, `pass`, `fail`, `unsupported`) with updated icon coloring.
 - **Template Condition API**: Added backend endpoint for testing template conditions (`POST /api/test_template`).
 - **Live Trigger ID Suggestions**: Added real-time autocomplete suggestions for Trigger IDs in conditions, dynamically gathered from the current unsaved state of triggers in the automation.
+- **Readable Numeric State Titles**: Updated `numeric_state` triggers and conditions to use natural phrasing (e.g., "is above", "is between") instead of technical math syntax.
 
 ### Changed
 - **Unified Time Picker**: Integrated the 12h/24h toggle into the AM/PM dropdown for a cleaner UI.

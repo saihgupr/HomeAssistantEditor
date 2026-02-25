@@ -4695,12 +4695,15 @@ function getBlockTitle(block, type) {
     }
     if (block.platform === 'numeric_state' || block.trigger === 'numeric_state') {
         const entity = getEntityName(block.entity_id);
-        if (block.above !== undefined && block.below !== undefined) {
-            return `${entity}: ${block.above} < x < ${block.below}`;
-        } else if (block.above !== undefined) {
-            return `${entity} > ${block.above}`;
-        } else if (block.below !== undefined) {
-            return `${entity} < ${block.below}`;
+        const above = (block.above !== undefined && block.above !== '') ? block.above : null;
+        const below = (block.below !== undefined && block.below !== '') ? block.below : null;
+
+        if (above !== null && below !== null) {
+            return `${entity} is between ${above} and ${below}`;
+        } else if (above !== null) {
+            return `${entity} is above ${above}`;
+        } else if (below !== null) {
+            return `${entity} is below ${below}`;
         }
         return `${entity} numeric change`;
     }
@@ -4801,12 +4804,15 @@ function getBlockTitle(block, type) {
     }
     if (block.condition === 'numeric_state') {
         const entity = getEntityName(block.entity_id);
-        if (block.above !== undefined && block.below !== undefined) {
-            return `${entity}: ${block.above} < x < ${block.below}`;
-        } else if (block.above !== undefined) {
-            return `${entity} > ${block.above}`;
-        } else if (block.below !== undefined) {
-            return `${entity} < ${block.below}`;
+        const above = (block.above !== undefined && block.above !== '') ? block.above : null;
+        const below = (block.below !== undefined && block.below !== '') ? block.below : null;
+
+        if (above !== null && below !== null) {
+            return `${entity} is between ${above} and ${below}`;
+        } else if (above !== null) {
+            return `${entity} is above ${above}`;
+        } else if (below !== null) {
+            return `${entity} is below ${below}`;
         }
         return `${entity} numeric`;
     }
