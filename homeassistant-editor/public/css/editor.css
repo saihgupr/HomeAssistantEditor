@@ -1988,6 +1988,13 @@ body.color-mode .action-block .block-icon {
   background: var(--bg-secondary);
 }
 
+.action-block.action .block-field input,
+.action-block.action .block-field select,
+.action-block.action .block-field textarea {
+  background: #212121;
+  /* 33, 33, 33 per user request */
+}
+
 /* Block Body Colors - Colorful (when color-mode enabled) */
 body.color-mode .action-block.trigger .block-body {
   background: var(--block-trigger);
