@@ -2096,9 +2096,14 @@ body.color-mode .block-field textarea::placeholder {
   font-family: 'Monaco', 'Menlo', monospace;
 }
 
+.checkbox-field {
+  margin-top: 12px;
+}
+
 .checkbox-field label {
   display: flex;
   align-items: center;
+  min-height: 18px;
   gap: 8px;
   font-size: 12px;
   text-transform: none;
@@ -2112,7 +2117,7 @@ body.color-mode .block-field textarea::placeholder {
   width: 32px;
   height: 18px;
   background: #212121;
-  border: 1px solid var(--border-light);
+  border: 1px solid #333;
   border-radius: 12px;
   cursor: pointer;
   position: relative;
