@@ -161,6 +161,10 @@ The Home Assistant Editor includes deep integration with the [Home Assistant Ver
 > [!IMPORTANT]
 > To enable Version History features, you **must** have the **Home Assistant Version Control** addon installed and running on your instance.
 
+## Press
+
+- [This Visual Editor is the Tool Your Home Assistant Install Needs](https://www.xda-developers.com/this-visual-editor-is-the-tool-your-home-assistant-install-needs/) — *XDA Developers*
+
 ## Contributing
 
 Found a bug or have a feature idea? Please [open an issue](https://github.com/saihgupr/HomeAssistantEditor/issues).
