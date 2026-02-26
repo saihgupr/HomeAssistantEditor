@@ -103,7 +103,7 @@ function checkDirty() {
  * This ensures corrupted historical versions don't pollute saved automations
  */
 function cleanupInternalFields(obj) {
-    const internalFields = ['block-alias', '_invalid_event_data', '_invalid_device_extra', '_invalid_variables'];
+    const internalFields = ['block-alias', '_invalid_event_data', '_invalid_device_extra', '_invalid_variables', '_type', 'entity_id'];
 
     if (!obj || typeof obj !== 'object') return obj;
 
@@ -902,8 +902,6 @@ async function runSelectedItem() {
             body: JSON.stringify({ entity_id: entityId })
         });
 
-        const result = await response.json();
-
         if (result.success) {
             showToast(`${state.currentGroup === 'automations' ? 'Automation' : 'Script'} triggered successfully!`, 'success');
             // Refresh traces after a short delay
@@ -930,16 +928,14 @@ async function runSelectedItem() {
 }
 
 async function toggleItemEnabled(item, enabled) {
-    if (!item || item._type !== 'automation') {
-        showToast('Enable/Disable is only available for automations', 'info');
-        return;
-    }
+    if (!item) return;
 
+    const domain = item._type === 'script' || state.currentGroup === 'scripts' ? 'script' : 'automation';
     const itemId = item.id;
     const entityId = item.entity_id;
 
     try {
-        const response = await fetch(`./api/run/automation/${encodeURIComponent(itemId)}/toggle`, {
+        const response = await fetch(`./api/run/${domain}/${encodeURIComponent(itemId)}/toggle`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ entity_id: entityId, enabled: enabled })
@@ -947,7 +943,7 @@ async function toggleItemEnabled(item, enabled) {
 
         const result = await response.json();
         if (result.success) {
-            showToast(`Automation ${enabled ? 'enabled' : 'disabled'}`, 'success');
+            showToast(`${domain === 'automation' ? 'Automation' : 'Script'} ${enabled ? 'enabled' : 'disabled'}`, 'success');
             await loadItems();
 
             if (state.selectedItem && String(state.selectedItem.id) === String(itemId)) {
@@ -959,7 +955,7 @@ async function toggleItemEnabled(item, enabled) {
             showToast(`Failed to toggle: ${result.error}`, 'error');
         }
     } catch (error) {
-        console.error('Error toggling automation:', error);
+        console.error(`Error toggling ${domain}:`, error);
         showToast(`Error: ${error.message}`, 'error');
     }
 }
@@ -3165,12 +3161,14 @@ function initBlockContextMenu(blockEl) {
                 </svg>
                 <span>Show YAML</span>
             </div>
+            ${targetSection === 'actions' ? `
             <div class="block-menu-item run-block">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polygon points="5 3 19 12 5 21 5 3" />
                 </svg>
-                <span>Run</span>
+                <span>Test</span>
             </div>
+            ` : ''}
             <div class="block-menu-item danger delete-block">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="3 6 5 6 21 6" />
@@ -4998,6 +4996,7 @@ function getBlockFields(block, type) {
 
         const ids = Array.isArray(block.id) ? block.id.join(', ') : block.id;
         fields.push(createFieldHtml('Trigger ID', 'id', ids || ''));
+        return fields.join('');
     }
 
     // Time trigger fields
@@ -5006,6 +5005,7 @@ function getBlockFields(block, type) {
 
         const ids = Array.isArray(block.id) ? block.id.join(', ') : block.id;
         fields.push(createFieldHtml('Trigger ID', 'id', ids || ''));
+        return fields.join('');
     }
 
     // Numeric state trigger fields
@@ -5022,6 +5022,7 @@ function getBlockFields(block, type) {
 
         const idsNS = Array.isArray(block.id) ? block.id.join(', ') : block.id;
         fields.push(createFieldHtml('Trigger ID', 'id', idsNS || ''));
+        return fields.join('');
     }
 
     // Sun trigger fields
@@ -5036,6 +5037,7 @@ function getBlockFields(block, type) {
 
         const ids = Array.isArray(block.id) ? block.id.join(', ') : block.id;
         fields.push(createFieldHtml('Trigger ID', 'id', ids || ''));
+        return fields.join('');
     }
 
     // Template trigger fields
@@ -5045,6 +5047,7 @@ function getBlockFields(block, type) {
 
         const idsTP = Array.isArray(block.id) ? block.id.join(', ') : block.id;
         fields.push(createFieldHtml('Trigger ID', 'id', idsTP || ''));
+        return fields.join('');
     }
 
     // Zone trigger fields
@@ -5061,6 +5064,7 @@ function getBlockFields(block, type) {
 
         const idsZT = Array.isArray(block.id) ? block.id.join(', ') : block.id;
         fields.push(createFieldHtml('Trigger ID', 'id', idsZT || ''));
+        return fields.join('');
     }
 
     // Event trigger fields
@@ -5083,6 +5087,7 @@ function getBlockFields(block, type) {
 
         const idsEV = Array.isArray(block.id) ? block.id.join(', ') : block.id;
         fields.push(createFieldHtml('Trigger ID', 'id', idsEV || ''));
+        return fields.join('');
     }
 
     // Persistent notification trigger fields
@@ -5098,6 +5103,7 @@ function getBlockFields(block, type) {
 
         const ids = Array.isArray(block.id) ? block.id.join(', ') : block.id;
         fields.push(createFieldHtml('Trigger ID', 'id', ids || ''));
+        return fields.join('');
     }
 
     // Homeassistant trigger fields (start, shutdown, update)
@@ -5112,6 +5118,7 @@ function getBlockFields(block, type) {
 
         const idsHA = Array.isArray(block.id) ? block.id.join(', ') : block.id;
         fields.push(createFieldHtml('Trigger ID', 'id', idsHA || ''));
+        return fields.join('');
     }
 
     // MQTT trigger fields
@@ -5124,6 +5131,7 @@ function getBlockFields(block, type) {
 
         const ids = Array.isArray(block.id) ? block.id.join(', ') : block.id;
         fields.push(createFieldHtml('Trigger ID', 'id', ids || ''));
+        return fields.join('');
     }
 
     // Webhook trigger fields
@@ -5134,6 +5142,7 @@ function getBlockFields(block, type) {
 
         const ids = Array.isArray(block.id) ? block.id.join(', ') : block.id;
         fields.push(createFieldHtml('Trigger ID', 'id', ids || ''));
+        return fields.join('');
     }
 
     // Device trigger fields
@@ -5153,6 +5162,7 @@ function getBlockFields(block, type) {
 
         const idsDV = Array.isArray(block.id) ? block.id.join(', ') : block.id;
         fields.push(createFieldHtml('Trigger ID', 'id', idsDV || ''));
+        return fields.join('');
     }
 
     // Time pattern trigger (cron-like)
@@ -5163,6 +5173,7 @@ function getBlockFields(block, type) {
 
         const ids = Array.isArray(block.id) ? block.id.join(', ') : block.id;
         fields.push(createFieldHtml('Trigger ID', 'id', ids || ''));
+        return fields.join('');
     }
 
     // If/Then blocks - NESTED RENDERING (not summary)
@@ -8323,9 +8334,9 @@ async function runBlock(blockData) {
         const result = await res.json();
 
         if (result.success) {
-            showToast('Action executed successfully', 'success');
+            showToast('Action test successful', 'success');
         } else {
-            showToast('Failed to execute: ' + result.error, 'error');
+            showToast('Action test failed: ' + result.error, 'error');
         }
 
     } catch (e) {
