@@ -182,10 +182,13 @@
           <!-- Shared Editor Header (visible in both visual and YAML modes) -->
           <div class="editor-header" id="editor-header" style="display: none;">
             <div class="editor-name-row">
-              <input type="text" id="editor-alias" class="editor-alias" placeholder="Automation Name">
+              <input type="text" id="editor-alias" class="editor-alias" placeholder="Automation Name" autocomplete="off"
+                autocorrect="off" autocapitalize="off" spellcheck="false" data-1p-ignore data-lpignore="true">
               <div class="editor-tags-area">
                 <div class="editor-tags-inline" id="editor-tags-inline"></div>
-                <input type="text" id="editor-tags-input" class="editor-tags-input" placeholder="#tag">
+                <input type="text" id="editor-tags-input" class="editor-tags-input" placeholder="#tag"
+                  autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-1p-ignore
+                  data-lpignore="true">
                 <button type="button" class="editor-tags-add" id="editor-tags-add" title="Add tag">+</button>
               </div>
               <input type="hidden" id="editor-tags" class="editor-tags">
@@ -196,7 +199,9 @@
                 <span class="toggle-label">Enabled</span>
               </label>
             </div>
-            <input type="text" id="editor-description" class="editor-description" placeholder="Description (optional)">
+            <input type="text" id="editor-description" class="editor-description" placeholder="Description (optional)"
+              autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-1p-ignore
+              data-lpignore="true">
           </div>
 
           <!-- Visual Editor -->

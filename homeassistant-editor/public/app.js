@@ -2905,7 +2905,7 @@ function initBlockDragAndDrop(blockEl, section, header) {
             const deltaY = clientY - startY;
 
             if (!isDragging) {
-                if (Math.hypot(deltaX, deltaY) > 3) {
+                if (Math.hypot(deltaX, deltaY) > 8) {
                     startDrag();
                 } else return;
             }
@@ -3034,7 +3034,7 @@ function initNestedDragAndDrop(blockEl, header) {
             const deltaY = clientY - startY;
 
             if (!isDragging) {
-                if (Math.hypot(deltaX, deltaY) > 3) {
+                if (Math.hypot(deltaX, deltaY) > 8) {
                     startDrag();
                 } else return;
             }
@@ -5454,7 +5454,7 @@ function createFieldHtml(label, name, value, type = 'input', options = {}) {
         return `
       <div class="block-field">
         <label>${label}</label>
-        <textarea name="${name}" rows="3">${escaped}</textarea>
+        <textarea name="${name}" rows="3" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-1p-ignore data-lpignore="true">${escaped}</textarea>
       </div>
     `;
     }
@@ -5650,7 +5650,7 @@ function createFieldHtml(label, name, value, type = 'input', options = {}) {
     return `
     <div class="block-field">
       <label>${label}</label>
-      <input type="text" name="${name}" value="${escaped}" ${placeholder} ${listAttr} ${suggestionType}>
+      <input type="text" name="${name}" value="${escaped}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-1p-ignore data-lpignore="true" ${placeholder} ${listAttr} ${suggestionType}>
       ${datalistHtml}
     </div>
   `;

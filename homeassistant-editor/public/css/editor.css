@@ -2116,7 +2116,7 @@ body.color-mode .block-field textarea::placeholder {
 }
 
 .block-field textarea {
-  min-height: 80px;
+  min-height: 100px;
   resize: vertical;
   font-family: 'Monaco', 'Menlo', monospace;
 }
@@ -2197,7 +2197,34 @@ body.color-mode .block-field textarea::placeholder {
 }
 
 .weekday-option input[type="checkbox"] {
-  accent-color: var(--accent-blue);
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+  margin: 0;
+}
+
+.weekday-option input[type="checkbox"]:checked {
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+}
+
+.weekday-option input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 4px;
+  height: 8px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
 }
 
 /* Empty blocks placeholder */
@@ -2446,8 +2473,8 @@ body.light-theme .duration-field input:focus {
 .time-field input {
   width: 48px;
   text-align: center;
-  background: rgba(0, 0, 0, 0.2);
-  border: none;
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   padding: 8px 4px;
   font-size: 13px;
@@ -2464,7 +2491,8 @@ body.light-theme .duration-field input:focus {
 }
 
 .time-field input:focus {
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--input-bg-focus);
+  border-color: rgba(255, 255, 255, 0.2);
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 

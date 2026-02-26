@@ -225,7 +225,7 @@ function createEntityPicker(name, value, options = {}) {
                 </div>
             ` : ''}
             <div class="entity-picker-input-wrapper">
-                <input type="text" 
+                <input type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-1p-ignore data-lpignore="true" 
                     class="entity-picker-input" 
                     placeholder="${placeholder}"
                     value="${multiple ? '' : escapeHtml(singleValue)}"
@@ -412,7 +412,7 @@ function createDevicePicker(name, value, options = {}) {
                 </div>
             ` : ''}
             <div class="entity-picker-input-wrapper">
-                <input type="text"
+                <input type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-1p-ignore data-lpignore="true"
                     class="entity-picker-input"
                     placeholder="${placeholder}"
                     value="${multiple ? '' : escapeHtml(singleValue)}"
@@ -583,7 +583,7 @@ function createAreaPicker(name, value, options = {}) {
                 </div>
             ` : ''}
             <div class="entity-picker-input-wrapper">
-                <input type="text"
+                <input type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-1p-ignore data-lpignore="true"
                     class="entity-picker-input"
                     placeholder="${placeholder}"
                     value="${multiple ? '' : escapeHtml(singleValue)}"
@@ -959,7 +959,7 @@ function initTimePicker(id) {
     ampmSelect.addEventListener('change', () => {
         const newMode = ampmSelect.value;
         const oldMode = currentMode;
-        
+
         let h = parseInt(hoursInput.value || '0');
 
         if (newMode === '24h' && oldMode !== '24h') {
@@ -982,7 +982,7 @@ function initTimePicker(id) {
                 ampmSelect.value = 'AM';
             }
         }
-        
+
         currentMode = ampmSelect.value;
         hoursInput.value = String(h).padStart(2, '0');
         updateValue();
@@ -1019,7 +1019,7 @@ function createServicePicker(name, value, options = {}) {
     const html = `
         <div class="service-picker" data-name="${name}" id="${id}">
             <div class="service-picker-input-wrapper">
-                <input type="text" 
+                <input type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-1p-ignore data-lpignore="true" 
                     class="service-picker-input" 
                     placeholder="${placeholder}"
                     value="${escapeHtml(safeValue)}"
@@ -1555,7 +1555,7 @@ function createTextInput(name, value, options = {}) {
     return `
     <div class="block-field">
         <label>${escapeHtml(options.label || name)}</label>
-        <input type="text" name="${name}" value="${escapeHtml(value || '')}" placeholder="${escapeHtml(options.placeholder || '')}">
+        <input type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-1p-ignore data-lpignore="true" name="${name}" value="${escapeHtml(value || '')}" placeholder="${escapeHtml(options.placeholder || '')}">
         ${options.description ? `<div class="field-description">${escapeHtml(options.description)}</div>` : ''}
     </div>
     `;
@@ -1646,12 +1646,12 @@ function createNotificationComposer(serviceId, currentData = {}, options = {}) {
         <div class="notification-composer" id="${id}">
             <div class="composer-field">
                 <label>Message</label>
-                <textarea class="composer-message-input" rows="3" placeholder="Notification message...">${escapeHtml(message)}</textarea>
+                <textarea class="composer-message-input" rows="3" placeholder="Notification message..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-1p-ignore data-lpignore="true">${escapeHtml(message)}</textarea>
             </div>
             
             <div class="composer-field">
                 <label>Title <span class="opt">(Optional)</span></label>
-                <input type="text" class="composer-title-input" value="${escapeHtml(title)}" placeholder="Notification title">
+                <input type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-1p-ignore data-lpignore="true" class="composer-title-input" value="${escapeHtml(title)}" placeholder="Notification title">
             </div>
 
             <div class="composer-advanced ${hasAdvanced ? 'open' : ''}">
