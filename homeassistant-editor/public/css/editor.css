@@ -1487,25 +1487,6 @@ body.resizing {
   color: var(--text-primary);
 }
 
-/* Section-specific hover accents */
-#triggers-section .btn-add-item:hover,
-#triggers-section .btn-paste-item:hover {
-  background: rgba(59, 130, 246, 0.15);
-  color: #60a5fa;
-}
-
-#conditions-section .btn-add-item:hover,
-#conditions-section .btn-paste-item:hover {
-  background: rgba(245, 158, 11, 0.15);
-  color: #fbbf24;
-}
-
-#actions-section .btn-add-item:hover,
-#actions-section .btn-paste-item:hover {
-  background: rgba(139, 92, 246, 0.15);
-  color: #a78bfa;
-}
-
 .btn-run-selected:hover {
   background: var(--bg-hover);
   color: var(--accent);
@@ -3165,29 +3146,18 @@ body.light-theme .section-header .section-label {
   margin: 4px 0 8px 0;
 }
 
-/* Service Block Layout - Mimic If/Then style */
-.service-block-layout .section-header {
-  background: transparent;
-  padding: 4px 0;
-  margin-bottom: 4px;
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 10px;
+/* Service Block Layout - Simplified */
+.service-block-layout,
+.notification-block-layout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  margin-top: 10px;
 }
 
-.service-block-layout .section-content {
-  padding-left: 0;
-  margin-bottom: 12px;
-}
-
-.service-block-layout .nested-section {
-  border-left: none;
-  /* Remove the vertical line for cleaner look */
-  margin: 0;
-}
-
-/* Hide redundant internal labels in service blocks */
-.service-block-layout .target-selector label {
-  display: none;
+.service-block-layout .block-field,
+.notification-block-layout .block-field {
+  margin-bottom: 0px;
 }
 
 .nested-block-wrapper {
@@ -3213,10 +3183,10 @@ body.light-theme .nested-block-wrapper .block {
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  background: rgba(59, 130, 246, 0.15);
-  border: 1px dashed rgba(59, 130, 246, 0.4);
+  background: var(--bg-tertiary);
+  border: 1px dashed var(--border-color);
   border-radius: 4px;
-  color: #60a5fa;
+  color: var(--text-muted);
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
@@ -3226,14 +3196,15 @@ body.light-theme .nested-block-wrapper .block {
 
 .add-nested-button:hover,
 .add-else-button:hover {
-  background: rgba(59, 130, 246, 0.25);
-  border-color: rgba(59, 130, 246, 0.6);
+  background: var(--bg-hover);
+  border-color: var(--text-muted);
+  color: var(--text-primary);
 }
 
 .add-else-button {
-  background: rgba(139, 92, 246, 0.15);
-  border-color: rgba(139, 92, 246, 0.4);
-  color: #a78bfa;
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+  color: var(--text-muted);
   margin-left: 16px;
 }
 

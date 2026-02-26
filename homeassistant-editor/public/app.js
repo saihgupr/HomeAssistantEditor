@@ -3983,7 +3983,7 @@ function renderChooseOption(option, index) {
                 <label>Alias</label>
                 <input type="text" data-role="choose-option-alias" value="${escapeHtml(alias)}" placeholder="Optional">
             </div>
-            <div class="nested-section">
+            <div class="nested-section choose-conditions-section">
                 <div class="section-header">
                     <span class="section-label">Conditions:</span>
                 </div>
@@ -3999,7 +3999,7 @@ function renderChooseOption(option, index) {
                     </button>
                 </div>
             </div>
-            <div class="nested-section">
+            <div class="nested-section choose-sequence-section">
                 <div class="section-header">
                     <span class="section-label">Actions:</span>
                 </div>
@@ -4202,36 +4202,13 @@ function renderRepeatBlock(block) {
 function renderNotificationBlock(block) {
     let html = '<div class="nested-block-container notification-block-layout">';
 
-    // SERVICE SECTION
+    // SERVICE FIELD
     const serviceId = block.service || block.action || '';
+    html += createFieldHtml('Service', 'service', serviceId, 'service');
 
-    // We treat the service picker essentially the same, but maybe filter it later?
-    // For now, standard service picker is fine, user can search 'notify'.
-    // ideally createServicePicker should support domain filter
-    html += `
-        <div class="nested-section">
-            <div class="section-header">
-                <span class="section-label">Service</span>
-            </div>
-            <div class="section-content">
-                ${createFieldHtml('', 'service', serviceId, 'service')} 
-            </div>
-        </div>
-    `;
-
-    // DATA SECTION (Composer)
+    // DATA FIELD (Composer)
     const dataObj = block.data || {};
-
-    html += `
-        <div class="nested-section">
-            <div class="section-header">
-                <span class="section-label">Message</span>
-            </div>
-            <div class="section-content">
-                 ${window.fieldComponents.createNotificationComposer(serviceId, dataObj, { name: 'data' })}
-            </div>
-        </div>
-    `;
+    html += window.fieldComponents.createNotificationComposer(serviceId, dataObj, { name: 'data' });
 
     html += '</div>';
     return html;
@@ -4243,22 +4220,11 @@ function renderNotificationBlock(block) {
 function renderServiceBlock(block) {
     let html = '<div class="nested-block-container service-block-layout">';
 
-    // SERVICE SECTION
+    // SERVICE FIELD
     const serviceId = block.service || block.action || '';
+    html += createFieldHtml('Service', 'service', serviceId, 'service');
 
-    html += `
-        <div class="nested-section">
-            <div class="section-header">
-                <span class="section-label">Service</span>
-            </div>
-            <div class="section-content">
-                ${createFieldHtml('', 'service', serviceId, 'service')}
-            </div>
-        </div>
-    `;
-
-    // TARGET SECTION
-    // Only show if there are targets or it's relevant (always show for now as it's a primary field)
+    // TARGET FIELD
     let targetVal = {};
     if (block.target && typeof block.target === 'object') {
         targetVal = block.target;
@@ -4266,31 +4232,11 @@ function renderServiceBlock(block) {
         targetVal = { entity_id: block.target };
     }
 
-    html += `
-        <div class="nested-section">
-            <div class="section-header">
-                <span class="section-label">Target</span>
-            </div>
-            <div class="section-content">
-                ${createFieldHtml('', 'target', targetVal, 'target', { placeholder: 'Pick entities...' })}
-            </div>
-        </div>
-    `;
+    html += createFieldHtml('Target', 'target', targetVal, 'target', { placeholder: 'Pick entities...' });
 
-    // OPTIONS SECTION (Schema Driven)
-    // We pass the raw data object to the new editor
+    // OPTIONS FIELD (Schema Driven)
     const dataObj = block.data || {};
-
-    html += `
-        <div class="nested-section">
-            <div class="section-header">
-                <span class="section-label">Options</span>
-            </div>
-            <div class="section-content">
-                 ${window.fieldComponents.createServiceArgsEditor(serviceId, dataObj, { name: 'data' })}
-            </div>
-        </div>
-    `;
+    html += window.fieldComponents.createServiceArgsEditor(serviceId, dataObj, { name: 'data' });
 
     html += '</div>';
     return html;
