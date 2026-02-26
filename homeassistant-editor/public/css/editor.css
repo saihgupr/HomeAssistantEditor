@@ -2202,8 +2202,10 @@ body.color-mode .block-field textarea::placeholder {
 .weekday-option input[type="checkbox"] {
   appearance: none;
   -webkit-appearance: none;
-  width: 18px;
-  height: 18px;
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
+  min-height: 18px !important;
   background: var(--input-bg);
   border: 1px solid var(--border-color);
   border-radius: 4px;
@@ -2211,6 +2213,8 @@ body.color-mode .block-field textarea::placeholder {
   position: relative;
   transition: all 0.2s ease;
   margin: 0;
+  display: block;
+  flex-shrink: 0;
 }
 
 .weekday-option input[type="checkbox"]:checked {
@@ -2221,8 +2225,8 @@ body.color-mode .block-field textarea::placeholder {
 .weekday-option input[type="checkbox"]:checked::after {
   content: '';
   position: absolute;
-  left: 6px;
-  top: 2px;
+  left: 5px;
+  top: 1px;
   width: 4px;
   height: 9px;
   border: solid white;
