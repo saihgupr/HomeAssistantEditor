@@ -2323,6 +2323,13 @@ function populateEditor(item, expansionState = null) {
     }
 }
 
+// Helper to auto-resize textarea height based on content
+function adjustTextareaHeight(textarea) {
+    if (!textarea) return;
+    textarea.style.height = 'auto';
+    textarea.style.height = (textarea.scrollHeight) + 'px';
+}
+
 // Helper to auto-resize input width based on content
 function autoResizeInput(input) {
     if (!input) return;
@@ -2876,6 +2883,9 @@ function initializeBlockComponents(blockEl) {
 
     // Nested blocks need their own three-dot context menu wiring
     initBlockContextMenu(blockEl);
+
+    // Initialize auto-resize for all textareas in this block
+    blockEl.querySelectorAll('textarea').forEach(adjustTextareaHeight);
 }
 
 function initBlockDragAndDrop(blockEl, section, header) {
@@ -5454,7 +5464,7 @@ function createFieldHtml(label, name, value, type = 'input', options = {}) {
         return `
       <div class="block-field">
         <label>${label}</label>
-        <textarea name="${name}" rows="3" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-1p-ignore data-lpignore="true">${escaped}</textarea>
+        <textarea name="${name}" rows="1" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-1p-ignore data-lpignore="true">${escaped}</textarea>
       </div>
     `;
     }
@@ -9375,3 +9385,10 @@ async function init() {
 
 // Start the app
 init();
+
+// Global Textarea Auto-resize listener
+document.addEventListener('input', (e) => {
+    if (e.target.tagName === 'TEXTAREA' && (e.target.closest('.block-field') || e.target.closest('.notification-composer'))) {
+        adjustTextareaHeight(e.target);
+    }
+});

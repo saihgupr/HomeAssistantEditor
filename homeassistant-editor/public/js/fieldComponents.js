@@ -1646,7 +1646,7 @@ function createNotificationComposer(serviceId, currentData = {}, options = {}) {
         <div class="notification-composer" id="${id}">
             <div class="composer-field">
                 <label>Message</label>
-                <textarea class="composer-message-input" rows="3" placeholder="Notification message..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-1p-ignore data-lpignore="true">${escapeHtml(message)}</textarea>
+                <textarea class="composer-message-input" rows="1" placeholder="Notification message..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-1p-ignore data-lpignore="true">${escapeHtml(message)}</textarea>
             </div>
             
             <div class="composer-field">

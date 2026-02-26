@@ -2116,9 +2116,11 @@ body.color-mode .block-field textarea::placeholder {
 }
 
 .block-field textarea {
-  min-height: 100px;
+  min-height: 32px;
   resize: vertical;
   font-family: 'Monaco', 'Menlo', monospace;
+  overflow-y: hidden;
+  line-height: 1.5;
 }
 
 .checkbox-field {
