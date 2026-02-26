@@ -6191,7 +6191,6 @@ function parseBlockElement(blockEl, section, baseData = null) {
         if (!name || name === 'raw') return;
 
         // Skip weekday individual checkboxes (handled as a group)
-        if (name === 'weekday' && input.type === 'checkbox') return;
         if (name === 'advanced_args' || name === 'advanced-data') return;
 
         // Skip service args editor inputs except the hidden data payload
