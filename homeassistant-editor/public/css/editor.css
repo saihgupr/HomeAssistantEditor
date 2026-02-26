@@ -1774,8 +1774,8 @@ body.color-mode .action-block .block-icon {
 
 .block-tag {
   font-size: 11px;
-  color: var(--accent-blue);
-  background: rgba(37, 99, 235, 0.15);
+  color: rgba(255, 255, 255, 0.7);
+  background: var(--bg-tertiary);
   padding: 2px 6px;
   border-radius: 4px;
   font-weight: 500;
@@ -4634,7 +4634,7 @@ body.light-theme .search-box input::placeholder {
 
 /* Light theme - Trace panel */
 body.light-theme .trace-step-entity {
-  background: rgba(54, 123, 235, 0.1);
+  background: var(--bg-tertiary);
 }
 
 /* Light theme - Version navigation */
@@ -5940,8 +5940,8 @@ body.light-theme .service-picker-input::placeholder {
 }
 
 .target-tab-btn.active {
-  color: var(--accent-blue);
-  background: rgba(54, 123, 235, 0.1);
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
 }
 
 .target-content {
@@ -5984,7 +5984,7 @@ body.light-theme .target-tab-btn:hover {
 
 body.light-theme .target-tab-btn.active {
   color: var(--text-primary);
-  background: rgba(54, 123, 235, 0.12);
+  background: var(--bg-tertiary);
 }
 
 .target-freeform {
@@ -6297,9 +6297,9 @@ input:checked+.slider:before {
 .field-value {
   font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--accent-blue);
-  background: rgba(54, 123, 235, 0.1);
-  padding: 1px 4px;
+  color: rgba(255, 255, 255, 0.7);
+  background: var(--bg-tertiary);
+  padding: 1px 6px;
   border-radius: 4px;
 }
 
