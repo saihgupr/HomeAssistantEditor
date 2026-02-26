@@ -3316,23 +3316,28 @@ function initBlockContextMenu(blockEl) {
             menu.remove();
         });
 
-        menu.querySelector('.run-block').addEventListener('click', (me) => {
-            me.stopPropagation();
-            const container = blockEl.parentElement;
-            const directBlocks = Array.from(container.children).filter(el => el.classList.contains('action-block'));
-            const index = directBlocks.indexOf(blockEl);
+        const runBtn = menu.querySelector('.run-block');
+        if (runBtn) {
+            runBtn.addEventListener('click', (me) => {
+                me.stopPropagation();
+                const container = blockEl.parentElement;
 
-            if (container.id === 'actions-container') {
-                if (state.selectedActionIndices.size > 0 && state.selectedActionIndices.has(index)) {
-                    runActionIndices(Array.from(state.selectedActionIndices));
+                if (container.id === 'actions-container') {
+                    const directBlocks = Array.from(container.children).filter(el => el.classList.contains('action-block'));
+                    const index = directBlocks.indexOf(blockEl);
+                    if (state.selectedActionIndices.size > 0 && state.selectedActionIndices.has(index)) {
+                        runActionIndices(Array.from(state.selectedActionIndices));
+                    } else {
+                        runActionIndices([index]);
+                    }
                 } else {
-                    runActionIndices([index]);
+                    // Nested action: run it directly
+                    const blockData = parseBlockElement(blockEl, 'actions');
+                    runBlock(blockData);
                 }
-            } else {
-                showToast('Run is only available for Action blocks', 'warning');
-            }
-            menu.remove();
-        });
+                menu.remove();
+            });
+        }
 
         menu.querySelector('.delete-block').addEventListener('click', (me) => {
             me.stopPropagation();
