@@ -8076,6 +8076,7 @@ function initEventListeners() {
     elements.settingCollapseBlocks.addEventListener('change', (e) => {
         state.settings.collapseBlocksByDefault = e.target.checked;
         localStorage.setItem('ha-editor-collapse-blocks', e.target.checked);
+        toggleAllBlocks(e.target.checked);
     });
 
     // Settings - Color Mode toggle
@@ -9392,3 +9393,10 @@ document.addEventListener('input', (e) => {
         adjustTextareaHeight(e.target);
     }
 });
+
+function toggleAllBlocks(collapse) {
+    const blocks = document.querySelectorAll('.action-block');
+    blocks.forEach(block => {
+        block.classList.toggle('collapsed', collapse);
+    });
+}
