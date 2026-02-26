@@ -3652,8 +3652,9 @@ body.light-theme .nested-block-wrapper .block {
 }
 
 .settings-select:focus {
-  border-color: var(--accent-blue);
-  box-shadow: 0 0 0 3px rgba(54, 123, 235, 0.14);
+  border-color: rgba(255, 255, 255, 0.35);
+  background: var(--input-bg-focus);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
 }
 
 body.light-theme .settings-select {
@@ -6037,9 +6038,8 @@ body.light-theme .target-freeform::placeholder {
 
 .data-key-input:focus,
 .data-value-input:focus {
-  border-color: var(--accent-blue);
-  background: rgba(59, 130, 246, 0.05);
-  /* Subtle blue tint */
+  border-color: rgba(255, 255, 255, 0.45);
+  background: var(--input-bg-focus);
 }
 
 body.light-theme .data-key-input,
@@ -6308,7 +6308,9 @@ input:checked+.slider:before {
 }
 
 .select-wrapper select:focus {
-  border-color: var(--accent-blue);
+  border-color: rgba(255, 255, 255, 0.35);
+  background: var(--input-bg-focus);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
 }
 
 /* Valid Light Theme Overrides for new components */
@@ -6486,7 +6488,7 @@ body.light-theme .composer-title-input:focus {
 }
 
 .select-wrapper select:focus {
-  border-color: var(--accent-blue);
+  border-color: rgba(255, 255, 255, 0.35);
 }
 
 .select-arrow {
