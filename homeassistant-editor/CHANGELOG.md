@@ -1,16 +1,13 @@
 # Changelog
-
-## [1.1.0-beta.2] - 2026-02-26
-
-### Added
-- **Script Run & Enabled State**: Scripts now support the "Run" button and "Enabled" toggle in the editor header, matching the automation experience.
-
-### Changed
-- **Action Testing**: Renamed individual action "Run" menu item to "Test" to distinguish it from the main automation/script run button.
-- **Trigger ID Placement**: Ensured "Trigger ID" is consistently placed at the bottom for all trigger types (fixed fall-through issue for Sun and Home Assistant triggers).
-
-### Fixed
-- **Automation Save Errors**: Fixed "Unknown keys" error when saving automations or scripts by automatically cleaning up internal metadata (`_type`, `entity_id`) before saving.
+ 
+ ## [1.1.0-beta.2] - 2026-03-07
+ 
+ ### Added
+ - **Script Run & Enabled State**: Scripts now support the "Run" button and "Enabled" toggle in the editor header, matching the automation experience.
+ 
+ ### Fixed
+ - **Add-on Deployment**: Fixed "Image does not exist" error during installation by providing pre-built Docker images for `amd64` and `aarch64` architectures in `config.json`, eliminating the need for local builds on the user's system. (#11)
+ - **Automation Save Errors**: Fixed "Unknown keys" error when saving automations or scripts by automatically cleaning up internal metadata (`_type`, `entity_id`) before saving.
 - **Dark Mode Contrast**: Improved visibility and contrast for "Advanced Data (JSON)" blocks in dark mode.
 
 ## [1.1.0-beta.1] - 2026-02-25
