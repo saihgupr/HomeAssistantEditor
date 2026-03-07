@@ -103,7 +103,8 @@ function checkDirty() {
  * This ensures corrupted historical versions don't pollute saved automations
  */
 function cleanupInternalFields(obj) {
-    const internalFields = ['block-alias', '_invalid_event_data', '_invalid_device_extra', '_invalid_variables', '_type', 'entity_id'];
+    // DO NOT put 'entity_id' here, it recursively deletes it from triggers and actions!
+    const internalFields = ['block-alias', '_invalid_event_data', '_invalid_device_extra', '_invalid_variables', '_type'];
 
     if (!obj || typeof obj !== 'object') return obj;
 
@@ -114,6 +115,11 @@ function cleanupInternalFields(obj) {
     const cleaned = {};
     for (const [key, value] of Object.entries(obj)) {
         if (internalFields.includes(key)) continue;
+
+        // Strip empty HA properties that cause validation errors
+        if (key === 'area' && value === '') continue;
+        if (key === 'labels' && Array.isArray(value) && value.length === 0) continue;
+
         cleaned[key] = cleanupInternalFields(value);
     }
     return cleaned;
@@ -6016,19 +6022,44 @@ function setupYamlEditorListeners() {
     textarea.dataset.listenersAttached = 'true';
 }
 
+function generateIdFromAlias(alias) {
+    if (!alias) return `new_${Date.now()}`;
+    const slug = alias.toString().toLowerCase()
+        .replace(/\s+/g, '_')
+        .replace(/[^\w\-]+/g, '')
+        .replace(/\-\-+/g, '_')
+        .replace(/__+/g, '_')
+        .replace(/^_+|_+$/g, '');
+    return slug || `new_${Date.now()}`;
+}
+
 function getEditorData() {
     const isAutomation = state.currentGroup === 'automations';
 
     const tags = elements.editorTags ? normalizeTagsInput(elements.editorTags.value) : [];
     const tagsForVars = tags.map(tag => tag.replace(/^#/, '').toLowerCase());
+
+    let currentId = state.selectedItem?.id;
+    if (state.isNewItem || (currentId && currentId.startsWith('new_'))) {
+        currentId = generateIdFromAlias(elements.editorAlias.value);
+    } else {
+        currentId = currentId || `new_${Date.now()}`;
+    }
+
     const data = {
-        id: state.selectedItem?.id || `new_${Date.now()}`,
+        id: currentId,
         alias: elements.editorAlias.value,
         description: buildDescriptionWithTags(elements.editorDescription.value),
         mode: state.selectedItem?.mode || 'single',
-        _type: state.selectedItem?._type || (isAutomation ? 'automation' : 'script'),
-        entity_id: state.selectedItem?.entity_id
+        _type: state.selectedItem?._type || (isAutomation ? 'automation' : 'script')
     };
+
+    // Explicitly copy entity_id, area, labels if they exist safely
+    if (state.selectedItem?.entity_id) data.entity_id = state.selectedItem.entity_id;
+    if (state.selectedItem?.area) data.area = state.selectedItem.area;
+    if (state.selectedItem?.labels && Object.keys(state.selectedItem.labels).length > 0) {
+        data.labels = state.selectedItem.labels;
+    }
 
     const variables = { ...(state.selectedItem?.variables || {}) };
     if (tagsForVars.length) {
@@ -6157,9 +6188,13 @@ function parseBlockElement(blockEl, section, baseData = null) {
 
         if (name === 'entity_id') {
             if (value.includes(',')) {
-                value = value.split(',').map(v => v.trim());
+                const arr = value.split(',').map(v => v.trim()).filter(Boolean);
+                if (arr.length > 0) blockData.entity_id = arr;
+                else delete blockData.entity_id;
+            } else {
+                if (value.trim() !== '') blockData.entity_id = value;
+                else delete blockData.entity_id;
             }
-            blockData.entity_id = value;
         } else if (name === 'from') {
             if (value && value.trim() !== '') {
                 blockData.from = value;
