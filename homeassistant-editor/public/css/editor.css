@@ -13,6 +13,9 @@
   --bg-hover: rgba(255, 255, 255, 0.03);
   --bg-active: rgba(255, 255, 255, 0.06);
 
+  --btn-add-bg: #2e2e2e;
+  --btn-add-hover: #292929;
+
   --border-color: #333333;
   --border-light: #444;
   --selection-ring: rgba(255, 255, 255, 0.2);
@@ -969,6 +972,10 @@ body.resizing {
   background: #2a2a2a;
 }
 
+body.light-theme .item-card:hover {
+  background: #f0f0f2;
+}
+
 .item-card.active {
   border-color: #444 !important;
   background: var(--bg-active);
@@ -1455,7 +1462,7 @@ body.resizing {
   justify-content: center;
   width: 28px;
   height: 28px;
-  background: #2e2e2e;
+  background: var(--btn-add-bg);
   border: none;
   border-radius: var(--radius-btn-plus);
   color: var(--text-secondary);
@@ -1483,7 +1490,7 @@ body.resizing {
 
 .btn-add-item:hover,
 .btn-paste-item:hover {
-  background: #292929;
+  background: var(--btn-add-hover);
 }
 
 .btn-run-selected:hover {
@@ -3941,6 +3948,9 @@ body.light-theme {
   --input-bg: #ffffff;
   --input-bg-focus: #ffffff;
 
+  --btn-add-bg: var(--bg-tertiary);
+  --btn-add-hover: #f0f0f2;
+
   /* Monochrome Borders - Light counterparts */
   --border-color: #e8e8eb;
   --border-light: #dcdce0;
@@ -5211,7 +5221,7 @@ body.replay-mode .panel-trace {
 .folder-edit-modal-box {
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
+  border-radius: 14px;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
   min-width: 320px;
   max-width: 90vw;
@@ -6543,7 +6553,15 @@ body.light-theme .composer-title-input:focus {
 
 body.light-theme .time-format-toggle,
 body.light-theme .ampm-select {
-  background: var(--input-bg);
-  border-color: var(--border-light);
-  color: var(--text-primary);
+  background: #f0f0f2;
+  border-color: #dcdce0;
+  color: #1a1a1a;
+}
+
+/* Safari specific fix for contact icons in tag name input */
+#tag-group-name::-webkit-contacts-auto-fill-button,
+#tag-group-name::-webkit-credentials-auto-fill-button {
+  visibility: hidden;
+  display: none !important;
+  pointer-events: none;
 }
