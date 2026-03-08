@@ -10,7 +10,6 @@
     "aarch64",
     "amd64"
   ],
-  "image": "ghcr.io/saihgupr/{arch}-homeassistant-editor",
   "init": false,
   "hassio_api": true,
   "auth_api": true,
