@@ -814,7 +814,7 @@ body.resizing {
   gap: var(--spacing-sm);
   background: var(--bg-tertiary);
   padding: 0 var(--spacing-md);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   border: 1px solid transparent;
   transition: var(--transition-fast);
   min-width: 0;
@@ -2087,9 +2087,37 @@ body.color-mode .block-field textarea:focus {
 }
 
 body.color-mode .block-field input::placeholder,
-body.color-mode .block-field textarea::placeholder {
-  color: rgba(255, 255, 255, 0.65);
+body.color-mode .block-field textarea::placeholder,
+body.color-mode .entity-picker-input::placeholder {
+  color: rgba(255, 255, 255, 0.65) !important;
 }
+
+body.color-mode .block-field label {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+body.color-mode .add-nested-button,
+body.color-mode .add-else-button {
+  color: white !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+body.color-mode .add-nested-button:hover,
+body.color-mode .add-else-button:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+body.color-mode .toggle-slider {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+body.color-mode .enabled-toggle input:checked+.toggle-slider,
+body.color-mode .settings-toggle input:checked+.toggle-slider {
+  background-color: var(--accent-green) !important;
+}
+
 
 .block-field label {
   font-size: var(--font-size-sm);
@@ -2270,7 +2298,7 @@ body.color-mode .block-field textarea::placeholder {
   width: 100%;
   background: var(--bg-tertiary) !important;
   border: none !important;
-  border-radius: var(--block-radius);
+  border-radius: var(--radius-sm);
   padding: 0 12px;
   font-size: 13px;
   color: white;
@@ -4691,13 +4719,14 @@ body.light-theme .block-header:hover {
 }
 
 /* Light theme - Block field inputs */
-body.light-theme .block-field input,
-body.light-theme .block-field select,
-body.light-theme .block-field textarea {
+body.light-theme:not(.color-mode) .block-field input,
+body.light-theme:not(.color-mode) .block-field select,
+body.light-theme:not(.color-mode) .block-field textarea {
   background: var(--input-bg);
   color: var(--text-primary);
   border: 1px solid var(--border-light);
 }
+
 
 body.light-theme .block-field input:focus,
 body.light-theme .block-field select:focus,
@@ -5960,9 +5989,10 @@ body.light-theme .service-picker-input::placeholder {
   color: rgba(255, 255, 255, 0.5);
 }
 
-body.light-theme .target-field-group label {
-  color: var(--text-secondary);
+body.color-mode .target-field-group label {
+  color: rgba(255, 255, 255, 0.9) !important;
 }
+
 
 body.light-theme .target-selector {
   background: var(--bg-secondary);
@@ -6564,4 +6594,66 @@ body.light-theme .ampm-select {
   visibility: hidden;
   display: none !important;
   pointer-events: none;
+}
+
+/* ============================================
+   DESTRUCTIVE OVERRIDES FOR COLOR MODE & CONSISTENCY
+   Ensures these always win regardless of base theme
+   ============================================ */
+
+/* Force consistent 6px rounding for everything */
+.select-wrapper select,
+.entity-picker-input,
+.search-box,
+.block-field input,
+.block-field select,
+.block-field textarea {
+  border-radius: var(--radius-sm) !important;
+}
+
+/* Force high contrast in Color Mode */
+body.color-mode .block-field label,
+body.color-mode .target-field-group label {
+  color: rgba(255, 255, 255, 0.98) !important;
+  opacity: 1 !important;
+}
+
+body.color-mode .block-field input,
+body.color-mode .block-field select,
+body.color-mode .block-field textarea,
+body.color-mode .entity-picker-input {
+  color: white !important;
+}
+
+body.color-mode .block-field input::placeholder,
+body.color-mode .block-field textarea::placeholder,
+body.color-mode .entity-picker-input::placeholder {
+  color: rgba(255, 255, 255, 0.65) !important;
+}
+
+body.color-mode .select-arrow,
+body.color-mode .block-icon,
+body.color-mode .block-chevron,
+body.color-mode .block-menu-trigger {
+  color: white !important;
+  opacity: 1 !important;
+}
+
+body.color-mode .add-nested-button,
+body.color-mode .add-else-button {
+  color: white !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
+  background: rgba(255, 255, 255, 0.15) !important;
+}
+
+body.color-mode .add-nested-button:hover,
+body.color-mode .add-else-button:hover {
+  background: rgba(255, 255, 255, 0.25) !important;
+  border-color: rgba(255, 255, 255, 0.7) !important;
+}
+
+body.color-mode .block-type-badge {
+  color: white !important;
+  background: rgba(255, 255, 255, 0.25) !important;
+  opacity: 1 !important;
 }
