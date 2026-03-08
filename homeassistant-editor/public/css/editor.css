@@ -1483,8 +1483,7 @@ body.resizing {
 
 .btn-add-item:hover,
 .btn-paste-item:hover {
-  background: #242424;
-  color: var(--text-primary);
+  background: #292929;
 }
 
 .btn-run-selected:hover {
