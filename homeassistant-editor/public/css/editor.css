@@ -966,7 +966,7 @@ body.resizing {
 }
 
 .item-card:hover {
-  background: var(--bg-hover);
+  background: #2a2a2a;
 }
 
 .item-card.active {
@@ -1483,7 +1483,7 @@ body.resizing {
 
 .btn-add-item:hover,
 .btn-paste-item:hover {
-  background: var(--bg-hover);
+  background: #242424;
   color: var(--text-primary);
 }
 
