@@ -4,12 +4,12 @@
  */
 
 :root {
-  --input-bg: #2a2a2a;
+  --input-bg: #212121;
   --input-bg-focus: #2a2a2a;
   /* Colors */
   --bg-primary: #1a1a1a;
   --bg-secondary: #1b1b1b;
-  --bg-tertiary: #2e2e2e;
+  --bg-tertiary: #242424;
   --bg-hover: rgba(255, 255, 255, 0.03);
   --bg-active: rgba(255, 255, 255, 0.06);
 
@@ -1455,7 +1455,7 @@ body.resizing {
   justify-content: center;
   width: 28px;
   height: 28px;
-  background: var(--bg-tertiary);
+  background: #2e2e2e;
   border: none;
   border-radius: var(--radius-btn-plus);
   color: var(--text-secondary);
@@ -3186,7 +3186,7 @@ body.light-theme .nested-block-wrapper .block {
   background: var(--bg-tertiary);
   border: 1px dashed var(--border-color);
   border-radius: 4px;
-  color: var(--text-secondary);
+  color: var(--text-muted);
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
@@ -3204,7 +3204,7 @@ body.light-theme .nested-block-wrapper .block {
 .add-else-button {
   background: var(--bg-tertiary);
   border-color: var(--border-color);
-  color: var(--text-secondary);
+  color: var(--text-muted);
   margin-left: 16px;
 }
 
