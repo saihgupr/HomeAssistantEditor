@@ -2411,12 +2411,12 @@ body.light-theme .entity-picker-input::placeholder {
 }
 
 .duration-field input {
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
   text-align: center;
-  background: var(--input-bg);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary) !important;
+  border: none !important;
+  border-radius: var(--block-radius);
   padding: 0;
   font-size: 13px;
   color: white;
@@ -2437,8 +2437,8 @@ body.light-theme .entity-picker-input::placeholder {
 }
 
 body.light-theme .duration-field input {
-  background: var(--input-bg);
-  border: 1px solid var(--border-light);
+  background: var(--bg-tertiary) !important;
+  border: none !important;
   color: var(--text-primary);
 }
 
