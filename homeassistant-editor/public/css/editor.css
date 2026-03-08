@@ -2414,9 +2414,9 @@ body.light-theme .entity-picker-input::placeholder {
   width: 30px;
   height: 30px;
   text-align: center;
-  background: var(--bg-tertiary) !important;
+  background: var(--input-bg) !important;
   border: none !important;
-  border-radius: var(--block-radius);
+  border-radius: var(--radius-sm);
   padding: 0;
   font-size: 13px;
   color: white;
@@ -2437,7 +2437,7 @@ body.light-theme .entity-picker-input::placeholder {
 }
 
 body.light-theme .duration-field input {
-  background: var(--bg-tertiary) !important;
+  background: var(--input-bg) !important;
   border: none !important;
   color: var(--text-primary);
 }
