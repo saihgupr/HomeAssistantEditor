@@ -101,15 +101,23 @@ function checkDirty() {
 /**
  * Remove internal UI-only fields from data before saving
  * This ensures corrupted historical versions don't pollute saved automations
+ * @param {Object} obj - The object to clean
+ * @param {boolean} isTopLevel - If true, strips entity_id which is only allowed nested
  */
-function cleanupInternalFields(obj) {
-    // DO NOT put 'entity_id' here, it recursively deletes it from triggers and actions!
+function cleanupInternalFields(obj, isTopLevel = false) {
+    // These fields are ALWAYS internal
     const internalFields = ['block-alias', '_invalid_event_data', '_invalid_device_extra', '_invalid_variables', '_type'];
+    
+    // entity_id is only internal if it's at the top level (re-added by HA on load)
+    // But it's REQUIRED inside triggers/actions (e.g. state trigger on an entity)
+    if (isTopLevel) {
+        internalFields.push('entity_id');
+    }
 
     if (!obj || typeof obj !== 'object') return obj;
 
     if (Array.isArray(obj)) {
-        return obj.map(item => cleanupInternalFields(item));
+        return obj.map(item => cleanupInternalFields(item, false));
     }
 
     const cleaned = {};
@@ -120,7 +128,7 @@ function cleanupInternalFields(obj) {
         if (key === 'area' && value === '') continue;
         if (key === 'labels' && Array.isArray(value) && value.length === 0) continue;
 
-        cleaned[key] = cleanupInternalFields(value);
+        cleaned[key] = cleanupInternalFields(value, false);
     }
     return cleaned;
 }
@@ -774,7 +782,7 @@ async function saveItem(options = {}) {
     }
 
     // Clean up internal UI fields before saving
-    item = cleanupInternalFields(item);
+    item = cleanupInternalFields(item, true);
 
     const isAutomation = state.currentGroup === 'automations';
     const endpoint = isAutomation ? './api/automation' : './api/script';

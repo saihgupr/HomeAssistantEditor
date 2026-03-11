@@ -333,7 +333,7 @@ export async function updateAutomation(automationId, updatedAutomation, configPa
     }
 
     // Validate for unknown keys (common typos like 'triggersa' instead of 'triggers')
-    const knownKeys = ['id', 'alias', 'description', 'mode', 'triggers', 'conditions', 'actions', 'enabled', 'trigger', 'condition', 'action', 'initial_state', 'max', 'max_exceeded', 'variables', 'trace'];
+    const knownKeys = ['id', 'alias', 'description', 'mode', 'triggers', 'conditions', 'actions', 'enabled', 'trigger', 'condition', 'action', 'initial_state', 'max', 'max_exceeded', 'variables', 'trace', '_type', 'entity_id'];
     const unknownKeys = Object.keys(updatedAutomation).filter(k => !knownKeys.includes(k));
     if (unknownKeys.length > 0) {
       throw new Error(`Unknown keys in automation: ${unknownKeys.join(', ')}`);
