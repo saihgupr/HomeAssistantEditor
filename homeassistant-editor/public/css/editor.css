@@ -55,9 +55,9 @@
   --block-border-width: 1px;
 
   /* Block Colors */
-  --block-trigger: #3b82f6;
-  --block-condition: #f59e0b;
-  --block-action: #8b5cf6;
+  --block-trigger: #6268ee;
+  --block-condition: #ff9f43;
+  --block-action: #9c3af0;
 
   /* Version Navigation */
   --version-dim-opacity: 0.5;
@@ -89,10 +89,10 @@
   --block-border-color: #232424;
 
   /* Accents */
-  --accent-blue: #367beb;
+  --accent-blue: #6268ee;
   --accent-green: #22c55e;
-  --accent-purple: #8b5cf6;
-  --accent-orange: #f59e0b;
+  --accent-purple: #9c3af0;
+  --accent-orange: #ff9f43;
   --accent-red: #ef4444;
   --accent-cyan: #06b6d4;
 

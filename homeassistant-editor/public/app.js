@@ -199,7 +199,8 @@ const _state = {
         previewMode: false,
         previewData: null, // The historical automation/script data
         loading: false
-    }
+    },
+    runningEntities: new Set()
 };
 
 const state = new Proxy(_state, {
@@ -896,6 +897,29 @@ async function reloadInHA(showToastNotice = true) {
     }
 }
 
+function updateRunButtonState() {
+    if (!elements.btnRun) return;
+    
+    const entityId = state.selectedItem?.entity_id;
+    const isRunning = entityId && state.runningEntities.has(entityId);
+
+    if (isRunning) {
+        elements.btnRun.classList.add('is-running');
+        elements.btnRun.innerHTML = `
+            <div class="spinner spinner-sm"></div>
+            Stop
+        `;
+    } else {
+        elements.btnRun.classList.remove('is-running');
+        elements.btnRun.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="5 3 19 12 5 21 5 3" />
+            </svg>
+            Run
+        `;
+    }
+}
+
 async function runSelectedItem() {
     if (!state.selectedItem) return;
 
@@ -903,18 +927,22 @@ async function runSelectedItem() {
     const itemId = state.selectedItem.id;
     const entityId = state.selectedItem.entity_id;
 
+    // If already running, stop it
+    if (entityId && state.runningEntities.has(entityId)) {
+        return stopSelectedItem();
+    }
+
     try {
-        elements.btnRun.disabled = true;
-        elements.btnRun.innerHTML = `
-            <div class="spinner spinner-sm"></div>
-            Running...
-        `;
+        state.runningEntities.add(entityId);
+        updateRunButtonState();
 
         const response = await fetch(`./api/run/${domain}/${encodeURIComponent(itemId)}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ entity_id: entityId })
         });
+
+        const result = await response.json();
 
         if (result.success) {
             showToast(`${state.currentGroup === 'automations' ? 'Automation' : 'Script'} triggered successfully!`, 'success');
@@ -931,13 +959,39 @@ async function runSelectedItem() {
         console.error('Error triggering:', error);
         showToast(`Error: ${error.message}`, 'error');
     } finally {
-        elements.btnRun.disabled = false;
-        elements.btnRun.innerHTML = `
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polygon points="5 3 19 12 5 21 5 3" />
-            </svg>
-            Run
-        `;
+        state.runningEntities.delete(entityId);
+        if (state.selectedItem?.entity_id === entityId) {
+            updateRunButtonState();
+        }
+    }
+}
+
+async function stopSelectedItem() {
+    if (!state.selectedItem) return;
+
+    const domain = state.currentGroup === 'automations' ? 'automation' : 'script';
+    const itemId = state.selectedItem.id;
+    const entityId = state.selectedItem.entity_id;
+
+    try {
+        showToast(`Stopping ${state.currentGroup === 'automations' ? 'automation' : 'script'}...`, 'info');
+        
+        const response = await fetch(`./api/stop/${domain}/${encodeURIComponent(itemId)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ entity_id: entityId })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showToast(`Stopped successfully!`, 'success');
+        } else {
+            showToast(`Failed to stop: ${result.error}`, 'error');
+        }
+    } catch (error) {
+        console.error('Error stopping:', error);
+        showToast(`Error: ${error.message}`, 'error');
     }
 }
 
@@ -2330,6 +2384,9 @@ function populateEditor(item, expansionState = null) {
 
         // Update YAML view safely
         updateYamlView(item).catch(e => console.error('Error generating YAML view:', e));
+
+        // Update Run button state
+        updateRunButtonState();
 
     } catch (err) {
         console.error('[populateEditor] CRITICAL ERROR:', err);

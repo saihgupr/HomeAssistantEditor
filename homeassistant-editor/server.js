@@ -820,6 +820,41 @@ app.post('/api/run/:domain/:itemId', async (req, res) => {
     }
 });
 
+// Stop a running script or automation
+app.post('/api/stop/:domain/:itemId', async (req, res) => {
+    const { domain, itemId } = req.params;
+    const { entity_id } = req.body;
+
+    console.log(`[Stop] Stopping ${domain}: ${itemId} (entity_id: ${entity_id})`);
+
+    try {
+        if (domain === 'script') {
+            // Scripts are stopped via script.turn_off
+            let serviceName = 'turn_off';
+            const serviceData = {
+                entity_id: entity_id || `script.${itemId.toLowerCase().replace(/\s+/g, '_')}`
+            };
+            await callHomeAssistantService('script', serviceName, serviceData);
+        } else if (domain === 'automation') {
+            // Automations are "stopped" by turning off then on, or canceling delays
+            // For now, let's keep it simple and focus on scripts as requested
+            const serviceData = {
+                entity_id: entity_id || `automation.${itemId.toLowerCase().replace(/\s+/g, '_')}`
+            };
+            // Turning off an automation stops its running instances
+            await callHomeAssistantService('automation', 'turn_off', serviceData);
+            // Turn it back on so it can run again later
+            await callHomeAssistantService('automation', 'turn_on', serviceData);
+        } else {
+            return res.status(400).json({ success: false, error: 'Invalid domain' });
+        }
+        res.json({ success: true });
+    } catch (error) {
+        console.error(`[Stop] Error stopping ${domain}:`, error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // Toggle (enable/disable) an automation or script live
 app.post('/api/run/:domain/:itemId/toggle', async (req, res) => {
     const { domain, itemId } = req.params;
