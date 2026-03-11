@@ -24,11 +24,11 @@
   --text-secondary: #a0a0a0;
   --text-muted: #666666;
 
-  --accent-blue: #367beb;
-  --accent-blue-hover: #2563eb;
-  --accent-purple: #8b5cf6;
+  --accent-blue: #6268ee;
+  --accent-blue-hover: #4f55d1;
+  --accent-purple: #9c3af0;
   --accent-green: #22c55e;
-  --accent-orange: #f59e0b;
+  --accent-orange: #ff9f43;
   --accent-red: #ef4444;
 
   /* Layout Sizing */
@@ -55,9 +55,9 @@
   --block-border-width: 1px;
 
   /* Block Colors */
-  --block-trigger: #6268ee;
-  --block-condition: #ff9f43;
-  --block-action: #9c3af0;
+  --block-trigger: var(--accent-blue);
+  --block-condition: var(--accent-orange);
+  --block-action: var(--accent-purple);
 
   /* Version Navigation */
   --version-dim-opacity: 0.5;
@@ -88,12 +88,7 @@
   /* Block Border */
   --block-border-color: #232424;
 
-  /* Accents */
-  --accent-blue: #6268ee;
-  --accent-green: #22c55e;
-  --accent-purple: #9c3af0;
-  --accent-orange: #ff9f43;
-  --accent-red: #ef4444;
+  /* Accents - Consolidated in root above */
   --accent-cyan: #06b6d4;
 
   /* Animation */

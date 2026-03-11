@@ -2324,6 +2324,9 @@ function selectItem(id, forceType = null) {
         if (state.versionControl && state.versionControl.available) {
             loadVersionHistory(item.id, type);
         }
+
+        // IMPORTANT: Update the Run button state to reflect the item's current execution status
+        updateRunButtonState();
     } catch (err) {
         console.error('[selectItem] Error during editor population:', err);
     }
