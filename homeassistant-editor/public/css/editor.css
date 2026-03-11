@@ -2177,6 +2177,8 @@ body.color-mode .settings-toggle input:checked+.toggle-slider {
   -webkit-appearance: none;
   width: 32px;
   height: 18px;
+  padding: 0 !important;
+  margin: 0 !important;
   background: #212121;
   border: 1px solid #333;
   border-radius: 12px;
@@ -2184,7 +2186,6 @@ body.color-mode .settings-toggle input:checked+.toggle-slider {
   position: relative;
   transition: all 0.2s ease;
   flex-shrink: 0;
-  margin: 0;
 }
 
 .checkbox-field input[type="checkbox"]::before {
@@ -2242,13 +2243,14 @@ body.color-mode .settings-toggle input:checked+.toggle-slider {
   height: 18px !important;
   min-width: 18px !important;
   min-height: 18px !important;
+  padding: 0 !important;
+  margin: 0 !important;
   background: var(--input-bg);
   border: 1px solid var(--border-color);
   border-radius: 4px;
   cursor: pointer;
   position: relative;
   transition: all 0.2s ease;
-  margin: 0;
   display: block;
   flex-shrink: 0;
 }
