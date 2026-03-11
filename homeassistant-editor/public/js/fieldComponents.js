@@ -1271,9 +1271,11 @@ function createDataEditor(name, value, options = {}) {
 
     const rowsHtml = entries.map(([k, v]) => `
         <div class="data-row">
-            <input type="text" class="data-key-input" placeholder="Name" value="${escapeHtml(k)}">
+            <input type="text" class="data-key-input" placeholder="Name" value="${escapeHtml(k)}" 
+                autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-1p-ignore data-lpignore="true">
             <span class="data-sep">:</span>
-            <input type="text" class="data-value-input" placeholder="Value" value="${escapeHtml(v)}">
+            <input type="text" class="data-value-input" placeholder="Value" value="${escapeHtml(v)}"
+                autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-1p-ignore data-lpignore="true">
             <button class="data-remove-btn" title="Remove">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
             </button>
@@ -1330,9 +1332,11 @@ function initDataEditor(id) {
         const row = document.createElement('div');
         row.className = 'data-row';
         row.innerHTML = `
-            <input type="text" class="data-key-input" placeholder="Name" value="${escapeHtml(key)}">
+            <input type="text" class="data-key-input" placeholder="Name" value="${escapeHtml(key)}"
+                autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-1p-ignore data-lpignore="true">
             <span class="data-sep">:</span>
-            <input type="text" class="data-value-input" placeholder="Value" value="${escapeHtml(val)}">
+            <input type="text" class="data-value-input" placeholder="Value" value="${escapeHtml(val)}"
+                autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-1p-ignore data-lpignore="true">
             <button class="data-remove-btn" title="Remove">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
             </button>
