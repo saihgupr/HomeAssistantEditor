@@ -6753,6 +6753,10 @@ body.light-theme .indent-color-5 { background-color: rgba(200, 200, 200, 0.15); 
     font-size: 16px;
   }
 
+  .logo-text {
+    display: none;
+  }
+
   .view-toggle .toggle-btn {
     padding: 6px 10px;
     font-size: 12px;
