@@ -1756,10 +1756,19 @@ function handleReplayKeydown(e) {
 // UI Functions
 // ============================================
 
-const mobileLayoutQuery = window.matchMedia('(max-width: 900px)');
+const mobileLayoutQuery = window.matchMedia('(max-width: 900px), (max-height: 500px)');
+const tabletLayoutQuery = window.matchMedia('(max-width: 1024px)');
 
 function isMobileLayout() {
     return mobileLayoutQuery && mobileLayoutQuery.matches;
+}
+
+function isTabletLayout() {
+    return tabletLayoutQuery && tabletLayoutQuery.matches && !isMobileLayout();
+}
+
+function isDrawerLayout() {
+    return isMobileLayout() || isTabletLayout();
 }
 
 function updateMobileNavButtons(activePanel) {
@@ -1786,7 +1795,7 @@ function setMobilePanel(panel) {
 }
 
 function updateMobileOverlay() {
-    if (!isMobileLayout()) {
+    if (!isDrawerLayout()) {
         document.body.classList.remove('mobile-overlay-visible');
         if (elements.mobileOverlay) elements.mobileOverlay.setAttribute('aria-hidden', 'true');
         return;
@@ -1798,13 +1807,14 @@ function updateMobileOverlay() {
     if (elements.mobileOverlay) elements.mobileOverlay.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
 }
 
-function syncMobileLayoutState() {
-    if (!isMobileLayout()) {
-        document.body.classList.remove('mobile-panel-editor', 'mobile-panel-list', 'mobile-overlay-visible');
-        return;
+function syncResponsiveLayoutState() {
+    if (isMobileLayout()) {
+        setMobilePanel(state.mobilePanel);
+    } else {
+        document.body.classList.remove('mobile-panel-editor', 'mobile-panel-list');
     }
 
-    setMobilePanel(state.mobilePanel);
+    document.body.classList.toggle('tablet-layout', isTabletLayout());
     updateMobileOverlay();
 }
 
@@ -7808,7 +7818,7 @@ function initEventListeners() {
 
     if (elements.mobileOverlay) {
         elements.mobileOverlay.addEventListener('click', () => {
-            if (!isMobileLayout()) return;
+            if (!isDrawerLayout()) return;
             if (!state.sidebarCollapsed) {
                 toggleSidebar();
             }
@@ -9531,9 +9541,12 @@ async function init() {
     initResizers();
     loadPanelWidths();
     updateSearchClear();
-    syncMobileLayoutState();
+    syncResponsiveLayoutState();
     if (mobileLayoutQuery && mobileLayoutQuery.addEventListener) {
-        mobileLayoutQuery.addEventListener('change', syncMobileLayoutState);
+        mobileLayoutQuery.addEventListener('change', syncResponsiveLayoutState);
+    }
+    if (tabletLayoutQuery && tabletLayoutQuery.addEventListener) {
+        tabletLayoutQuery.addEventListener('change', syncResponsiveLayoutState);
     }
 
     // Check if Version Control addon is available
