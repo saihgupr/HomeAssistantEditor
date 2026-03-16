@@ -5935,6 +5935,20 @@ function highlightYaml(code) {
         // \u0001 = Start Token, \u0002 = End Token
         let processedLine = line;
 
+        // Rainbow Indentation Guides
+        const indentMatch = processedLine.match(/^(\s+)/);
+        if (indentMatch) {
+            const spaces = indentMatch[1];
+            let coloredSpaces = '';
+            // Assuming 2 spaces per indent level
+            for (let i = 0; i < spaces.length; i += 2) {
+                const level = i / 2;
+                const spaceChunk = spaces.substring(i, Math.min(i + 2, spaces.length));
+                coloredSpaces += `\u0001i${level % 6}\u0002${spaceChunk}\u0001/i\u0002`;
+            }
+            processedLine = processedLine.replace(/^(\s+)/, coloredSpaces);
+        }
+
         // YAML Anchors (&anchor) and Aliases (*alias)
         processedLine = processedLine.replace(/(&\w+)/g, '\u0001a\u0002$1\u0001/a\u0002');
         processedLine = processedLine.replace(/(\*\w+)/g, '\u0001a\u0002$1\u0001/a\u0002');
@@ -5975,6 +5989,10 @@ function highlightYaml(code) {
 
         // Replace placeholders with actual HTML spans
         processedLine = processedLine
+            // Indent rainbow
+            .replace(/\u0001i(\d+)\u0002/g, '<span class="indent-color-$1">')
+            .replace(/\u0001\/i\u0002/g, '</span>')
+            
             .replace(/\u0001k\u0002/g, '<span class="token key">')
             .replace(/\u0001\/k\u0002/g, '</span>')
             .replace(/\u0001c\u0002/g, '<span class="token colon">')
