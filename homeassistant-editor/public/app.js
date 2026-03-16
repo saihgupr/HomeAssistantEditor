@@ -191,6 +191,7 @@ const _state = {
     traceInterval: null,
     sidebarCollapsed: localStorage.getItem('ha-editor-sidebar-collapsed') === 'true',
     historyCollapsed: localStorage.getItem('ha-editor-history-collapsed') === 'true',
+    mobilePanel: 'list',
     // Version Control integration
     versionControl: {
         available: null, // null = unknown, true/false after check
@@ -303,6 +304,11 @@ const elements = {
     toastContainer: document.getElementById('toast-container'),
 
     // Filter
+
+    // Mobile UI
+    mobileOverlay: document.getElementById('mobile-overlay'),
+    mobileNav: document.getElementById('mobile-nav'),
+    mobileNavButtons: document.querySelectorAll('.mobile-nav-btn'),
 
 
     // Bulk Actions
@@ -1439,6 +1445,7 @@ async function loadTracesForItem() {
     const isVisible = !state.historyCollapsed;
     elements.panelTrace.style.display = isVisible ? 'flex' : 'none';
     if (elements.dividerTrace) elements.dividerTrace.style.display = isVisible ? 'block' : 'none';
+    updateMobileOverlay();
 
     if (!isVisible) return;
 
@@ -1749,6 +1756,58 @@ function handleReplayKeydown(e) {
 // UI Functions
 // ============================================
 
+const mobileLayoutQuery = window.matchMedia('(max-width: 900px)');
+
+function isMobileLayout() {
+    return mobileLayoutQuery && mobileLayoutQuery.matches;
+}
+
+function updateMobileNavButtons(activePanel) {
+    if (!elements.mobileNavButtons) return;
+    elements.mobileNavButtons.forEach(button => {
+        const isActive = button.dataset.panel === activePanel;
+        button.classList.toggle('is-active', isActive);
+        button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    });
+}
+
+function setMobilePanel(panel) {
+    if (!panel) return;
+    const nextPanel = panel === 'editor' ? 'editor' : 'list';
+    state.mobilePanel = nextPanel;
+
+    if (!isMobileLayout()) {
+        return;
+    }
+
+    document.body.classList.toggle('mobile-panel-editor', nextPanel === 'editor');
+    document.body.classList.toggle('mobile-panel-list', nextPanel === 'list');
+    updateMobileNavButtons(nextPanel);
+}
+
+function updateMobileOverlay() {
+    if (!isMobileLayout()) {
+        document.body.classList.remove('mobile-overlay-visible');
+        if (elements.mobileOverlay) elements.mobileOverlay.setAttribute('aria-hidden', 'true');
+        return;
+    }
+
+    const traceVisible = !state.historyCollapsed && !!state.selectedItem;
+    const shouldShow = !state.sidebarCollapsed || traceVisible;
+    document.body.classList.toggle('mobile-overlay-visible', shouldShow);
+    if (elements.mobileOverlay) elements.mobileOverlay.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
+}
+
+function syncMobileLayoutState() {
+    if (!isMobileLayout()) {
+        document.body.classList.remove('mobile-panel-editor', 'mobile-panel-list', 'mobile-overlay-visible');
+        return;
+    }
+
+    setMobilePanel(state.mobilePanel);
+    updateMobileOverlay();
+}
+
 function showToast(message, type = 'info') {
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
@@ -1767,6 +1826,9 @@ function showEmptyState() {
     elements.visualEditor.style.display = 'none';
     elements.yamlEditor.style.display = 'none';
     elements.editorFooter.style.display = 'none';
+    if (isMobileLayout()) {
+        setMobilePanel('list');
+    }
 }
 
 function showEditor() {
@@ -1782,6 +1844,9 @@ function showEditor() {
         elements.yamlEditor.style.display = 'flex';
     }
     updatePasteButtonsVisibility();
+    if (isMobileLayout()) {
+        setMobilePanel('editor');
+    }
 }
 
 function renderCurrentItems() {
@@ -2319,6 +2384,9 @@ function selectItem(id, forceType = null) {
 
         showEditor();
         loadTracesForItem();
+        if (isMobileLayout() && !state.sidebarCollapsed) {
+            toggleSidebar();
+        }
 
         // Load version history
         if (state.versionControl && state.versionControl.available) {
@@ -7729,6 +7797,31 @@ function initEventListeners() {
         elements.btnSidebarToggle.addEventListener('click', toggleSidebar);
     }
 
+    // Mobile navigation toggle
+    if (elements.mobileNavButtons && elements.mobileNavButtons.length) {
+        elements.mobileNavButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                setMobilePanel(button.dataset.panel);
+            });
+        });
+    }
+
+    if (elements.mobileOverlay) {
+        elements.mobileOverlay.addEventListener('click', () => {
+            if (!isMobileLayout()) return;
+            if (!state.sidebarCollapsed) {
+                toggleSidebar();
+            }
+            if (!state.historyCollapsed) {
+                state.historyCollapsed = true;
+                localStorage.setItem('ha-editor-history-collapsed', 'true');
+                if (elements.panelTrace) elements.panelTrace.style.display = 'none';
+                if (elements.dividerTrace) elements.dividerTrace.style.display = 'none';
+                updateMobileOverlay();
+            }
+        });
+    }
+
     // History Toggle
     if (elements.btnHistoryToggle) {
         elements.btnHistoryToggle.addEventListener('click', () => {
@@ -7739,6 +7832,7 @@ function initEventListeners() {
             const isVisible = !state.historyCollapsed;
             if (elements.panelTrace) elements.panelTrace.style.display = isVisible ? 'flex' : 'none';
             if (elements.dividerTrace) elements.dividerTrace.style.display = isVisible ? 'block' : 'none';
+            updateMobileOverlay();
 
             // Trigger resize to fix layout
             handleResize();
@@ -9173,6 +9267,7 @@ function initSidebar() {
         if (elements.dividerSidebar) elements.dividerSidebar.classList.add('hidden');
         if (elements.btnSidebarToggle) elements.btnSidebarToggle.classList.add('collapsed');
     }
+    updateMobileOverlay();
 }
 
 function toggleSidebar() {
@@ -9181,6 +9276,7 @@ function toggleSidebar() {
     if (elements.dividerSidebar) elements.dividerSidebar.classList.toggle('hidden', state.sidebarCollapsed);
     if (elements.btnSidebarToggle) elements.btnSidebarToggle.classList.toggle('collapsed', state.sidebarCollapsed);
     localStorage.setItem('ha-editor-sidebar-collapsed', state.sidebarCollapsed);
+    updateMobileOverlay();
 }
 
 // ============================================
@@ -9435,6 +9531,10 @@ async function init() {
     initResizers();
     loadPanelWidths();
     updateSearchClear();
+    syncMobileLayoutState();
+    if (mobileLayoutQuery && mobileLayoutQuery.addEventListener) {
+        mobileLayoutQuery.addEventListener('change', syncMobileLayoutState);
+    }
 
     // Check if Version Control addon is available
     await checkVersionControlStatus();

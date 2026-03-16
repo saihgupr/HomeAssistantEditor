@@ -1131,6 +1131,17 @@
     </div>
   </div>
 
+  <!-- Mobile Overlay + Navigation -->
+  <div class="mobile-overlay" id="mobile-overlay" aria-hidden="true"></div>
+  <nav class="mobile-nav" id="mobile-nav" aria-label="Mobile navigation">
+    <button class="mobile-nav-btn is-active" data-panel="list" aria-pressed="true" aria-label="Show list">
+      List
+    </button>
+    <button class="mobile-nav-btn" data-panel="editor" aria-pressed="false" aria-label="Show editor">
+      Editor
+    </button>
+  </nav>
+
   <!-- Ingress URL Fix - Must load first to intercept fetch calls -->
   <script src="js/ingress-fix.js"></script>
   <script src="js/fieldComponents.js"></script>
