@@ -12,9 +12,6 @@
 - **Color Vibrancy**: Restored vibrant shades for block colors in color mode (Trigger #6268ee, Action #9c3af0) and synchronized UI Tweaker defaults.
 - **Improved Color Logic**: Fixed backgrounds for entity names, sliders, and data boxes in color mode to ensure they use proper semi-transparent colors instead of defaulting to black.
 
-### Maintenance
-- Cleanup legacy development branches and remotes (`staging`).
-
  
  ## [1.1.0-beta.2] - 2026-03-07
  

@@ -24,11 +24,13 @@ The 1.1.0 release brings major quality-of-life improvements and performance opti
 - **Live Trigger ID Suggestions** — Real-time autocomplete suggestions for Trigger IDs in conditions, gathered from your current triggers.
 - **Human-Readable Logic** — Technical math syntax in `numeric_state` blocks is replaced with natural phrasing like "is above" or "is between".
 - **Enhanced Performance** — Parallel processing and smart caching make loading large configurations significantly faster.
+- **Package Support (Issue #7)** — Full support for automations and scripts organized within Home Assistant packages.
 
 ## Features
 
 - **Three-Column Layout** - Sidebar navigation, items list, and editor workspace side by side
 - **Visual Action Blocks** - Color-coded, expandable blocks for triggers, conditions, and actions
+- **Package Support (Issue #7)** - Automatic discovery and editing of automations/scripts stored in HA packages
 - **Version History & Restore** - Browse "commits" and restore previous versions via Version Control integration
 - **Session Undo/Redo** - Full support for reversing structural changes and field edits during your editing session
 - **Advanced Editing** - Inline editing with searchable pickers, live Trigger ID suggestions, and instant Visual/YAML toggles
@@ -154,6 +156,13 @@ When running in Docker mode, the application can be configured using the followi
 4. **Toggle to YAML** - Click the Visual/YAML toggle to see or edit raw YAML
 5. **Save** - Click Save to write changes and reload in Home Assistant
 
+### Context Menu Options
+
+Right-click on items or blocks to access powerful context-sensitive actions:
+
+- **On Automations/Scripts:** Quickly **Enable/Disable**, **Run**, **Duplicate**, or **Delete** without opening the item.
+- **On Visual Blocks:** Right-click anywhere on a block to **Duplicate**, **Delete**, **Enable/Disable**, **Show YAML**, or **Run** individual actions instantly.
+
 ### Keyboard Shortcuts
 
 | Shortcut | Action |
@@ -162,6 +171,7 @@ When running in Docker mode, the application can be configured using the followi
 | `Cmd/Ctrl + Z` | Undo |
 | `Cmd/Ctrl + Shift + Z` / `Cmd + Y` | Redo |
 | `Escape` | Close modal dialogs |
+| `Right Click` | Context menu (Items & Blocks) |
 
 ## Version Control & History
 
