@@ -4,12 +4,16 @@
 
 ### Added
 - **Script Stop Feature**: Added a "Stop" button to the editor header that allows users to cancel a running script or automation directly from the UI.
+- **Support for Home Assistant Packages (Issue #7)**: Display, trace, and edit automations/scripts stored in packages.
 
 ### Fixed
 - **Script Execution UI Persistence**: Fixed an issue where the "Running..." state would incorrectly persist when switching between scripts or automations.
 - **Safari Fix**: Prevented contact suggestions/icons in folder and tag section name fields by adding ignore attributes to input fields.
 - **Color Vibrancy**: Restored vibrant shades for block colors in color mode (Trigger #6268ee, Action #9c3af0) and synchronized UI Tweaker defaults.
 - **Improved Color Logic**: Fixed backgrounds for entity names, sliders, and data boxes in color mode to ensure they use proper semi-transparent colors instead of defaulting to black.
+
+### Maintenance
+- Cleanup legacy development branches and remotes (`staging`).
 
  
  ## [1.1.0-beta.2] - 2026-03-07
