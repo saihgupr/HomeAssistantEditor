@@ -1938,6 +1938,25 @@ app.delete('/api/orphaned/:type/:id', async (req, res) => {
     }
 });
 
+// Fetch metadata from Home Assistant (Areas, Labels, Entity Registry)
+app.get('/api/ha-metadata', async (req, res) => {
+    try {
+        const areaRegistry = await callHAWebSocket({ type: 'config/area_registry/list' });
+        const labelRegistry = await callHAWebSocket({ type: 'config/label_registry/list' });
+        const entityRegistry = await callHAWebSocket({ type: 'config/entity_registry/list' });
+
+        res.json({
+            success: true,
+            areas: areaRegistry,
+            labels: labelRegistry,
+            entities: entityRegistry
+        });
+    } catch (error) {
+        console.error('[API] Error fetching HA metadata:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // ============================================
 // Start server
 // ============================================

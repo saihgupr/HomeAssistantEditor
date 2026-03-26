@@ -81,12 +81,21 @@
 
         <div class="sidebar-header sidebar-header-folders">
           <h2>Folders</h2>
-          <button class="btn-add-folder" id="btn-add-folder" title="Add Folder" aria-label="Add Folder">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-          </button>
+          <div class="sidebar-header-actions">
+            <button class="btn-sync-ha" id="btn-sync-folders" title="Sync from Home Assistant" aria-label="Sync from Home Assistant">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 4v6h-6"></path>
+                <path d="M1 20v-6h6"></path>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+              </svg>
+            </button>
+            <button class="btn-add-folder" id="btn-add-folder" title="Add Folder" aria-label="Add Folder">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            </button>
+          </div>
         </div>
         <nav class="group-nav" id="folder-list">
           <!-- Folders will be rendered here -->
@@ -94,12 +103,21 @@
 
         <div class="sidebar-header sidebar-header-folders">
           <h2>Tags</h2>
-          <button class="btn-add-folder" id="btn-add-tag" title="Add Tag Section" aria-label="Add Tag Section">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-          </button>
+          <div class="sidebar-header-actions">
+            <button class="btn-sync-ha" id="btn-sync-tags" title="Sync from Home Assistant" aria-label="Sync from Home Assistant">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 4v6h-6"></path>
+                <path d="M1 20v-6h6"></path>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+              </svg>
+            </button>
+            <button class="btn-add-folder" id="btn-add-tag" title="Add Tag Section" aria-label="Add Tag Section">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            </button>
+          </div>
         </div>
         <nav class="group-nav" id="tag-group-list">
           <!-- Tag groups will be rendered here -->

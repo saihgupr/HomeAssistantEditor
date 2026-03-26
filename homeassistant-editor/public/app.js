@@ -201,6 +201,13 @@ const _state = {
         previewData: null, // The historical automation/script data
         loading: false
     },
+    // Home Assistant Metadata (Areas, Labels, Icons)
+    haMetadata: {
+        areas: [],
+        labels: [],
+        entities: {}, // mapping of entity_id -> { icon, area_id, labels }
+        syncInProgress: false
+    },
     runningEntities: new Set()
 };
 
@@ -2026,19 +2033,15 @@ function renderItemsList(items) {
     elements.itemsList.innerHTML = filtered.map(item => {
         const lastRunText = item.last_triggered ? formatRelativeTime(item.last_triggered) : 'Never';
         const activeClass = (state.selectedItem && String(state.selectedItem.id) === String(item.id)) ? 'active' : '';
-        const typeIcon = item._type === 'automation' ?
-            `<svg class="group-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg>` :
-            `<svg class="group-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg>`;
-        const showType = state.selectedFolder !== null || state.selectedTagGroup !== null;
-
         const descText = stripTagsFromText(item.description || '');
+        const itemIconHtml = getItemIconHtml(item);
 
         return `
     <div class="item-card ${item.enabled === false ? 'disabled' : ''} ${activeClass}" 
          data-id="${item.id}" data-type="${item._type}" draggable="true">
       <div class="item-name">
         <span class="status-dot ${item.enabled === false ? 'disabled' : ''}"></span>
-        ${showType ? `<div class="item-type-tag" title="${item._type === 'automation' ? 'Automation' : 'Script'}">${typeIcon}</div>` : ''}
+        <div class="item-icon">${itemIconHtml}</div>
         <div class="item-info">
           <div class="item-title">
             <span class="item-text">${escapeHtml(item.alias || item.id)}</span>
@@ -2070,9 +2073,11 @@ function parseSearchInput(value) {
 function getItemTags(item) {
     const source = `${item.alias || item.id || ''} ${item.description || ''}`;
     const regex = /#[\w-]+/g;
-    const matches = source.match(regex) || [];
+    const matches = (source.match(regex) || []);
+    
     const normalized = [];
     const display = [];
+    
     matches.forEach(tag => {
         const norm = tag.slice(1).toLowerCase();
         if (!normalized.includes(norm)) {
@@ -2080,14 +2085,21 @@ function getItemTags(item) {
             display.push(tag);
         }
     });
-    const variableTags = getVariableTags(item.variables);
-    variableTags.forEach(tag => {
-        const norm = tag.slice(1).toLowerCase();
-        if (!normalized.includes(norm)) {
-            normalized.push(norm);
-            display.push(tag);
-        }
-    });
+
+    // Add labels from HA metadata
+    const entityId = item._type === 'automation' ? `automation.${item.id}` : `script.${item.id}`;
+    const haInfo = state.haMetadata.entities[entityId];
+    if (haInfo && haInfo.labels) {
+        haInfo.labels.forEach(label => {
+            const tag = '#' + label.toLowerCase().replace(/\s+/g, '-');
+            const norm = tag.slice(1);
+            if (!normalized.includes(norm)) {
+                normalized.push(norm);
+                display.push(tag);
+            }
+        });
+    }
+
     return { normalized, display };
 }
 
@@ -7749,6 +7761,23 @@ function initEventListeners() {
         });
     });
 
+    // HA Metadata Sync
+    const btnSyncFolders = document.getElementById('btn-sync-folders');
+    const btnSyncTags = document.getElementById('btn-sync-tags');
+
+    if (btnSyncFolders) {
+        btnSyncFolders.addEventListener('click', (e) => {
+            e.stopPropagation();
+            syncHAMetadata('folders');
+        });
+    }
+    if (btnSyncTags) {
+        btnSyncTags.addEventListener('click', (e) => {
+            e.stopPropagation();
+            syncHAMetadata('tags');
+        });
+    }
+
     // btnAddFolder handler
     elements.btnAddFolder.addEventListener('click', () => {
         promptCreateFolder();
@@ -9579,4 +9608,143 @@ function toggleAllBlocks(collapse) {
     blocks.forEach(block => {
         block.classList.toggle('collapsed', collapse);
     });
+}
+
+/**
+ * Sync Metadata (Areas, Labels, Icons) from Home Assistant
+ */
+async function syncHAMetadata(type = 'all') {
+    if (state.haMetadata.syncInProgress) return;
+    state.haMetadata.syncInProgress = true;
+
+    const btnSyncFolders = document.getElementById('btn-sync-folders');
+    const btnSyncTags = document.getElementById('btn-sync-tags');
+    if (btnSyncFolders) btnSyncFolders.classList.add('syncing');
+    if (btnSyncTags) btnSyncTags.classList.add('syncing');
+
+    try {
+        console.log('[HA Sync] Fetching metadata...');
+        const response = await fetch('/api/ha-metadata');
+        const data = await response.json();
+
+        if (!data.success) throw new Error(data.error);
+
+        // 1. Process Areas -> Folders
+        if (type === 'all' || type === 'folders') {
+            const areaMap = {};
+            data.areas.forEach(area => {
+                areaMap[area.area_id] = {
+                    name: area.name,
+                    icon: area.icon || 'mdi:room'
+                };
+            });
+
+            // Find entities in these areas
+            const areaFolders = {};
+            data.entities.forEach(ent => {
+                if (ent.area_id && areaMap[ent.area_id]) {
+                    if (!areaFolders[ent.area_id]) {
+                        areaFolders[ent.area_id] = {
+                            name: areaMap[ent.area_id].name,
+                            items: []
+                        };
+                    }
+                    // Match against our automations/scripts
+                    const match = state.automations.find(a => a.id === ent.original_name || a.alias === ent.original_name) ||
+                                  state.scripts.find(s => s.id === ent.original_name.replace('script.', ''));
+                    
+                    if (match) areaFolders[ent.area_id].items.push(match.id);
+                }
+            });
+
+            // Create/Update folders
+            for (const [areaId, areaData] of Object.entries(areaFolders)) {
+                if (areaData.items.length === 0) continue;
+                
+                let existing = state.folders.find(f => f.name === areaData.name);
+                if (existing) {
+                    // Update items (merge)
+                    existing.items = Array.from(new Set([...existing.items, ...areaData.items]));
+                } else {
+                    state.folders.push({
+                        id: 'ha-area-' + areaId,
+                        name: areaData.name,
+                        items: areaData.items,
+                        isAutoGenerated: true
+                    });
+                }
+            }
+            saveFolders();
+            renderFolders();
+        }
+
+        // 2. Process Labels -> Tag Groups
+        if (type === 'all' || type === 'tags') {
+            const labels = data.labels.map(l => ({
+                id: 'ha-label-' + l.label_id,
+                name: l.name,
+                tags: ['#' + l.name.toLowerCase().replace(/\s+/g, '-')],
+                isAutoGenerated: true
+            }));
+
+            labels.forEach(newGroup => {
+                let existing = state.tagGroups.find(g => g.name === newGroup.name);
+                if (!existing) {
+                    state.tagGroups.push(newGroup);
+                } else {
+                    // Update tags if needed
+                    if (!existing.tags.includes(newGroup.tags[0])) {
+                        existing.tags.push(newGroup.tags[0]);
+                    }
+                }
+            });
+            saveTagGroups();
+            renderTagGroups();
+        }
+
+        // 3. Process Entity Registry -> Icon Mapping
+        const entityMap = {};
+        data.entities.forEach(ent => {
+            entityMap[ent.entity_id] = {
+                icon: ent.icon || ent.original_icon,
+                area_id: ent.area_id,
+                labels: ent.labels || []
+            };
+        });
+        state.haMetadata.entities = entityMap;
+
+        // Refresh UI
+        loadItems();
+        showToast('Sync complete', 'success');
+
+    } catch (error) {
+        console.error('[HA Sync] Error:', error);
+        showToast('Sync failed: ' + error.message, 'error');
+    } finally {
+        state.haMetadata.syncInProgress = false;
+        if (btnSyncFolders) btnSyncFolders.classList.remove('syncing');
+        if (btnSyncTags) btnSyncTags.classList.remove('syncing');
+    }
+}
+
+/**
+ * Returns HTML for the item's icon (either from HA registry or type fallback)
+ */
+function getItemIconHtml(item) {
+    const entityId = item._type === 'automation' ? `automation.${item.id}` : `script.${item.id}`;
+    const haInfo = state.haMetadata.entities[entityId];
+
+    if (haInfo && haInfo.icon) {
+        // Simple heuristic to render mdi icons vs others
+        if (haInfo.icon.startsWith('mdi:')) {
+            return `<ha-icon icon="${haInfo.icon}"></ha-icon>`;
+        }
+        return `<ha-icon icon="${haInfo.icon}"></ha-icon>`; // Assuming frontend has ha-icon
+    }
+
+    // Fallback to type icons
+    if (item._type === 'automation') {
+        return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg>`;
+    }
+    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg>`;
 }
