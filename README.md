@@ -5,11 +5,12 @@
 
 A powerful visual editor for Home Assistant automations and scripts. This add-on provides a cleaner, more intuitive interface for creating and editing automations, with built-in version history that allows you to review changes and restore previous versions when needed.
 
-![Screenshot 1](https://github.com/saihgupr/HomeAssistantEditor/raw/main/images/screenshot-1.png)
-![Screenshot 2](https://github.com/saihgupr/HomeAssistantEditor/raw/main/images/screenshot-2.png)
-![Screenshot 3](https://github.com/saihgupr/HomeAssistantEditor/raw/main/images/screenshot-4.png)
-![Screenshot 4](https://github.com/saihgupr/HomeAssistantEditor/raw/main/images/screenshot-5.png)
-![Screenshot 5](https://github.com/saihgupr/HomeAssistantEditor/raw/main/images/screenshot-3.png)
+![Screenshot 1](images/Screenshot%202026-03-26%20at%207.52.06%E2%80%AFAM.png)
+![Screenshot 2](images/Screenshot%202026-03-26%20at%207.53.43%E2%80%AFAM.png)
+![Screenshot 3](images/Screenshot%202026-03-26%20at%207.53.51%E2%80%AFAM.png)
+![Screenshot 4](images/Screenshot%202026-03-26%20at%207.54.48%E2%80%AFAM.png)
+![Screenshot 5](images/Screenshot%202026-03-26%20at%207.55.21%E2%80%AFAM.png)
+![Screenshot 6](images/Screenshot%202026-03-26%20at%207.56.07%E2%80%AFAM.png)
 
 ## What's New in v1.1.0
 
