@@ -11,6 +11,17 @@ A powerful visual editor for Home Assistant automations and scripts. This add-on
 ![Screenshot 4](https://github.com/saihgupr/HomeAssistantEditor/raw/main/images/screenshot-5.png)
 ![Screenshot 5](https://github.com/saihgupr/HomeAssistantEditor/raw/main/images/screenshot-3.png)
 
+## What's New in v1.1.0
+
+The 1.1.0 release brings major quality-of-life improvements and performance optimizations:
+
+- **Session Undo/Redo** — Accidentally deleted a block or changed a field? You can now undo and redo all actions during your editing session.
+- **Script Run & Stop Controls** — Full parity with the automation experience. Run, stop, and toggle scripts directly from the editor header.
+- **Condition Testing** — Test your conditions (including templates!) with a single click and get instant visual feedback.
+- **Live Trigger ID Suggestions** — Real-time autocomplete suggestions for Trigger IDs in conditions, gathered from your current triggers.
+- **Human-Readable Logic** — Technical math syntax in `numeric_state` blocks is replaced with natural phrasing like "is above" or "is between".
+- **Enhanced Performance** — Parallel processing and smart caching make loading large configurations significantly faster.
+
 ## Features
 
 - **Three-Column Layout** - Sidebar navigation, items list, and editor workspace side by side
