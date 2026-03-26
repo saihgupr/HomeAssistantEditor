@@ -18,6 +18,8 @@
 
 ### Fixed
 - **Safari Support**: Improved compatibility for Safari and mobile browsers with better input protection.
+- **Device Trigger Selection**: Fixed "No devices found" in Device triggers, conditions, and actions by using the correct Home Assistant WebSocket API for device and area registries.
+- **Block Title Display**: Improved display of device triggers by pre-loading device names on startup to avoid showing raw IDs.
 - **Enhanced Color Rendering**: Fixed background transparency and color vibrancy for all UI blocks in color mode.
 - **Architecture Stability**: Pre-built Docker images for multiple architectures to prevent build failures during installation.
 - **Metadata Cleanup**: Automatically strips internal markers to prevent "Unknown keys" errors when saving YAML.

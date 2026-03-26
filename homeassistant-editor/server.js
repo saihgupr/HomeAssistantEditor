@@ -1704,23 +1704,7 @@ app.get('/api/devices', async (req, res) => {
     }
 
     try {
-        const host = HA_URL ? null : await resolveSupervisorIP();
-        const apiUrl = HA_URL
-            ? `${HA_URL}/api/devices`
-            : `http://${host}/core/api/devices`;
-
-        const response = await fetch(apiUrl, {
-            headers: {
-                'Authorization': `Bearer ${supervisorToken}`,
-                'Content-Type': 'application/json'
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error(`HA API returned ${response.status}`);
-        }
-
-        const devices = await response.json();
+        const devices = await callHAWebSocket({ type: 'config/device_registry/list' });
 
         const simplified = devices.map(d => ({
             device_id: d.id || d.device_id,
@@ -1749,23 +1733,7 @@ app.get('/api/areas', async (req, res) => {
     }
 
     try {
-        const host = HA_URL ? null : await resolveSupervisorIP();
-        const apiUrl = HA_URL
-            ? `${HA_URL}/api/areas`
-            : `http://${host}/core/api/areas`;
-
-        const response = await fetch(apiUrl, {
-            headers: {
-                'Authorization': `Bearer ${supervisorToken}`,
-                'Content-Type': 'application/json'
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error(`HA API returned ${response.status}`);
-        }
-
-        const areas = await response.json();
+        const areas = await callHAWebSocket({ type: 'config/area_registry/list' });
         const simplified = areas.map(a => ({
             area_id: a.id || a.area_id,
             name: a.name || a.id
@@ -1938,18 +1906,20 @@ app.delete('/api/orphaned/:type/:id', async (req, res) => {
     }
 });
 
-// Fetch metadata from Home Assistant (Areas, Labels, Entity Registry)
+// Fetch metadata from Home Assistant (Areas, Labels, Entity Registry, Device Registry)
 app.get('/api/ha-metadata', async (req, res) => {
     try {
         const areaRegistry = await callHAWebSocket({ type: 'config/area_registry/list' });
         const labelRegistry = await callHAWebSocket({ type: 'config/label_registry/list' });
         const entityRegistry = await callHAWebSocket({ type: 'config/entity_registry/list' });
+        const deviceRegistry = await callHAWebSocket({ type: 'config/device_registry/list' });
 
         res.json({
             success: true,
             areas: areaRegistry,
             labels: labelRegistry,
-            entities: entityRegistry
+            entities: entityRegistry,
+            devices: deviceRegistry
         });
     } catch (error) {
         console.error('[API] Error fetching HA metadata:', error);

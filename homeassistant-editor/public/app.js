@@ -9582,6 +9582,16 @@ async function init() {
     await checkVersionControlStatus();
     initVersionNavStyle();
 
+    // Load caches early so friendly names are available for existing items
+    if (window.fieldComponents) {
+        Promise.all([
+            window.fieldComponents.entityCache.load(),
+            window.fieldComponents.deviceCache.load(),
+            window.fieldComponents.areaCache.load(),
+            window.fieldComponents.serviceCache.load()
+        ]).catch(err => console.warn('[init] Failed to pre-load caches:', err));
+    }
+
     // Fetch both counts on startup (in parallel)
     const [automations, scripts] = await Promise.all([
         fetchAutomations(),
