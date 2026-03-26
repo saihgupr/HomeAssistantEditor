@@ -24,19 +24,17 @@ The 1.1.0 release brings major quality-of-life improvements and performance opti
 - **Live Trigger ID Suggestions** — Real-time autocomplete suggestions for Trigger IDs in conditions, gathered from your current triggers.
 - **Human-Readable Logic** — Technical math syntax in `numeric_state` blocks is replaced with natural phrasing like "is above" or "is between".
 - **Enhanced Performance** — Parallel processing and smart caching make loading large configurations significantly faster.
-- **Package Support (Issue #7)** — Full support for automations and scripts organized within Home Assistant packages.
-- **HA Metadata Sync (Issue #6)** — Sync Areas, Labels, and Icons directly from Home Assistant to automatically organize your folders and tags.
+- **Package Support** — Full support for automations and scripts organized within Home Assistant packages.
+- **HA Metadata Sync** — Sync Areas, Labels, and Icons directly from Home Assistant to automatically organize your folders and tags.
 
 ## Features
 
 - **Three-Column Layout** - Sidebar navigation, items list, and editor workspace side by side
 - **Visual Action Blocks** - Color-coded, expandable blocks for triggers, conditions, and actions
-- **Package Support (Issue #7)** - Automatic discovery and editing of automations/scripts stored in HA packages
 - **Version History & Restore** - Browse "commits" and restore previous versions via Version Control integration
 - **Session Undo/Redo** - Full support for reversing structural changes and field edits during your editing session
 - **Advanced Editing** - Inline editing with searchable pickers, live Trigger ID suggestions, and instant Visual/YAML toggles
 - **Smart Folders & Hashtags** - Organize and filter your items using custom folders and tags
-- **HA Metadata Sync (Issue #6)** - Automatically import HA Areas as folders and HA Labels as tag sections with official icon support
 - **Trace Replay Mode** - Navigate past runs step-by-step to debug logic or condition failures
 - **Professional YAML Support** - Handles `!include` patterns and orphan entity cleanup automatically
 - **Instant Sync** - Changes are saved directly to your YAML and auto-reloaded in Home Assistant
