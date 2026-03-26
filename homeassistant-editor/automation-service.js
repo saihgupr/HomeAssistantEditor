@@ -125,6 +125,33 @@ export async function getConfigFilePaths(configPath) {
           // Directory might not exist
         }
       }
+
+      // Match packages: !include_dir_named packages_dir or packages: !include individual_file.yaml
+      const packageMatch = trimmedLine.match(/packages:\s*(!include\s+|!include_dir_named\s+)(.+)$/);
+      if (packageMatch) {
+        const isDir = packageMatch[1].includes('_dir');
+        const pathPart = packageMatch[2].trim();
+        const fullPath = path.join(configPath, pathPart);
+        
+        if (isDir) {
+          try {
+            const files = await fs.promises.readdir(fullPath);
+            for (const file of files) {
+              if (file.endsWith('.yaml') || file.endsWith('.yml')) {
+                const p = path.join(fullPath, file);
+                automationPaths.push(p);
+                scriptPaths.push(p);
+              }
+            }
+          } catch (err) {
+            // Directory might not exist
+          }
+        } else {
+          // Individual file include
+          automationPaths.push(fullPath);
+          scriptPaths.push(fullPath);
+        }
+      }
     }
 
     // Default fallback if nothing found in config
@@ -187,30 +214,78 @@ export async function extractAutomations(configPath) {
               }
             });
           }
-          // Handle object format
+          // Handle object format (packages or named automations)
           else if (typeof data === 'object') {
-            Object.keys(data).forEach(key => {
-              const auto = data[key];
-              if (auto && typeof auto === 'object') {
-                const hasTriggers = auto.triggers || auto.trigger;
-                if (hasTriggers) {
-                  fileAutomations.push({
-                    id: auto.id || key,
-                    alias: auto.alias || key,
-                    description: auto.description || '',
-                    mode: auto.mode || 'single',
-                    variables: auto.variables || {},
-                    triggers: auto.triggers || auto.trigger || [],
-                    conditions: auto.conditions || auto.condition || [],
-                    actions: auto.actions || auto.action || [],
-                    file: relativeToConfigPath,
-                    fullPath: filePath,
-                    key: key,
-                    enabled: auto.enabled !== false && auto.initial_state !== false
-                  });
-                }
+            // Check for 'automation' key (standard in packages)
+            if (data.automation) {
+              const autoData = data.automation;
+              if (Array.isArray(autoData)) {
+                autoData.forEach((auto, index) => {
+                  if (auto && (auto.alias || auto.id)) {
+                    const lineNumber = findLineNumber(lines, auto.id || `auto_${index}`, auto.alias, true);
+                    fileAutomations.push({
+                      id: auto.id || `auto_${index}`,
+                      alias: auto.alias || `Automation ${index}`,
+                      description: auto.description || '',
+                      mode: auto.mode || 'single',
+                      variables: auto.variables || {},
+                      triggers: auto.triggers || auto.trigger || [],
+                      conditions: auto.conditions || auto.condition || [],
+                      actions: auto.actions || auto.action || [],
+                      file: relativeToConfigPath,
+                      fullPath: filePath,
+                      index: index,
+                      enabled: auto.enabled !== false && auto.initial_state !== false,
+                      lineNumber: lineNumber
+                    });
+                  }
+                });
+              } else if (typeof autoData === 'object') {
+                Object.keys(autoData).forEach(key => {
+                  const auto = autoData[key];
+                  if (auto && typeof auto === 'object') {
+                    fileAutomations.push({
+                      id: auto.id || key,
+                      alias: auto.alias || key,
+                      description: auto.description || '',
+                      mode: auto.mode || 'single',
+                      variables: auto.variables || {},
+                      triggers: auto.triggers || auto.trigger || [],
+                      conditions: auto.conditions || auto.condition || [],
+                      actions: auto.actions || auto.action || [],
+                      file: relativeToConfigPath,
+                      fullPath: filePath,
+                      key: key,
+                      enabled: auto.enabled !== false && auto.initial_state !== false
+                    });
+                  }
+                });
               }
-            });
+            } else {
+              // Flat object format (key: { triggers: ... })
+              Object.keys(data).forEach(key => {
+                const auto = data[key];
+                if (auto && typeof auto === 'object') {
+                  const hasTriggers = auto.triggers || auto.trigger;
+                  if (hasTriggers) {
+                    fileAutomations.push({
+                      id: auto.id || key,
+                      alias: auto.alias || key,
+                      description: auto.description || '',
+                      mode: auto.mode || 'single',
+                      variables: auto.variables || {},
+                      triggers: auto.triggers || auto.trigger || [],
+                      conditions: auto.conditions || auto.condition || [],
+                      actions: auto.actions || auto.action || [],
+                      file: relativeToConfigPath,
+                      fullPath: filePath,
+                      key: key,
+                      enabled: auto.enabled !== false && auto.initial_state !== false
+                    });
+                  }
+                }
+              });
+            }
           }
         }
         return fileAutomations;
@@ -250,32 +325,35 @@ export async function extractScripts(configPath) {
           const relativeToConfigPath = path.relative(configPath, filePath);
           const lines = content.split('\n');
 
-          Object.keys(data).forEach(key => {
-            const script = data[key];
-            if (script && typeof script === 'object') {
-              const hasSequence = script.sequence;
-              const hasTriggers = script.triggers || script.trigger;
+          const scriptData = data.script || data;
+          if (scriptData && typeof scriptData === 'object' && !Array.isArray(scriptData)) {
+            Object.keys(scriptData).forEach(key => {
+              const script = scriptData[key];
+              if (script && typeof script === 'object') {
+                const hasSequence = script.sequence;
+                const hasTriggers = script.triggers || script.trigger;
 
-              // Scripts have sequence but NOT triggers
-              if (hasSequence && !hasTriggers) {
-                const lineNumber = findLineNumber(lines, key, script.alias, false);
-                fileScripts.push({
-                  id: key,
-                  alias: script.alias || key,
-                  description: script.description || '',
-                  mode: script.mode || 'single',
-                  sequence: script.sequence || [],
-                  variables: script.variables || {},
-                  fields: script.fields || {},
-                  icon: script.icon || '',
-                  file: relativeToConfigPath,
-                  fullPath: filePath,
-                  key: key,
-                  lineNumber: lineNumber
-                });
+                // Scripts have sequence but NOT triggers
+                if (hasSequence && !hasTriggers) {
+                  const lineNumber = findLineNumber(lines, key, script.alias, false);
+                  fileScripts.push({
+                    id: key,
+                    alias: script.alias || key,
+                    description: script.description || '',
+                    mode: script.mode || 'single',
+                    sequence: script.sequence || [],
+                    variables: script.variables || {},
+                    fields: script.fields || {},
+                    icon: script.icon || '',
+                    file: relativeToConfigPath,
+                    fullPath: filePath,
+                    key: key,
+                    lineNumber: lineNumber
+                  });
+                }
               }
-            }
-          });
+            });
+          }
         }
         return fileScripts;
       } catch (error) {
