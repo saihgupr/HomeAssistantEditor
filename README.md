@@ -16,7 +16,8 @@ A powerful visual editor for Home Assistant automations and scripts. This add-on
 - **Three-Column Layout** - Sidebar navigation, items list, and editor workspace side by side
 - **Visual Action Blocks** - Color-coded, expandable blocks for triggers, conditions, and actions
 - **Version History & Restore** - Browse "commits" and restore previous versions via Version Control integration
-- **Advanced Editing** - Inline editing with searchable pickers and instant Visual/YAML toggles
+- **Session Undo/Redo** - Full support for reversing structural changes and field edits during your editing session
+- **Advanced Editing** - Inline editing with searchable pickers, live Trigger ID suggestions, and instant Visual/YAML toggles
 - **Smart Folders & Hashtags** - Organize and filter your items using custom folders and tags
 - **Trace Replay Mode** - Step through past runs to debug logic and inspect condition failures
 - **Professional YAML Support** - Handles `!include` patterns and orphan entity cleanup automatically
@@ -151,6 +152,8 @@ Right-click on items or blocks to access powerful context-sensitive actions:
 | Shortcut | Action |
 | :--- | :--- |
 | `Cmd/Ctrl + S` | Save current item |
+| `Cmd/Ctrl + Z` | Undo |
+| `Cmd/Ctrl + Shift + Z` / `Cmd + Y` | Redo |
 | `Escape` | Close modal dialogs |
 | `Right Click` | Context menu (Items & Blocks) |
 
