@@ -5,6 +5,7 @@
 ### Added
 - **Script Stop Feature**: Added a "Stop" button to the editor header that allows users to cancel a running script or automation directly from the UI.
 - **Support for Home Assistant Packages (Issue #7)**: Display, trace, and edit automations/scripts stored in packages.
+- **Import Tags, Areas & Icons from HA (Issue #6)**: Automatically sync HA Areas to folders, HA Labels to tag sections, and display official entity icons in the list.
 
 ### Fixed
 - **Script Execution UI Persistence**: Fixed an issue where the "Running..." state would incorrectly persist when switching between scripts or automations.
