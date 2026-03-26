@@ -1,18 +1,18 @@
 <h1>
   Home Assistant Editor
-  <img src="images/app-icon.png" width="80" align="right" />
+  <img src="https://raw.githubusercontent.com/saihgupr/HomeAssistantEditor/main/images/app-icon.png" width="80" align="right" />
 </h1>
 
 A powerful visual editor for Home Assistant automations and scripts. This add-on provides a cleaner, more intuitive interface for creating and editing automations, with built-in version history that allows you to review changes and restore previous versions when needed.
 
-![Screenshot 1](images/Screenshot%202026-03-26%20at%208.13.39%E2%80%AFAM.png)
-![Screenshot 2](images/Screenshot%202026-03-26%20at%208.14.05%E2%80%AFAM.png)
-![Screenshot 3](images/Screenshot%202026-03-26%20at%208.14.36%E2%80%AFAM.png)
-![Screenshot 4](images/Screenshot%202026-03-26%20at%208.15.06%E2%80%AFAM.png)
-![Screenshot 5](images/Screenshot%202026-03-26%20at%208.15.15%E2%80%AFAM.png)
-![Screenshot 6](images/Screenshot%202026-03-26%20at%208.15.37%E2%80%AFAM.png)
-![Screenshot 7](images/Screenshot%202026-03-26%20at%208.16.23%E2%80%AFAM.png)
-![Screenshot 8](images/Screenshot%202026-03-26%20at%208.19.15%E2%80%AFAM.png)
+![Screenshot 1](https://raw.githubusercontent.com/saihgupr/HomeAssistantEditor/main/images/1.png)
+![Screenshot 2](https://raw.githubusercontent.com/saihgupr/HomeAssistantEditor/main/images/2.png)
+![Screenshot 3](https://raw.githubusercontent.com/saihgupr/HomeAssistantEditor/main/images/3.png)
+![Screenshot 4](https://raw.githubusercontent.com/saihgupr/HomeAssistantEditor/main/images/4.png)
+![Screenshot 5](https://raw.githubusercontent.com/saihgupr/HomeAssistantEditor/main/images/5.png)
+![Screenshot 6](https://raw.githubusercontent.com/saihgupr/HomeAssistantEditor/main/images/6.png)
+![Screenshot 7](https://raw.githubusercontent.com/saihgupr/HomeAssistantEditor/main/images/7.png)
+![Screenshot 8](https://raw.githubusercontent.com/saihgupr/HomeAssistantEditor/main/images/8.png)
 
 ## What's New in v1.1.0
 
