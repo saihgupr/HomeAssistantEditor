@@ -32,6 +32,16 @@ import {
     getRawScriptYaml
 } from './automation-service.js';
 
+process.on('uncaughtException', (err) => {
+    console.error('CRITICAL UNCAUGHT EXCEPTION:', err);
+    if (err && err.stack) console.error(err.stack);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('CRITICAL UNHANDLED REJECTION:', reason);
+    if (reason && reason.stack) console.error(reason.stack);
+});
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -1771,10 +1781,6 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok', configPath: CONFIG_PATH });
 });
 
-// Serve index.html for all other routes (SPA)
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
 
 // ============================================
 // Orphaned Entity Management
@@ -1909,24 +1915,31 @@ app.delete('/api/orphaned/:type/:id', async (req, res) => {
 // Fetch metadata from Home Assistant (Areas, Labels, Entity Registry, Device Registry, Categories)
 app.get('/api/ha-metadata', async (req, res) => {
     try {
+        console.log('[API] ha-metadata: Fetching areaRegistry...');
         const areaRegistry = await callHAWebSocket({ type: 'config/area_registry/list' });
+        console.log('[API] ha-metadata: Fetching labelRegistry...');
         const labelRegistry = await callHAWebSocket({ type: 'config/label_registry/list' });
+        console.log('[API] ha-metadata: Fetching entityRegistry...');
         const entityRegistry = await callHAWebSocket({ type: 'config/entity_registry/list' });
+        console.log('[API] ha-metadata: Fetching deviceRegistry...');
         const deviceRegistry = await callHAWebSocket({ type: 'config/device_registry/list' });
 
         let automationCategories = [];
         let scriptCategories = [];
         try {
+            console.log('[API] ha-metadata: Fetching automationCategories...');
             automationCategories = await callHAWebSocket({ type: 'config/category_registry/list', scope: 'automation' }) || [];
         } catch (err) {
             console.warn('[API] Could not fetch automation categories registry:', err.message);
         }
         try {
+            console.log('[API] ha-metadata: Fetching scriptCategories...');
             scriptCategories = await callHAWebSocket({ type: 'config/category_registry/list', scope: 'script' }) || [];
         } catch (err) {
             console.warn('[API] Could not fetch script categories registry:', err.message);
         }
 
+        console.log('[API] ha-metadata: All registries fetched successfully!');
         res.json({
             success: true,
             areas: areaRegistry,
@@ -1940,6 +1953,11 @@ app.get('/api/ha-metadata', async (req, res) => {
         console.error('[API] Error fetching HA metadata:', error);
         res.status(500).json({ success: false, error: error.message });
     }
+});
+
+// Serve index.html for all other routes (SPA)
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // ============================================
