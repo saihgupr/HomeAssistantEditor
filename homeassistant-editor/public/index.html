@@ -123,21 +123,23 @@
           <!-- Tag groups will be rendered here -->
         </nav>
 
-        <div class="sidebar-header sidebar-header-folders">
-          <h2>Categories</h2>
-          <div class="sidebar-header-actions">
-            <button class="btn-sync-ha" id="btn-sync-categories" title="Sync from Home Assistant" aria-label="Sync from Home Assistant">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M23 4v6h-6"></path>
-                <path d="M1 20v-6h6"></path>
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-              </svg>
-            </button>
+        <div id="sidebar-categories-group" style="display: none;">
+          <div class="sidebar-header sidebar-header-folders">
+            <h2>Categories</h2>
+            <div class="sidebar-header-actions">
+              <button class="btn-sync-ha" id="btn-sync-categories" title="Sync from Home Assistant" aria-label="Sync from Home Assistant">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M23 4v6h-6"></path>
+                  <path d="M1 20v-6h6"></path>
+                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                </svg>
+              </button>
+            </div>
           </div>
+          <nav class="group-nav" id="category-list">
+            <!-- Categories will be rendered here -->
+          </nav>
         </div>
-        <nav class="group-nav" id="category-list">
-          <!-- Categories will be rendered here -->
-        </nav>
       </aside>
 
       <div class="divider" data-id="sidebar"></div>
@@ -563,6 +565,15 @@
               <div class="settings-label">
                 <span class="settings-title">Live Dangerously Mode</span>
                 <span class="settings-description">Automatically save valid visual edits while you type</span>
+              </div>
+            </label>
+            <div class="settings-divider"></div>
+            <label class="settings-toggle">
+              <input type="checkbox" id="setting-show-categories">
+              <span class="toggle-slider"></span>
+              <div class="settings-label">
+                <span class="settings-title">Show Categories</span>
+                <span class="settings-description">Enable Home Assistant automation/script categories support</span>
               </div>
             </label>
           </div>

@@ -179,7 +179,8 @@ const _state = {
         colorModeEnabled: localStorage.getItem('ha-editor-color-mode') === 'true', // Default to false
         miniListMode: localStorage.getItem('ha-editor-mini-list') === 'true',
         autoSaveDangerously: localStorage.getItem('ha-editor-autosave-danger') === 'true',
-        showRequiredBadges: localStorage.getItem('ha-editor-show-required') !== 'false'
+        showRequiredBadges: localStorage.getItem('ha-editor-show-required') !== 'false',
+        showCategories: localStorage.getItem('ha-editor-show-categories') === 'true'
     },
     clipboard: null, // For copy/paste blocks
     draggingBlock: null, // { section, index }
@@ -294,6 +295,8 @@ const elements = {
     settingColorMode: document.getElementById('setting-color-mode'),
     settingMiniList: document.getElementById('setting-mini-list'),
     settingAutoSaveDanger: document.getElementById('setting-autosave-danger'),
+    settingShowCategories: document.getElementById('setting-show-categories'),
+    sidebarCategoriesGroup: document.getElementById('sidebar-categories-group'),
 
     // Trace Panel
     panelTrace: document.getElementById('panel-trace'),
@@ -2021,7 +2024,7 @@ function renderItemsList(items) {
     }
 
     // Filter by category if one is selected
-    if (state.selectedCategory) {
+    if (state.selectedCategory && state.settings.showCategories) {
         filtered = filtered.filter(item => String(item.category) === String(state.selectedCategory));
     }
 
@@ -2047,7 +2050,7 @@ function renderItemsList(items) {
         const activeClass = (state.selectedItem && String(state.selectedItem.id) === String(item.id)) ? 'active' : '';
         const descText = stripTagsFromText(item.description || '');
         const itemIconHtml = getItemIconHtml(item);
-        const catInfo = getItemCategoryInfo(item);
+        const catInfo = state.settings.showCategories ? getItemCategoryInfo(item) : null;
         const catBadgeHtml = catInfo ? `
             <div class="item-category-badge">
                 <ha-icon icon="${catInfo.icon || 'mdi:folder-outline'}"></ha-icon>
@@ -2482,6 +2485,7 @@ function populateEditor(item, expansionState = null) {
 
         // Populate Categories dropdown
         if (elements.editorCategory) {
+            elements.editorCategory.style.display = state.settings.showCategories ? '' : 'none';
             elements.editorCategory.innerHTML = '<option value="">No Category</option>';
             const categories = isAutomation ? (state.haMetadata.automationCategories || []) : (state.haMetadata.scriptCategories || []);
             categories.forEach(cat => {
@@ -8459,6 +8463,30 @@ function initEventListeners() {
             } else {
                 showToast('Autosave disabled', 'info');
             }
+        });
+    }
+
+    // Settings - Show Categories toggle
+    if (elements.settingShowCategories) {
+        elements.settingShowCategories.checked = state.settings.showCategories;
+        if (elements.sidebarCategoriesGroup) {
+            elements.sidebarCategoriesGroup.style.display = state.settings.showCategories ? '' : 'none';
+        }
+        elements.settingShowCategories.addEventListener('change', (e) => {
+            state.settings.showCategories = e.target.checked;
+            localStorage.setItem('ha-editor-show-categories', e.target.checked);
+            
+            if (elements.sidebarCategoriesGroup) {
+                elements.sidebarCategoriesGroup.style.display = e.target.checked ? '' : 'none';
+            }
+            if (elements.editorCategory) {
+                elements.editorCategory.style.display = e.target.checked ? '' : 'none';
+            }
+            if (!e.target.checked) {
+                state.selectedCategory = null;
+                renderCategories();
+            }
+            loadItems();
         });
     }
 
