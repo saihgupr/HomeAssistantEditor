@@ -201,6 +201,7 @@ export async function extractAutomations(configPath) {
                   alias: auto.alias || `Automation ${index}`,
                   description: auto.description || '',
                   mode: auto.mode || 'single',
+                  category: auto.category || '',
                   variables: auto.variables || {},
                   triggers: auto.triggers || auto.trigger || [],
                   conditions: auto.conditions || auto.condition || [],
@@ -228,6 +229,7 @@ export async function extractAutomations(configPath) {
                       alias: auto.alias || `Automation ${index}`,
                       description: auto.description || '',
                       mode: auto.mode || 'single',
+                      category: auto.category || '',
                       variables: auto.variables || {},
                       triggers: auto.triggers || auto.trigger || [],
                       conditions: auto.conditions || auto.condition || [],
@@ -249,6 +251,7 @@ export async function extractAutomations(configPath) {
                       alias: auto.alias || key,
                       description: auto.description || '',
                       mode: auto.mode || 'single',
+                      category: auto.category || '',
                       variables: auto.variables || {},
                       triggers: auto.triggers || auto.trigger || [],
                       conditions: auto.conditions || auto.condition || [],
@@ -273,6 +276,7 @@ export async function extractAutomations(configPath) {
                       alias: auto.alias || key,
                       description: auto.description || '',
                       mode: auto.mode || 'single',
+                      category: auto.category || '',
                       variables: auto.variables || {},
                       triggers: auto.triggers || auto.trigger || [],
                       conditions: auto.conditions || auto.condition || [],
@@ -341,6 +345,7 @@ export async function extractScripts(configPath) {
                     alias: script.alias || key,
                     description: script.description || '',
                     mode: script.mode || 'single',
+                    category: script.category || '',
                     sequence: script.sequence || [],
                     variables: script.variables || {},
                     fields: script.fields || {},
@@ -411,7 +416,7 @@ export async function updateAutomation(automationId, updatedAutomation, configPa
     }
 
     // Validate for unknown keys (common typos like 'triggersa' instead of 'triggers')
-    const knownKeys = ['id', 'alias', 'description', 'mode', 'triggers', 'conditions', 'actions', 'enabled', 'trigger', 'condition', 'action', 'initial_state', 'max', 'max_exceeded', 'variables', 'trace', '_type', 'entity_id'];
+    const knownKeys = ['id', 'alias', 'description', 'mode', 'triggers', 'conditions', 'actions', 'enabled', 'trigger', 'condition', 'action', 'initial_state', 'max', 'max_exceeded', 'variables', 'trace', '_type', 'entity_id', 'category'];
     const unknownKeys = Object.keys(updatedAutomation).filter(k => !knownKeys.includes(k));
     if (unknownKeys.length > 0) {
       throw new Error(`Unknown keys in automation: ${unknownKeys.join(', ')}`);
@@ -431,6 +436,10 @@ export async function updateAutomation(automationId, updatedAutomation, configPa
       conditions: updatedAutomation.conditions || [],
       actions: updatedAutomation.actions || []
     };
+
+    if (updatedAutomation.category) {
+      autoObj.category = updatedAutomation.category;
+    }
 
     const variables = updatedAutomation.variables || existing.variables || {};
     if (variables && Object.keys(variables).length > 0) {
@@ -504,6 +513,10 @@ export async function createAutomation(automation, configPath) {
       conditions: automation.conditions || [],
       actions: automation.actions || []
     };
+
+    if (automation.category) {
+      autoObj.category = automation.category;
+    }
 
     if (automation.variables && Object.keys(automation.variables).length > 0) {
       autoObj.variables = automation.variables;
@@ -610,6 +623,10 @@ export async function updateScript(scriptId, updatedScript, configPath) {
       sequence: updatedScript.sequence || []
     };
 
+    if (updatedScript.category) {
+      scriptObj.category = updatedScript.category;
+    }
+
     const variables = updatedScript.variables || existing.variables || {};
     if (variables && Object.keys(variables).length > 0) {
       scriptObj.variables = variables;
@@ -667,6 +684,10 @@ export async function createScript(script, configPath) {
       mode: script.mode || 'single',
       sequence: script.sequence || []
     };
+
+    if (script.category) {
+      scriptObj.category = script.category;
+    }
 
     if (script.variables && Object.keys(script.variables).length > 0) {
       scriptObj.variables = script.variables;
@@ -764,6 +785,10 @@ export function automationToYaml(automation) {
     actions: automation.actions || []
   };
 
+  if (automation.category) {
+    obj.category = automation.category;
+  }
+
   if (automation.enabled === false) {
     obj.initial_state = false;
   } else {
@@ -790,6 +815,10 @@ export function scriptToYaml(script) {
       sequence: script.sequence || []
     }
   };
+
+  if (script.category) {
+    obj[script.id].category = script.category;
+  }
 
   if (script.icon) {
     obj[script.id].icon = script.icon;

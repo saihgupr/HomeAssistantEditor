@@ -1906,7 +1906,7 @@ app.delete('/api/orphaned/:type/:id', async (req, res) => {
     }
 });
 
-// Fetch metadata from Home Assistant (Areas, Labels, Entity Registry, Device Registry)
+// Fetch metadata from Home Assistant (Areas, Labels, Entity Registry, Device Registry, Categories)
 app.get('/api/ha-metadata', async (req, res) => {
     try {
         const areaRegistry = await callHAWebSocket({ type: 'config/area_registry/list' });
@@ -1914,12 +1914,27 @@ app.get('/api/ha-metadata', async (req, res) => {
         const entityRegistry = await callHAWebSocket({ type: 'config/entity_registry/list' });
         const deviceRegistry = await callHAWebSocket({ type: 'config/device_registry/list' });
 
+        let automationCategories = [];
+        let scriptCategories = [];
+        try {
+            automationCategories = await callHAWebSocket({ type: 'config/category_registry/list', scope: 'automation' }) || [];
+        } catch (err) {
+            console.warn('[API] Could not fetch automation categories registry:', err.message);
+        }
+        try {
+            scriptCategories = await callHAWebSocket({ type: 'config/category_registry/list', scope: 'script' }) || [];
+        } catch (err) {
+            console.warn('[API] Could not fetch script categories registry:', err.message);
+        }
+
         res.json({
             success: true,
             areas: areaRegistry,
             labels: labelRegistry,
             entities: entityRegistry,
-            devices: deviceRegistry
+            devices: deviceRegistry,
+            automation_categories: automationCategories,
+            script_categories: scriptCategories
         });
     } catch (error) {
         console.error('[API] Error fetching HA metadata:', error);

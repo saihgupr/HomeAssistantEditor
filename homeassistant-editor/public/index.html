@@ -122,6 +122,22 @@
         <nav class="group-nav" id="tag-group-list">
           <!-- Tag groups will be rendered here -->
         </nav>
+
+        <div class="sidebar-header sidebar-header-folders">
+          <h2>Categories</h2>
+          <div class="sidebar-header-actions">
+            <button class="btn-sync-ha" id="btn-sync-categories" title="Sync from Home Assistant" aria-label="Sync from Home Assistant">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 4v6h-6"></path>
+                <path d="M1 20v-6h6"></path>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <nav class="group-nav" id="category-list">
+          <!-- Categories will be rendered here -->
+        </nav>
       </aside>
 
       <div class="divider" data-id="sidebar"></div>
@@ -218,9 +234,14 @@
                 <span class="toggle-label">Enabled</span>
               </label>
             </div>
-            <input type="text" id="editor-description" class="editor-description" placeholder="Description (optional)"
-              autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-1p-ignore
-              data-lpignore="true">
+            <div class="editor-desc-row">
+              <input type="text" id="editor-description" class="editor-description" placeholder="Description (optional)"
+                autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-1p-ignore
+                data-lpignore="true">
+              <select id="editor-category" class="editor-category-select">
+                <option value="">No Category</option>
+              </select>
+            </div>
           </div>
 
           <!-- Visual Editor -->

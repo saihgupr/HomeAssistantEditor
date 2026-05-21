@@ -158,6 +158,7 @@ const _state = {
     folders: [],
     selectedFolder: null,
     selectedTagGroup: null,
+    selectedCategory: null,
     isNewItem: false,
     isDirty: false,
     originalItemSnapshot: null,
@@ -201,11 +202,13 @@ const _state = {
         previewData: null, // The historical automation/script data
         loading: false
     },
-    // Home Assistant Metadata (Areas, Labels, Icons)
+    // Home Assistant Metadata (Areas, Labels, Icons, Categories)
     haMetadata: {
         areas: [],
         labels: [],
         entities: {}, // mapping of entity_id -> { icon, area_id, labels }
+        automationCategories: [],
+        scriptCategories: [],
         syncInProgress: false
     },
     runningEntities: new Set()
@@ -343,7 +346,10 @@ const elements = {
     btnAddFolder: document.getElementById('btn-add-folder'),
     folderList: document.getElementById('folder-list'),
     btnAddTag: document.getElementById('btn-add-tag'),
-    tagGroupList: document.getElementById('tag-group-list')
+    tagGroupList: document.getElementById('tag-group-list'),
+    categoryList: document.getElementById('category-list'),
+    btnSyncCategories: document.getElementById('btn-sync-categories'),
+    editorCategory: document.getElementById('editor-category')
 };
 
 // ============================================
@@ -1963,6 +1969,7 @@ function renderCurrentItems() {
 
     renderItemsList(items);
     renderTagGroups();
+    renderCategories();
 }
 
 async function loadItems() {
@@ -2013,6 +2020,11 @@ function renderItemsList(items) {
         }
     }
 
+    // Filter by category if one is selected
+    if (state.selectedCategory) {
+        filtered = filtered.filter(item => String(item.category) === String(state.selectedCategory));
+    }
+
     filtered = filtered.filter(item => {
         const name = (item.alias || item.id || '').toLowerCase();
         const desc = (item.description || '').toLowerCase();
@@ -2035,6 +2047,13 @@ function renderItemsList(items) {
         const activeClass = (state.selectedItem && String(state.selectedItem.id) === String(item.id)) ? 'active' : '';
         const descText = stripTagsFromText(item.description || '');
         const itemIconHtml = getItemIconHtml(item);
+        const catInfo = getItemCategoryInfo(item);
+        const catBadgeHtml = catInfo ? `
+            <div class="item-category-badge">
+                <ha-icon icon="${catInfo.icon || 'mdi:folder-outline'}"></ha-icon>
+                <span>${escapeHtml(catInfo.name)}</span>
+            </div>
+        ` : '';
 
         return `
     <div class="item-card ${item.enabled === false ? 'disabled' : ''} ${activeClass}" 
@@ -2047,6 +2066,7 @@ function renderItemsList(items) {
             <span class="item-text">${escapeHtml(item.alias || item.id)}</span>
           </div>
           ${descText ? `<div class="item-description">${escapeHtml(descText)}</div>` : ''}
+          ${catBadgeHtml}
         </div>
         <div class="item-last-run">${lastRunText}</div>
       </div>
@@ -2459,6 +2479,19 @@ function populateEditor(item, expansionState = null) {
         if (elements.editorTags) elements.editorTags.value = mergedTags.join(' ');
         updateEditorTagsPreview();
         if (elements.editorEnabled) elements.editorEnabled.checked = item.enabled !== false;
+
+        // Populate Categories dropdown
+        if (elements.editorCategory) {
+            elements.editorCategory.innerHTML = '<option value="">No Category</option>';
+            const categories = isAutomation ? (state.haMetadata.automationCategories || []) : (state.haMetadata.scriptCategories || []);
+            categories.forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat.id;
+                opt.textContent = cat.name;
+                elements.editorCategory.appendChild(opt);
+            });
+            elements.editorCategory.value = item.category || '';
+        }
 
         // Show/hide automation-specific sections
         const triggersInfo = document.getElementById('triggers-section');
@@ -6230,6 +6263,11 @@ function getEditorData() {
         _type: state.selectedItem?._type || (isAutomation ? 'automation' : 'script')
     };
 
+    const categoryVal = elements.editorCategory ? elements.editorCategory.value : '';
+    if (categoryVal) {
+        data.category = categoryVal;
+    }
+
     // Explicitly copy entity_id, area, labels if they exist safely
     if (state.selectedItem?.entity_id) data.entity_id = state.selectedItem.entity_id;
     if (state.selectedItem?.area) data.area = state.selectedItem.area;
@@ -7293,6 +7331,7 @@ function selectTagGroup(groupId) {
     } else {
         state.selectedTagGroup = groupId;
         state.selectedFolder = null;
+        state.selectedCategory = null;
         state.selectedItem = null;
     }
 
@@ -7300,9 +7339,93 @@ function selectTagGroup(groupId) {
     elements.groupItems.forEach(i => i.classList.remove('active'));
     renderFolders();
     renderTagGroups();
+    renderCategories();
 
     showEmptyState();
     loadItems();
+}
+
+// ============================================
+// Category Functions
+// ============================================
+
+function loadCategories() {
+    try {
+        const rawAuto = localStorage.getItem('ha-editor-categories-automation');
+        const rawScript = localStorage.getItem('ha-editor-categories-script');
+        state.haMetadata.automationCategories = rawAuto ? JSON.parse(rawAuto) : [];
+        state.haMetadata.scriptCategories = rawScript ? JSON.parse(rawScript) : [];
+    } catch (e) {
+        console.warn('Failed to load categories:', e);
+        state.haMetadata.automationCategories = [];
+        state.haMetadata.scriptCategories = [];
+    }
+    renderCategories();
+}
+
+function saveCategories() {
+    localStorage.setItem('ha-editor-categories-automation', JSON.stringify(state.haMetadata.automationCategories || []));
+    localStorage.setItem('ha-editor-categories-script', JSON.stringify(state.haMetadata.scriptCategories || []));
+}
+
+function renderCategories() {
+    if (!elements.categoryList) return;
+
+    const categories = state.currentGroup === 'automations' ? 
+        (state.haMetadata.automationCategories || []) : 
+        (state.haMetadata.scriptCategories || []);
+
+    if (!categories.length) {
+        elements.categoryList.innerHTML = '<div class="sidebar-empty" style="padding: 8px 16px; font-size: 12px; color: var(--text-muted);">No categories synced</div>';
+        return;
+    }
+
+    elements.categoryList.innerHTML = categories.map(cat => {
+        const isActive = String(state.selectedCategory) === String(cat.id);
+        const iconName = cat.icon || 'mdi:folder-outline';
+        return `
+            <div class="group-item category-item ${isActive ? 'active' : ''}" data-category-id="${cat.id}" role="button" tabindex="0">
+                <ha-icon class="group-icon" icon="${iconName}"></ha-icon>
+                <span class="folder-name">${escapeHtml(cat.name)}</span>
+            </div>
+        `;
+    }).join('');
+
+    // Add click handlers
+    elements.categoryList.querySelectorAll('.category-item').forEach(item => {
+        item.addEventListener('click', () => {
+            selectCategory(item.dataset.categoryId);
+        });
+    });
+}
+
+function selectCategory(categoryId) {
+    if (!categoryId) return;
+    if (String(state.selectedCategory) === String(categoryId)) {
+        state.selectedCategory = null;
+    } else {
+        state.selectedCategory = categoryId;
+        state.selectedFolder = null;
+        state.selectedTagGroup = null;
+        state.selectedItem = null;
+    }
+
+    // Update active state in sidebar
+    elements.groupItems.forEach(i => i.classList.remove('active'));
+    renderFolders();
+    renderTagGroups();
+    renderCategories();
+
+    showEmptyState();
+    loadItems();
+}
+
+function getItemCategoryInfo(item) {
+    if (!item || !item.category) return null;
+    const categories = item._type === 'automation' ? 
+        (state.haMetadata.automationCategories || []) : 
+        (state.haMetadata.scriptCategories || []);
+    return categories.find(c => String(c.id) === String(item.category)) || { id: item.category, name: item.category };
 }
 
 let currentEditTagGroupId = null;
@@ -7400,6 +7523,7 @@ function selectFolder(folderId) {
     } else {
         state.selectedFolder = folderId;
         state.selectedTagGroup = null;
+        state.selectedCategory = null;
     }
     state.selectedItem = null;
 
@@ -7407,6 +7531,7 @@ function selectFolder(folderId) {
     elements.groupItems.forEach(i => i.classList.remove('active'));
     renderFolders();
     renderTagGroups();
+    renderCategories();
 
     showEmptyState();
     loadItems();
@@ -7736,8 +7861,11 @@ function initEventListeners() {
             item.classList.add('active');
             state.selectedFolder = null;
             state.selectedTagGroup = null;
+            state.selectedCategory = null;
             state.currentGroup = item.dataset.group;
             renderFolders(); // Update folder active states
+            renderTagGroups();
+            renderCategories();
             showEmptyState();
             loadItems();
         });
@@ -7775,6 +7903,12 @@ function initEventListeners() {
         btnSyncTags.addEventListener('click', (e) => {
             e.stopPropagation();
             syncHAMetadata('tags');
+        });
+    }
+    if (elements.btnSyncCategories) {
+        elements.btnSyncCategories.addEventListener('click', (e) => {
+            e.stopPropagation();
+            syncHAMetadata('categories');
         });
     }
 
@@ -8068,6 +8202,9 @@ function initEventListeners() {
     // Track changes
     elements.editorAlias.addEventListener('input', () => { checkDirty(); });
     elements.editorDescription.addEventListener('input', () => { checkDirty(); });
+    if (elements.editorCategory) {
+        elements.editorCategory.addEventListener('change', () => { checkDirty(); });
+    }
     if (elements.editorTags) {
         elements.editorTags.addEventListener('input', () => {
             updateEditorTagsPreview();
@@ -8177,7 +8314,7 @@ function initEventListeners() {
     });
 
     // Track changes with history
-    const mainInputs = [elements.editorAlias, elements.editorDescription, elements.yamlContent];
+    const mainInputs = [elements.editorAlias, elements.editorDescription, elements.yamlContent, elements.editorCategory].filter(Boolean);
     mainInputs.forEach(input => {
         let snapshot = null;
         input.addEventListener('focus', () => {
@@ -9565,6 +9702,7 @@ async function init() {
     initTheme();
     initSidebar();
     loadTagGroups();
+    loadCategories();
     initUITweaker();   // Initialize UI Tweaker
     initEventListeners();
     initResizers();
@@ -9629,8 +9767,10 @@ async function syncHAMetadata(type = 'all') {
 
     const btnSyncFolders = document.getElementById('btn-sync-folders');
     const btnSyncTags = document.getElementById('btn-sync-tags');
+    const btnSyncCategories = document.getElementById('btn-sync-categories');
     if (btnSyncFolders) btnSyncFolders.classList.add('syncing');
     if (btnSyncTags) btnSyncTags.classList.add('syncing');
+    if (btnSyncCategories) btnSyncCategories.classList.add('syncing');
 
     try {
         console.log('[HA Sync] Fetching metadata...');
@@ -9723,6 +9863,14 @@ async function syncHAMetadata(type = 'all') {
         });
         state.haMetadata.entities = entityMap;
 
+        // 4. Process Categories
+        if (type === 'all' || type === 'categories') {
+            state.haMetadata.automationCategories = data.automation_categories || [];
+            state.haMetadata.scriptCategories = data.script_categories || [];
+            saveCategories();
+            renderCategories();
+        }
+
         // Refresh UI
         loadItems();
         showToast('Sync complete', 'success');
@@ -9734,6 +9882,7 @@ async function syncHAMetadata(type = 'all') {
         state.haMetadata.syncInProgress = false;
         if (btnSyncFolders) btnSyncFolders.classList.remove('syncing');
         if (btnSyncTags) btnSyncTags.classList.remove('syncing');
+        if (btnSyncCategories) btnSyncCategories.classList.remove('syncing');
     }
 }
 
