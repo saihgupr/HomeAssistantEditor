@@ -2050,7 +2050,7 @@ function renderItemsList(items) {
         const activeClass = (state.selectedItem && String(state.selectedItem.id) === String(item.id)) ? 'active' : '';
         const descText = stripTagsFromText(item.description || '');
         const itemIconHtml = getItemIconHtml(item);
-        const catInfo = state.settings.showCategories ? getItemCategoryInfo(item) : null;
+        const catInfo = (state.settings.showCategories && !state.selectedCategory) ? getItemCategoryInfo(item) : null;
         const catBadgeHtml = catInfo ? `
             <div class="item-category-badge">
                 ${customElements.get('ha-icon') ? `<ha-icon icon="${catInfo.icon || 'mdi:folder-outline'}"></ha-icon>` : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 12px; height: 12px; margin-right: 4px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>`}
