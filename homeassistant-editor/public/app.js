@@ -2109,6 +2109,16 @@ function getItemTags(item) {
         }
     });
 
+    // Add custom tags from variables.__tags
+    const varTags = getVariableTags(item.variables);
+    varTags.forEach(tag => {
+        const norm = tag.slice(1).toLowerCase();
+        if (!normalized.includes(norm)) {
+            normalized.push(norm);
+            display.push(tag);
+        }
+    });
+
     // Add labels from HA metadata
     const entityId = item.entity_id || (item._type === 'automation' ? `automation.${item.id}` : `script.${item.id}`);
     const haInfo = state.haMetadata.entities[entityId];
