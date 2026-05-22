@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.1.1] - 2026-05-21
+
+### Added
+- **Fallback SVG Icons**: Standard inline SVGs now render automatically in standalone and iframe views when custom `<ha-icon>` elements are not registered, ensuring icons display properly in all environments.
+
+### Fixed
+- **Tag & Category Matching**: Fixed tag and category lookup behavior by matching against resolved entity IDs rather than standard block IDs.
+- **Custom In-App Tags**: Restored support for merging custom, in-app tags (stored in `variables.__tags`) alongside synced Home Assistant labels.
+- **UI Category Badge**: Hidden the redundant category badge on individual item cards when a specific category filter is active.
+
 ## [1.1.0] - 2026-03-26
 
 ### Added
