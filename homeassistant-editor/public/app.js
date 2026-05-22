@@ -2053,7 +2053,7 @@ function renderItemsList(items) {
         const catInfo = state.settings.showCategories ? getItemCategoryInfo(item) : null;
         const catBadgeHtml = catInfo ? `
             <div class="item-category-badge">
-                <ha-icon icon="${catInfo.icon || 'mdi:folder-outline'}"></ha-icon>
+                ${customElements.get('ha-icon') ? `<ha-icon icon="${catInfo.icon || 'mdi:folder-outline'}"></ha-icon>` : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 12px; height: 12px; margin-right: 4px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>`}
                 <span>${escapeHtml(catInfo.name)}</span>
             </div>
         ` : '';
@@ -7421,9 +7421,24 @@ function renderCategories() {
     elements.categoryList.innerHTML = categories.map(cat => {
         const isActive = String(state.selectedCategory) === String(cat.id);
         const iconName = cat.icon || 'mdi:folder-outline';
+        
+        let iconHtml = '';
+        if (customElements.get('ha-icon')) {
+            iconHtml = `<ha-icon class="group-icon" icon="${iconName}"></ha-icon>`;
+        } else {
+            iconHtml = `
+                <svg class="group-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="14" width="7" height="7"></rect>
+                    <rect x="3" y="14" width="7" height="7"></rect>
+                </svg>
+            `;
+        }
+
         return `
             <div class="group-item category-item ${isActive ? 'active' : ''}" data-category-id="${cat.id}" role="button" tabindex="0">
-                <ha-icon class="group-icon" icon="${iconName}"></ha-icon>
+                ${iconHtml}
                 <span class="folder-name">${escapeHtml(cat.name)}</span>
             </div>
         `;
@@ -10005,7 +10020,7 @@ function getItemIconHtml(item) {
     const entityId = item.entity_id || (item._type === 'automation' ? `automation.${item.id}` : `script.${item.id}`);
     const haInfo = state.haMetadata.entities[entityId];
 
-    if (haInfo && haInfo.icon) {
+    if (haInfo && haInfo.icon && customElements.get('ha-icon')) {
         // Simple heuristic to render mdi icons vs others
         if (haInfo.icon.startsWith('mdi:')) {
             return `<ha-icon icon="${haInfo.icon}"></ha-icon>`;

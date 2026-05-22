@@ -785,6 +785,14 @@ body.resizing {
   flex-shrink: 0;
 }
 
+ha-icon.group-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+}
+
 .group-count {
   margin-left: auto;
   background: var(--bg-tertiary);
