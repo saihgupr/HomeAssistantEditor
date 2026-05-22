@@ -2025,7 +2025,7 @@ function renderItemsList(items) {
 
     // Filter by category if one is selected
     if (state.selectedCategory && state.settings.showCategories) {
-        filtered = filtered.filter(item => String(item.category) === String(state.selectedCategory));
+        filtered = filtered.filter(item => String(getItemCategory(item)) === String(state.selectedCategory));
     }
 
     filtered = filtered.filter(item => {
@@ -2110,7 +2110,7 @@ function getItemTags(item) {
     });
 
     // Add labels from HA metadata
-    const entityId = item._type === 'automation' ? `automation.${item.id}` : `script.${item.id}`;
+    const entityId = item.entity_id || (item._type === 'automation' ? `automation.${item.id}` : `script.${item.id}`);
     const haInfo = state.haMetadata.entities[entityId];
     if (haInfo && haInfo.labels) {
         haInfo.labels.forEach(label => {
@@ -2494,7 +2494,7 @@ function populateEditor(item, expansionState = null) {
                 opt.textContent = cat.name;
                 elements.editorCategory.appendChild(opt);
             });
-            elements.editorCategory.value = item.category || '';
+            elements.editorCategory.value = getItemCategory(item) || '';
         }
 
         // Show/hide automation-specific sections
@@ -7448,12 +7448,28 @@ function selectCategory(categoryId) {
     loadItems();
 }
 
+function getItemCategory(item) {
+    if (!item) return null;
+    if (item.category) return item.category;
+
+    // Fallback to Entity Registry metadata
+    const entityId = item.entity_id || (item._type === 'automation' ? `automation.${item.id}` : `script.${item.id}`);
+    const haInfo = state.haMetadata.entities ? state.haMetadata.entities[entityId] : null;
+    if (haInfo && haInfo.categories) {
+        const domain = item._type === 'automation' ? 'automation' : 'script';
+        return haInfo.categories[domain] || null;
+    }
+    return null;
+}
+
 function getItemCategoryInfo(item) {
-    if (!item || !item.category) return null;
+    if (!item) return null;
+    const itemCat = getItemCategory(item);
+    if (!itemCat) return null;
     const categories = item._type === 'automation' ? 
         (state.haMetadata.automationCategories || []) : 
         (state.haMetadata.scriptCategories || []);
-    return categories.find(c => String(c.id) === String(item.category)) || { id: item.category, name: item.category };
+    return categories.find(c => String(c.id) === String(itemCat)) || { id: itemCat, name: itemCat };
 }
 
 let currentEditTagGroupId = null;
@@ -8515,7 +8531,7 @@ function initEventListeners() {
                         opt.textContent = cat.name;
                         elements.editorCategory.appendChild(opt);
                     });
-                    elements.editorCategory.value = state.selectedItem.category || '';
+                    elements.editorCategory.value = getItemCategory(state.selectedItem) || '';
                 }
             }
             if (!e.target.checked) {
@@ -9930,7 +9946,8 @@ async function syncHAMetadata(type = 'all') {
             const meta = {
                 icon: ent.icon || ent.original_icon,
                 area_id: ent.area_id,
-                labels: ent.labels || []
+                labels: ent.labels || [],
+                categories: ent.categories || {}
             };
             entityMap[ent.entity_id] = meta;
             if (ent.unique_id) {
@@ -9975,7 +9992,7 @@ async function syncHAMetadata(type = 'all') {
  * Returns HTML for the item's icon (either from HA registry or type fallback)
  */
 function getItemIconHtml(item) {
-    const entityId = item._type === 'automation' ? `automation.${item.id}` : `script.${item.id}`;
+    const entityId = item.entity_id || (item._type === 'automation' ? `automation.${item.id}` : `script.${item.id}`);
     const haInfo = state.haMetadata.entities[entityId];
 
     if (haInfo && haInfo.icon) {
