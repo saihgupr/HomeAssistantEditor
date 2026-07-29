@@ -221,7 +221,7 @@ function createEntityPicker(name, value, options = {}) {
         <div class="entity-picker" data-name="${name}" data-multiple="${multiple}" data-domain="${domainFilter || ''}" id="${id}">
             ${multiple ? `
                 <div class="entity-picker-tags">
-                    ${values.map(v => `<span class="entity-tag">${escapeHtml(v)}<button class="tag-remove" data-value="${escapeHtml(v)}">&times;</button></span>`).join('')}
+                    ${values.map(v => `<span class="entity-tag">${escapeHtml(v)}<button class="tag-remove" aria-label="Remove" data-value="${escapeHtml(v)}">&times;</button></span>`).join('')}
                 </div>
             ` : ''}
             <div class="entity-picker-input-wrapper">
@@ -359,7 +359,7 @@ function initEntityPicker(id, domainFilter, multiple, onSelect) {
                 const displayName = entity?.friendly_name || entityId;
                 const tag = document.createElement('span');
                 tag.className = 'entity-tag';
-                tag.innerHTML = `${escapeHtml(displayName)}<button class="tag-remove" data-value="${escapeHtml(entityId)}">&times;</button>`;
+                tag.innerHTML = `${escapeHtml(displayName)}<button class="tag-remove" aria-label="Remove" data-value="${escapeHtml(entityId)}">&times;</button>`;
                 tagsContainer.appendChild(tag);
                 updateHiddenValue();
             }
@@ -408,7 +408,7 @@ function createDevicePicker(name, value, options = {}) {
         <div class="entity-picker device-picker" data-name="${name}" data-multiple="${multiple}" id="${id}">
             ${multiple ? `
                 <div class="entity-picker-tags">
-                    ${values.map(v => `<span class="entity-tag">${escapeHtml(v)}<button class="tag-remove" data-value="${escapeHtml(v)}">&times;</button></span>`).join('')}
+                    ${values.map(v => `<span class="entity-tag">${escapeHtml(v)}<button class="tag-remove" aria-label="Remove" data-value="${escapeHtml(v)}">&times;</button></span>`).join('')}
                 </div>
             ` : ''}
             <div class="entity-picker-input-wrapper">
@@ -532,7 +532,7 @@ function initDevicePicker(id, multiple, onSelect) {
                 const displayName = device?.name || deviceId;
                 const tag = document.createElement('span');
                 tag.className = 'entity-tag';
-                tag.innerHTML = `${escapeHtml(displayName)}<button class="tag-remove" data-value="${escapeHtml(deviceId)}">&times;</button>`;
+                tag.innerHTML = `${escapeHtml(displayName)}<button class="tag-remove" aria-label="Remove" data-value="${escapeHtml(deviceId)}">&times;</button>`;
                 tagsContainer.appendChild(tag);
                 updateHiddenValue();
             }
@@ -579,7 +579,7 @@ function createAreaPicker(name, value, options = {}) {
         <div class="entity-picker area-picker" data-name="${name}" data-multiple="${multiple}" id="${id}">
             ${multiple ? `
                 <div class="entity-picker-tags">
-                    ${values.map(v => `<span class="entity-tag">${escapeHtml(v)}<button class="tag-remove" data-value="${escapeHtml(v)}">&times;</button></span>`).join('')}
+                    ${values.map(v => `<span class="entity-tag">${escapeHtml(v)}<button class="tag-remove" aria-label="Remove" data-value="${escapeHtml(v)}">&times;</button></span>`).join('')}
                 </div>
             ` : ''}
             <div class="entity-picker-input-wrapper">
@@ -703,7 +703,7 @@ function initAreaPicker(id, multiple, onSelect) {
                 const displayName = area?.name || areaId;
                 const tag = document.createElement('span');
                 tag.className = 'entity-tag';
-                tag.innerHTML = `${escapeHtml(displayName)}<button class="tag-remove" data-value="${escapeHtml(areaId)}">&times;</button>`;
+                tag.innerHTML = `${escapeHtml(displayName)}<button class="tag-remove" aria-label="Remove" data-value="${escapeHtml(areaId)}">&times;</button>`;
                 tagsContainer.appendChild(tag);
                 updateHiddenValue();
             }
@@ -1276,7 +1276,7 @@ function createDataEditor(name, value, options = {}) {
             <span class="data-sep">:</span>
             <input type="text" class="data-value-input" placeholder="Value" value="${escapeHtml(v)}"
                 autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-1p-ignore data-lpignore="true">
-            <button class="data-remove-btn" title="Remove">
+            <button class="data-remove-btn" title="Remove" aria-label="Remove item">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
             </button>
         </div>
@@ -1337,7 +1337,7 @@ function initDataEditor(id) {
             <span class="data-sep">:</span>
             <input type="text" class="data-value-input" placeholder="Value" value="${escapeHtml(val)}"
                 autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-1p-ignore data-lpignore="true">
-            <button class="data-remove-btn" title="Remove">
+            <button class="data-remove-btn" title="Remove" aria-label="Remove item">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
             </button>
         `;
@@ -1664,7 +1664,7 @@ function createNotificationComposer(serviceId, currentData = {}, options = {}) {
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"><path d="M19 9l-7 7-7-7" stroke-width="2"/></svg>
                 </div>
                 <div class="advanced-content">
-                     ${createDataEditor('advanced-data', advancedData)}
+                      ${createDataEditor('advanced-data', advancedData)}
                 </div>
             </div>
 
