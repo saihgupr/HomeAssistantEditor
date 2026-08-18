@@ -3154,6 +3154,7 @@ function findCompatibleNestedBlocks(sectionEl, effectiveSection) {
 
 function handleBlockDragStart(e, blockEl, section, header) {
     if (e.button !== 0) return;
+    if (document.body.classList.contains('dragging-active-global')) return;
     if (e.target.closest('.block-action-btn') || e.target.closest('.block-menu-trigger') || e.target.closest('.block-title-input')) return;
 
     // Detect if this block is nested or root
@@ -3333,8 +3334,9 @@ function handleBlockDragStart(e, blockEl, section, header) {
                         targetContainer.insertBefore(wrapper, placeholder);
                         wrapper.appendChild(dragItem);
                         const hdr = dragItem.querySelector('.block-header');
-                        if (hdr) hdr.dataset.dragInit = 'false';
-                        initNestedDragAndDrop(dragItem, hdr);
+                        if (hdr && hdr.dataset.dragInit !== 'true') {
+                            initNestedDragAndDrop(dragItem, hdr);
+                        }
                     }
                     updateNestedWrapperIndices(targetContainer);
                     syncNestedEmpty(targetContainer);
@@ -3347,8 +3349,9 @@ function handleBlockDragStart(e, blockEl, section, header) {
                         dragItem.remove();
                         innerBlock.style.cssText = '';
                         const hdr = innerBlock.querySelector('.block-header');
-                        if (hdr) hdr.dataset.dragInit = 'false';
-                        initBlockDragAndDrop(innerBlock, effectiveSection, hdr);
+                        if (hdr && hdr.dataset.dragInit !== 'true') {
+                            initBlockDragAndDrop(innerBlock, effectiveSection, hdr);
+                        }
                     } else {
                         // Was a root block: insert directly
                         targetContainer.insertBefore(dragItem, placeholder);
@@ -3365,9 +3368,10 @@ function handleBlockDragStart(e, blockEl, section, header) {
                     syncNestedEmpty(sourceContainer);
                 }
 
-                placeholder.remove();
+                document.querySelectorAll('.action-block-placeholder').forEach(p => p.remove());
             }
 
+            document.querySelectorAll('.action-block-placeholder').forEach(p => p.remove());
             checkDirty();
             updateYamlView();
         }
