@@ -2491,18 +2491,23 @@ function populateEditor(item, expansionState = null) {
         updateEditorTagsPreview();
         if (elements.editorEnabled) elements.editorEnabled.checked = item.enabled !== false;
 
-        // Populate Categories dropdown
+        // Populate Categories dropdown (only if categories exist)
         if (elements.editorCategory) {
-            elements.editorCategory.style.display = state.settings.showCategories ? '' : 'none';
-            elements.editorCategory.innerHTML = '<option value="">No Category</option>';
             const categories = isAutomation ? (state.haMetadata.automationCategories || []) : (state.haMetadata.scriptCategories || []);
-            categories.forEach(cat => {
-                const opt = document.createElement('option');
-                opt.value = cat.id;
-                opt.textContent = cat.name;
-                elements.editorCategory.appendChild(opt);
-            });
-            elements.editorCategory.value = item.category || '';
+            const hasCategories = categories.length > 0;
+            elements.editorCategory.style.display = (state.settings.showCategories && hasCategories) ? '' : 'none';
+            if (hasCategories) {
+                elements.editorCategory.innerHTML = '<option value="">No Category</option>';
+                categories.forEach(cat => {
+                    const opt = document.createElement('option');
+                    opt.value = cat.id;
+                    opt.textContent = cat.name;
+                    elements.editorCategory.appendChild(opt);
+                });
+                elements.editorCategory.value = item.category || '';
+            } else {
+                elements.editorCategory.innerHTML = '';
+            }
         }
 
         // Show/hide automation-specific sections
@@ -7511,8 +7516,15 @@ function renderCategories() {
         (state.haMetadata.scriptCategories || []);
 
     if (!categories.length) {
-        elements.categoryList.innerHTML = '<div class="sidebar-empty" style="padding: 8px 16px; font-size: 12px; color: var(--text-muted);">No categories synced</div>';
+        elements.categoryList.innerHTML = '';
+        if (elements.sidebarCategoriesGroup) {
+            elements.sidebarCategoriesGroup.style.display = 'none';
+        }
         return;
+    }
+
+    if (elements.sidebarCategoriesGroup) {
+        elements.sidebarCategoriesGroup.style.display = state.settings.showCategories ? '' : 'none';
     }
 
     elements.categoryList.innerHTML = categories.map(cat => {
@@ -8607,15 +8619,17 @@ function initEventListeners() {
             state.settings.showCategories = e.target.checked;
             localStorage.setItem('ha-editor-show-categories', e.target.checked);
             
+            const isAutomation = state.selectedItem ? state.selectedItem._type === 'automation' : true;
+            const categories = isAutomation ? (state.haMetadata.automationCategories || []) : (state.haMetadata.scriptCategories || []);
+            const hasCategories = categories.length > 0;
+
             if (elements.sidebarCategoriesGroup) {
-                elements.sidebarCategoriesGroup.style.display = e.target.checked ? '' : 'none';
+                elements.sidebarCategoriesGroup.style.display = (e.target.checked && hasCategories) ? '' : 'none';
             }
             if (elements.editorCategory) {
-                elements.editorCategory.style.display = e.target.checked ? '' : 'none';
-                if (e.target.checked && state.selectedItem) {
-                    const isAutomation = state.selectedItem._type === 'automation';
+                elements.editorCategory.style.display = (e.target.checked && hasCategories) ? '' : 'none';
+                if (e.target.checked && hasCategories && state.selectedItem) {
                     elements.editorCategory.innerHTML = '<option value="">No Category</option>';
-                    const categories = isAutomation ? (state.haMetadata.automationCategories || []) : (state.haMetadata.scriptCategories || []);
                     categories.forEach(cat => {
                         const opt = document.createElement('option');
                         opt.value = cat.id;
@@ -8623,6 +8637,8 @@ function initEventListeners() {
                         elements.editorCategory.appendChild(opt);
                     });
                     elements.editorCategory.value = state.selectedItem.category || '';
+                } else {
+                    elements.editorCategory.innerHTML = '';
                 }
             }
             if (!e.target.checked) {
