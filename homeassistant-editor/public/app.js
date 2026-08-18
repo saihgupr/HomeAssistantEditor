@@ -446,13 +446,14 @@ async function fetchHAStates() {
     try {
         const res = await fetch('./api/states');
         const data = await res.json();
-        if (data.success) {
-            const statesObj = {};
-            data.states.forEach(s => {
+        const list = Array.isArray(data) ? data : (data.states || []);
+        const statesObj = {};
+        list.forEach(s => {
+            if (s && s.entity_id) {
                 statesObj[s.entity_id] = s;
-            });
-            state.haStates = statesObj;
-        }
+            }
+        });
+        state.haStates = statesObj;
     } catch (error) {
         console.warn('[fetchHAStates] Failed to load states:', error);
     }
