@@ -1202,38 +1202,74 @@ body.light-theme .item-card:hover {
 .editor-name-row {
   display: flex;
   align-items: center;
-  gap: 4px;
-  margin-bottom: 0;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 2px;
+}
+
+.editor-name-input-wrapper {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
 }
 
 .editor-alias {
-  width: auto;
-  min-width: 150px;
-  max-width: 600px;
+  width: 100% !important;
+  max-width: 100%;
   background: transparent;
   border: none;
   border-bottom: none;
-  padding: 0;
-  /* Remove padding to align with tags */
+  padding: 2px 34px 2px 0;
   font-size: 24px;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--text-primary);
   outline: none;
   transition: var(--transition-fast);
   align-self: center;
-  /* Ensure vertical centering */
 }
 
 .editor-alias:focus {
   border-bottom: none;
 }
 
+.editor-name-input-wrapper .btn-ai-sparkle {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-left: 0;
+}
+
+.editor-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.editor-desc-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.editor-desc-input-wrapper {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
 .editor-description {
-  width: 100%;
+  width: 100% !important;
   background: transparent;
   border: none;
   border-bottom: none;
-  padding: 0 0 var(--spacing-sm) 0;
+  padding: 0 34px var(--spacing-sm) 0;
   font-size: 14px;
   color: var(--text-secondary);
   outline: none;
@@ -1244,47 +1280,44 @@ body.light-theme .item-card:hover {
   border-bottom: none;
 }
 
-/* AI Sparkle Controls - Hover Reveal */
-.editor-name-input-wrapper,
-.editor-desc-input-wrapper {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
+.editor-desc-input-wrapper .btn-ai-sparkle {
+  position: absolute;
+  right: 0;
+  top: 35%;
+  transform: translateY(-50%);
+  margin-left: 0;
 }
 
-.editor-desc-input-wrapper {
-  flex: 1;
-}
-
+/* AI Sparkle Controls - Apple Writing Tools Style */
 .btn-ai-sparkle {
-  width: 28px;
-  height: 28px;
-  min-width: 28px;
-  background: rgba(168, 85, 247, 0.15);
-  border: 1px solid rgba(168, 85, 247, 0.35);
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   color: #c084fc;
   opacity: 0;
   visibility: hidden;
   cursor: pointer;
   padding: 0;
-  margin-left: 8px;
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s ease, background 0.15s ease, border-color 0.15s ease, box-shadow 0.18s ease;
-  vertical-align: middle;
+  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   user-select: none;
 }
 
 .btn-ai-sparkle svg {
   display: block;
   pointer-events: none;
-  transition: transform 0.18s ease;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.editor-name-row:hover .btn-ai-sparkle,
-.editor-desc-row:hover .btn-ai-sparkle,
+.editor-name-input-wrapper:hover .btn-ai-sparkle,
+.editor-desc-input-wrapper:hover .btn-ai-sparkle,
 .editor-name-input-wrapper:focus-within .btn-ai-sparkle,
 .editor-desc-input-wrapper:focus-within .btn-ai-sparkle {
   opacity: 0.85;
@@ -1293,11 +1326,11 @@ body.light-theme .item-card:hover {
 
 .btn-ai-sparkle:hover {
   opacity: 1 !important;
-  background: rgba(168, 85, 247, 0.3);
-  border-color: rgba(168, 85, 247, 0.7);
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.35), rgba(56, 189, 248, 0.35));
+  border-color: rgba(192, 132, 252, 0.6);
   color: #ffffff;
-  transform: scale(1.15);
-  box-shadow: 0 0 10px rgba(168, 85, 247, 0.4);
+  transform: translateY(-50%) scale(1.12) !important;
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.4), inset 0 0 6px rgba(255, 255, 255, 0.2);
 }
 
 .btn-ai-sparkle:hover svg {
@@ -1312,8 +1345,8 @@ body.light-theme .item-card:hover {
 }
 
 @keyframes ai-pulse {
-  0% { opacity: 0.4; transform: scale(0.95); }
-  100% { opacity: 1; transform: scale(1.15); color: #f472b6; border-color: #f472b6; box-shadow: 0 0 14px rgba(244, 114, 182, 0.5); }
+  0% { opacity: 0.4; transform: translateY(-50%) scale(0.95); }
+  100% { opacity: 1; transform: translateY(-50%) scale(1.15); color: #f472b6; border-color: #f472b6; box-shadow: 0 0 14px rgba(244, 114, 182, 0.5); }
 }
 
 .settings-input-action-group {

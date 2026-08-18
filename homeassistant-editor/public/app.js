@@ -2547,6 +2547,10 @@ function adjustTextareaHeight(textarea) {
 // Helper to auto-resize input width based on content
 function autoResizeInput(input) {
     if (!input) return;
+    if (input.id === 'editor-alias' || input.classList.contains('editor-alias')) {
+        input.style.width = '100%';
+        return;
+    }
 
     // Create a temporary span to measure text width
     // We need to match font properties exactly
