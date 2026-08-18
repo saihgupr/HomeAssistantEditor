@@ -1771,11 +1771,6 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok', configPath: CONFIG_PATH });
 });
 
-// Serve index.html for all other routes (SPA)
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
 // ============================================
 // Orphaned Entity Management
 // ============================================
@@ -1940,6 +1935,15 @@ app.get('/api/ha-metadata', async (req, res) => {
         console.error('[API] Error fetching HA metadata:', error);
         res.status(500).json({ success: false, error: error.message });
     }
+});
+
+// ============================================
+// Static SPA Fallback Route
+// ============================================
+
+// Serve index.html for all other routes (SPA)
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // ============================================
