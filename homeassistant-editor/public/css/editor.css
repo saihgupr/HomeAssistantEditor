@@ -3085,9 +3085,9 @@ body.light-theme .summary-item {
 }
 
 .choose-option {
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(255, 255, 255, 0.03);
   padding: 12px 12px 10px 12px;
 }
 
@@ -3227,19 +3227,89 @@ body.light-theme .section-header .section-label {
 }
 
 .nested-block-wrapper {
-  margin: 8px 0;
+  margin: 6px 0;
   position: relative;
 }
 
-.nested-block-wrapper .block {
+.nested-block-wrapper .action-block {
   margin: 0;
-  background: rgba(0, 0, 0, 0.1);
-  border-left: none;
+  background: #242424;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: var(--block-radius);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  overflow: visible;
 }
 
-body.light-theme .nested-block-wrapper .block {
-  background: rgba(0, 0, 0, 0.03);
-  border-left: none;
+.nested-block-wrapper .action-block .block-header {
+  background: #2a2a2a;
+  border-top-left-radius: calc(var(--block-radius) - 1px);
+  border-top-right-radius: calc(var(--block-radius) - 1px);
+}
+
+.nested-block-wrapper .action-block.collapsed .block-header {
+  border-bottom-left-radius: calc(var(--block-radius) - 1px);
+  border-bottom-right-radius: calc(var(--block-radius) - 1px);
+}
+
+.nested-block-wrapper .action-block:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.nested-block-wrapper .action-block .block-body {
+  background: #202020;
+  border-bottom-left-radius: calc(var(--block-radius) - 1px);
+  border-bottom-right-radius: calc(var(--block-radius) - 1px);
+  padding: 10px 12px;
+}
+
+.nested-block-wrapper .select-wrapper select,
+.nested-block-wrapper .block-field select,
+.nested-block-wrapper .block-field input,
+.nested-block-wrapper .block-field textarea {
+  background: #181818;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-primary);
+}
+
+.nested-block-wrapper .select-wrapper select:focus,
+.nested-block-wrapper .block-field select:focus,
+.nested-block-wrapper .block-field input:focus,
+.nested-block-wrapper .block-field textarea:focus {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: #1f1f1f;
+}
+
+body.color-mode .nested-block-wrapper .action-block.trigger .block-header {
+  background: var(--block-trigger);
+}
+body.color-mode .nested-block-wrapper .action-block.condition .block-header {
+  background: var(--block-condition);
+}
+body.color-mode .nested-block-wrapper .action-block.action .block-header {
+  background: var(--block-action);
+}
+
+body.light-theme .nested-block-wrapper .action-block {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+body.light-theme .nested-block-wrapper .action-block .block-header {
+  background: #f3f3f6;
+}
+
+body.light-theme .nested-block-wrapper .action-block .block-body {
+  background: #fbfbfd;
+}
+
+body.light-theme .nested-block-wrapper .select-wrapper select,
+body.light-theme .nested-block-wrapper .block-field select,
+body.light-theme .nested-block-wrapper .block-field input,
+body.light-theme .nested-block-wrapper .block-field textarea {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  color: var(--text-primary);
 }
 
 /* Add nested block buttons */

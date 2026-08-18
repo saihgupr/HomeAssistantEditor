@@ -2018,7 +2018,7 @@ function renderItemsList(items) {
         if (group && group.tags && group.tags.length) {
             filtered = filtered.filter(item => {
                 const itemTags = getItemTags(item).normalized;
-                return group.tags.some(tag => itemTags.includes(tag.toLowerCase()));
+                return group.tags.some(tag => itemTags.includes(tag.toLowerCase().replace(/^#/, '')));
             });
         }
     }
@@ -3990,11 +3990,6 @@ function renderNestedIfThenBlock(block) {
 
     let html = '<div class="nested-block-container">';
 
-    // Alias field (if exists)
-    if (block.alias) {
-        html += createFieldHtml('Alias', 'alias', block.alias);
-    }
-
     // IF SECTION
     html += `
         <div class="nested-section if-section" data-section-type="if">
@@ -4081,10 +4076,6 @@ function renderConditionGroupBlock(block) {
 
     let html = '<div class="nested-block-container">';
 
-    if (block.alias) {
-        html += createFieldHtml('Alias', 'alias', block.alias);
-    }
-
     html += `
         <div class="nested-section condition-group" data-section-type="conditions">
             <div class="section-header">
@@ -4119,10 +4110,6 @@ function renderChooseBlock(block) {
     const hasOptions = options.length > 0;
 
     let html = '<div class="nested-block-container choose-block-layout">';
-
-    if (block.alias) {
-        html += createFieldHtml('Alias', 'alias', block.alias);
-    }
 
     html += `
         <div class="choose-options" data-choose-options="true">
@@ -4227,10 +4214,6 @@ function renderWaitForTriggerBlock(block) {
     const triggers = Array.isArray(block.wait_for_trigger) ? block.wait_for_trigger : (block.wait_for_trigger ? [block.wait_for_trigger] : []);
     const hasTriggers = triggers.length > 0;
     let html = '<div class="nested-block-container">';
-
-    if (block.alias) {
-        html += createFieldHtml('Alias', 'alias', block.alias);
-    }
 
     html += `
         <div class="nested-section wait-for-trigger-section" data-section-type="wait_for_trigger">
@@ -7357,8 +7340,17 @@ function loadCategories() {
     try {
         const rawAuto = localStorage.getItem('ha-editor-categories-automation');
         const rawScript = localStorage.getItem('ha-editor-categories-script');
-        state.haMetadata.automationCategories = rawAuto ? JSON.parse(rawAuto) : [];
-        state.haMetadata.scriptCategories = rawScript ? JSON.parse(rawScript) : [];
+        const autoCats = rawAuto ? JSON.parse(rawAuto) : [];
+        const scriptCats = rawScript ? JSON.parse(rawScript) : [];
+        
+        state.haMetadata.automationCategories = autoCats.map(cat => ({
+            ...cat,
+            id: cat.category_id || cat.id
+        }));
+        state.haMetadata.scriptCategories = scriptCats.map(cat => ({
+            ...cat,
+            id: cat.category_id || cat.id
+        }));
     } catch (e) {
         console.warn('Failed to load categories:', e);
         state.haMetadata.automationCategories = [];
@@ -7371,6 +7363,21 @@ function saveCategories() {
     localStorage.setItem('ha-editor-categories-automation', JSON.stringify(state.haMetadata.automationCategories || []));
     localStorage.setItem('ha-editor-categories-script', JSON.stringify(state.haMetadata.scriptCategories || []));
 }
+
+function loadHAMetadata() {
+    try {
+        const raw = localStorage.getItem('ha-editor-metadata-entities');
+        state.haMetadata.entities = raw ? JSON.parse(raw) : {};
+    } catch (e) {
+        console.warn('Failed to load HA metadata entities:', e);
+        state.haMetadata.entities = {};
+    }
+}
+
+function saveHAMetadata() {
+    localStorage.setItem('ha-editor-metadata-entities', JSON.stringify(state.haMetadata.entities || {}));
+}
+
 
 function renderCategories() {
     if (!elements.categoryList) return;
@@ -8481,11 +8488,23 @@ function initEventListeners() {
             }
             if (elements.editorCategory) {
                 elements.editorCategory.style.display = e.target.checked ? '' : 'none';
+                if (e.target.checked && state.selectedItem) {
+                    const isAutomation = state.selectedItem._type === 'automation';
+                    elements.editorCategory.innerHTML = '<option value="">No Category</option>';
+                    const categories = isAutomation ? (state.haMetadata.automationCategories || []) : (state.haMetadata.scriptCategories || []);
+                    categories.forEach(cat => {
+                        const opt = document.createElement('option');
+                        opt.value = cat.id;
+                        opt.textContent = cat.name;
+                        elements.editorCategory.appendChild(opt);
+                    });
+                    elements.editorCategory.value = state.selectedItem.category || '';
+                }
             }
             if (!e.target.checked) {
                 state.selectedCategory = null;
-                renderCategories();
             }
+            renderCategories();
             loadItems();
         });
     }
@@ -9731,6 +9750,7 @@ async function init() {
     initSidebar();
     loadTagGroups();
     loadCategories();
+    loadHAMetadata();
     initUITweaker();   // Initialize UI Tweaker
     initEventListeners();
     initResizers();
@@ -9802,7 +9822,7 @@ async function syncHAMetadata(type = 'all') {
 
     try {
         console.log('[HA Sync] Fetching metadata...');
-        const response = await fetch('/api/ha-metadata');
+        const response = await fetch('./api/ha-metadata');
         const data = await response.json();
 
         if (!data.success) throw new Error(data.error);
@@ -9861,7 +9881,7 @@ async function syncHAMetadata(type = 'all') {
             const labels = data.labels.map(l => ({
                 id: 'ha-label-' + l.label_id,
                 name: l.name,
-                tags: ['#' + l.name.toLowerCase().replace(/\s+/g, '-')],
+                tags: [l.name.toLowerCase().replace(/\s+/g, '-')],
                 isAutoGenerated: true
             }));
 
@@ -9883,18 +9903,30 @@ async function syncHAMetadata(type = 'all') {
         // 3. Process Entity Registry -> Icon Mapping
         const entityMap = {};
         data.entities.forEach(ent => {
-            entityMap[ent.entity_id] = {
+            const meta = {
                 icon: ent.icon || ent.original_icon,
                 area_id: ent.area_id,
                 labels: ent.labels || []
             };
+            entityMap[ent.entity_id] = meta;
+            if (ent.unique_id) {
+                const domain = ent.entity_id.split('.')[0];
+                entityMap[`${domain}.${ent.unique_id}`] = meta;
+            }
         });
         state.haMetadata.entities = entityMap;
+        saveHAMetadata();
 
         // 4. Process Categories
         if (type === 'all' || type === 'categories') {
-            state.haMetadata.automationCategories = data.automation_categories || [];
-            state.haMetadata.scriptCategories = data.script_categories || [];
+            state.haMetadata.automationCategories = (data.automation_categories || []).map(cat => ({
+                ...cat,
+                id: cat.category_id || cat.id
+            }));
+            state.haMetadata.scriptCategories = (data.script_categories || []).map(cat => ({
+                ...cat,
+                id: cat.category_id || cat.id
+            }));
             saveCategories();
             renderCategories();
         }
@@ -9905,7 +9937,8 @@ async function syncHAMetadata(type = 'all') {
 
     } catch (error) {
         console.error('[HA Sync] Error:', error);
-        showToast('Sync failed: ' + error.message, 'error');
+        if (error.stack) console.error(error.stack);
+        showToast('Sync failed: ' + error.message + '\n' + (error.stack ? error.stack.split('\n')[1] : ''), 'error');
     } finally {
         state.haMetadata.syncInProgress = false;
         if (btnSyncFolders) btnSyncFolders.classList.remove('syncing');
