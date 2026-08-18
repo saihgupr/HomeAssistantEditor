@@ -171,6 +171,13 @@ export async function getConfigFilePaths(configPath) {
   return { automationPaths, scriptPaths };
 }
 
+function isItemEnabled(obj) {
+  if (!obj || typeof obj !== 'object') return true;
+  if (obj.enabled === false || obj.enabled === 'false' || obj.enabled === 'off') return false;
+  if (obj.initial_state === false || obj.initial_state === 'false' || obj.initial_state === 'off') return false;
+  return true;
+}
+
 /**
  * Extract all automations from YAML files
  * @param {string} configPath - Path to the config directory
@@ -209,7 +216,7 @@ export async function extractAutomations(configPath) {
                   file: relativeToConfigPath,
                   fullPath: filePath,
                   index: index,
-                  enabled: auto.enabled !== false && auto.initial_state !== false,
+                  enabled: isItemEnabled(auto),
                   lineNumber: lineNumber
                 });
               }
@@ -237,7 +244,7 @@ export async function extractAutomations(configPath) {
                       file: relativeToConfigPath,
                       fullPath: filePath,
                       index: index,
-                      enabled: auto.enabled !== false && auto.initial_state !== false,
+                      enabled: isItemEnabled(auto),
                       lineNumber: lineNumber
                     });
                   }
@@ -259,7 +266,7 @@ export async function extractAutomations(configPath) {
                       file: relativeToConfigPath,
                       fullPath: filePath,
                       key: key,
-                      enabled: auto.enabled !== false && auto.initial_state !== false
+                      enabled: isItemEnabled(auto)
                     });
                   }
                 });
@@ -284,7 +291,7 @@ export async function extractAutomations(configPath) {
                       file: relativeToConfigPath,
                       fullPath: filePath,
                       key: key,
-                      enabled: auto.enabled !== false && auto.initial_state !== false
+                      enabled: isItemEnabled(auto)
                     });
                   }
                 }
@@ -353,6 +360,7 @@ export async function extractScripts(configPath) {
                     file: relativeToConfigPath,
                     fullPath: filePath,
                     key: key,
+                    enabled: isItemEnabled(script),
                     lineNumber: lineNumber
                   });
                 }

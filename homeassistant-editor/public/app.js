@@ -1950,14 +1950,27 @@ function renderCurrentItems() {
             item.last_triggered = haState.attributes?.last_triggered || null;
             item.entity_id = entityId;
 
-            // Sync enabled state from HA (only for automations)
+            // Sync enabled state from HA (for automations, state 'on' = enabled, 'off' = disabled)
             if (domain === 'automation') {
-                item.enabled = haState.state === 'on';
+                if (haState.state === 'off') {
+                    item.enabled = false;
+                } else if (haState.state === 'on') {
+                    item.enabled = (item.enabled !== false);
+                }
             }
         } else {
             // Fallback (keep what we guessed, or null)
             item.last_triggered = null;
             item.entity_id = entityId;
+        }
+
+        // Check if disabled by registry or YAML initial_state
+        const entityMeta = state.haMetadata?.entities?.[entityId] || state.haMetadata?.entities?.[`${domain}.${item.id}`];
+        if (entityMeta && (entityMeta.disabled_by || entityMeta.disabled)) {
+            item.enabled = false;
+        }
+        if (item.initial_state === false || item.initial_state === 'off' || item.initial_state === 'false') {
+            item.enabled = false;
         }
     });
 
@@ -2489,7 +2502,12 @@ function populateEditor(item, expansionState = null) {
         if (elements.editorDescription) elements.editorDescription.value = stripTagsFromText(descText);
         if (elements.editorTags) elements.editorTags.value = mergedTags.join(' ');
         updateEditorTagsPreview();
-        if (elements.editorEnabled) elements.editorEnabled.checked = item.enabled !== false;
+        if (elements.editorEnabled) {
+            const isEnabled = item.enabled !== false;
+            elements.editorEnabled.checked = isEnabled;
+            const toggleLabel = elements.editorEnabled.closest('.enabled-toggle')?.querySelector('.toggle-label');
+            if (toggleLabel) toggleLabel.textContent = isEnabled ? 'Enabled' : 'Disabled';
+        }
 
         // Populate Categories dropdown (only if categories exist)
         if (elements.editorCategory) {
