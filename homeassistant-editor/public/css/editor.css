@@ -1310,6 +1310,20 @@ body.light-theme .item-card:hover {
   border-color: var(--accent-blue);
 }
 
+.settings-link {
+  color: var(--accent-blue, #367beb);
+  text-decoration: none;
+  font-weight: 500;
+  display: inline-block;
+  margin-top: 2px;
+  transition: color 0.15s ease;
+}
+
+.settings-link:hover {
+  color: #60a5fa;
+  text-decoration: underline;
+}
+
 .editor-tags {
   display: none;
 }

@@ -10151,7 +10151,7 @@ async function ensureGeminiApiKey() {
     let apiKey = (state.settings.geminiApiKey || '').trim();
     if (apiKey) return apiKey;
 
-    const userKey = prompt('Please enter your Google Gemini API Key:');
+    const userKey = prompt('Please enter your Google Gemini API Key:\n(Get one free at https://aistudio.google.com/app/apikey)');
     if (userKey && userKey.trim()) {
         const trimmed = userKey.trim();
         state.settings.geminiApiKey = trimmed;
