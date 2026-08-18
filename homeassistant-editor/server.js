@@ -582,7 +582,7 @@ app.get('/api/states', async (req, res) => {
         }
 
         const states = await response.json();
-        res.json(states);
+        res.json({ success: true, states });
     } catch (error) {
         console.error('[API] Error fetching states:', error.message);
         res.status(500).json({ success: false, error: error.message });
