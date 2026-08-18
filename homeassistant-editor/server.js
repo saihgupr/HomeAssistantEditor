@@ -553,6 +553,43 @@ app.delete('/api/script/:id', async (req, res) => {
 });
 
 // ============================================
+// API Routes - Home Assistant States
+// ============================================
+
+// Get all entity states from Home Assistant (for last_triggered, live status, etc.)
+app.get('/api/states', async (req, res) => {
+    try {
+        const supervisorToken = process.env.SUPERVISOR_TOKEN;
+        if (!supervisorToken) {
+            console.log('[API] No supervisor token available - running in dev mode');
+            return res.json([]);
+        }
+
+        const host = HA_URL ? null : await resolveSupervisorIP();
+        const apiUrl = HA_URL
+            ? `${HA_URL}/api/states`
+            : `http://${host || 'supervisor'}/core/api/states`;
+
+        const response = await fetch(apiUrl, {
+            headers: {
+                'Authorization': `Bearer ${supervisorToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HA API returned ${response.status}`);
+        }
+
+        const states = await response.json();
+        res.json(states);
+    } catch (error) {
+        console.error('[API] Error fetching states:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================
 // API Routes - Folders
 // ============================================
 
