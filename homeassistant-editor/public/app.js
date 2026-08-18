@@ -180,7 +180,9 @@ const _state = {
         miniListMode: localStorage.getItem('ha-editor-mini-list') === 'true',
         autoSaveDangerously: localStorage.getItem('ha-editor-autosave-danger') === 'true',
         showRequiredBadges: localStorage.getItem('ha-editor-show-required') !== 'false',
-        showCategories: localStorage.getItem('ha-editor-show-categories') === 'true'
+        showCategories: localStorage.getItem('ha-editor-show-categories') === 'true',
+        geminiApiKey: localStorage.getItem('ha-editor-gemini-api-key') || '',
+        geminiModel: localStorage.getItem('ha-editor-gemini-model') || 'gemini-1.5-flash'
     },
     clipboard: null, // For copy/paste blocks
     draggingBlock: null, // { section, index }
@@ -297,6 +299,12 @@ const elements = {
     settingAutoSaveDanger: document.getElementById('setting-autosave-danger'),
     settingShowCategories: document.getElementById('setting-show-categories'),
     sidebarCategoriesGroup: document.getElementById('sidebar-categories-group'),
+    settingGeminiApiKey: document.getElementById('setting-gemini-api-key'),
+    btnToggleGeminiKey: document.getElementById('btn-toggle-gemini-key'),
+    btnTestGeminiKey: document.getElementById('btn-test-gemini-key'),
+    settingGeminiModel: document.getElementById('setting-gemini-model'),
+    btnAiName: document.getElementById('btn-ai-name'),
+    btnAiDescription: document.getElementById('btn-ai-description'),
 
     // Trace Panel
     panelTrace: document.getElementById('panel-trace'),
@@ -3418,6 +3426,12 @@ function initBlockContextMenu(blockEl) {
                 <span>Test</span>
             </div>
             ` : ''}
+            <div class="block-menu-item ai-autoname-block">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2">
+                    <path d="M12 2L14.4 7.6L20 10L14.4 12.4L12 18L9.6 12.4L4 10L9.6 7.6L12 2Z"/>
+                </svg>
+                <span>Auto-name with AI</span>
+            </div>
             <div class="block-menu-item danger delete-block">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="3 6 5 6 21 6" />
@@ -3453,6 +3467,15 @@ function initBlockContextMenu(blockEl) {
         }
 
         // Action Handlers
+        const aiAutonameBtn = menu.querySelector('.ai-autoname-block');
+        if (aiAutonameBtn) {
+            aiAutonameBtn.addEventListener('click', async (me) => {
+                me.stopPropagation();
+                menu.remove();
+                await autoNameBlockWithAI(blockEl);
+            });
+        }
+
         menu.querySelector('.toggle-enabled').addEventListener('click', (me) => {
             me.stopPropagation();
             blockEl.classList.toggle('is-disabled');
@@ -8610,6 +8633,53 @@ function initEventListeners() {
         });
     }
 
+    // Settings - Gemini AI Configuration
+    if (elements.settingGeminiApiKey) {
+        elements.settingGeminiApiKey.value = state.settings.geminiApiKey || '';
+        elements.settingGeminiApiKey.addEventListener('input', (e) => {
+            state.settings.geminiApiKey = e.target.value;
+            localStorage.setItem('ha-editor-gemini-api-key', e.target.value.trim());
+        });
+    }
+
+    if (elements.btnToggleGeminiKey && elements.settingGeminiApiKey) {
+        elements.btnToggleGeminiKey.addEventListener('click', () => {
+            const isPassword = elements.settingGeminiApiKey.type === 'password';
+            elements.settingGeminiApiKey.type = isPassword ? 'text' : 'password';
+        });
+    }
+
+    if (elements.settingGeminiModel) {
+        elements.settingGeminiModel.value = state.settings.geminiModel || 'gemini-1.5-flash';
+        elements.settingGeminiModel.addEventListener('change', (e) => {
+            state.settings.geminiModel = e.target.value;
+            localStorage.setItem('ha-editor-gemini-model', e.target.value);
+        });
+    }
+
+    if (elements.btnTestGeminiKey) {
+        elements.btnTestGeminiKey.addEventListener('click', async () => {
+            const key = elements.settingGeminiApiKey ? elements.settingGeminiApiKey.value : state.settings.geminiApiKey;
+            const model = elements.settingGeminiModel ? elements.settingGeminiModel.value : state.settings.geminiModel;
+            elements.btnTestGeminiKey.disabled = true;
+            elements.btnTestGeminiKey.textContent = 'Testing...';
+            try {
+                await testGeminiKey(key, model);
+            } finally {
+                elements.btnTestGeminiKey.disabled = false;
+                elements.btnTestGeminiKey.textContent = 'Test';
+            }
+        });
+    }
+
+    // Header Gemini AI Buttons
+    if (elements.btnAiName) {
+        elements.btnAiName.addEventListener('click', autoNameItemWithAI);
+    }
+    if (elements.btnAiDescription) {
+        elements.btnAiDescription.addEventListener('click', autoDescribeItemWithAI);
+    }
+
     // Replay controls
     if (elements.replayPrev) {
         elements.replayPrev.addEventListener('click', () => navigateReplayStep(-1));
@@ -10068,4 +10138,192 @@ function getItemIconHtml(item) {
         return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg>`;
     }
     return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg>`;
+}
+
+// ============================================
+// Gemini AI Integration
+// ============================================
+
+/**
+ * Call the Google Gemini API with a prompt
+ */
+async function callGemini(prompt, systemInstruction = '') {
+    const apiKey = (state.settings.geminiApiKey || '').trim();
+    if (!apiKey) {
+        showToast('Please set your Gemini API Key in Settings first', 'warning');
+        openSettingsModal();
+        return null;
+    }
+    const model = state.settings.geminiModel || 'gemini-1.5-flash';
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+    const body = {
+        contents: [
+            {
+                role: 'user',
+                parts: [{ text: prompt }]
+            }
+        ]
+    };
+    if (systemInstruction) {
+        body.systemInstruction = {
+            parts: [{ text: systemInstruction }]
+        };
+    }
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        const data = await response.json();
+        if (data.error) {
+            throw new Error(data.error.message || 'Gemini API Error');
+        }
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        return text ? text.trim().replace(/^["']|["']$/g, '') : '';
+    } catch (err) {
+        console.error('[Gemini API] Error:', err);
+        showToast(`Gemini error: ${err.message}`, 'error');
+        return null;
+    }
+}
+
+/**
+ * Test Gemini API key validity
+ */
+async function testGeminiKey(apiKey, model = 'gemini-1.5-flash') {
+    const key = (apiKey || state.settings.geminiApiKey || '').trim();
+    if (!key) {
+        showToast('Please enter a Gemini API Key first', 'warning');
+        return false;
+    }
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
+    try {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: 'Respond with OK.' }] }]
+            })
+        });
+        const data = await res.json();
+        if (data.error) {
+            throw new Error(data.error.message || 'Invalid API Key');
+        }
+        showToast('Gemini API Key is valid and working!', 'success');
+        return true;
+    } catch (err) {
+        showToast(`Gemini test failed: ${err.message}`, 'error');
+        return false;
+    }
+}
+
+/**
+ * Auto-name current automation or script with Gemini
+ */
+async function autoNameItemWithAI() {
+    if (!state.selectedItem) return;
+    const btn = elements.btnAiName;
+    if (btn) btn.classList.add('is-loading');
+    showToast('Generating title with Gemini...', 'info');
+
+    try {
+        const editorData = getEditorData();
+        const yamlStr = dumpYaml(editorData);
+        const prompt = `You are a Home Assistant automation expert. Given this automation/script definition:
+${yamlStr}
+
+Suggest a concise, friendly, descriptive title for this automation/script (e.g. "Bedroom Motion Night Light", "Evening Living Room Ambience", "Away Security Mode").
+Rules:
+- Return ONLY the title text.
+- Maximum 3 to 6 words.
+- No markdown, no quotes, no explanations.`;
+
+        const generatedName = await callGemini(prompt);
+        if (generatedName) {
+            if (elements.editorAlias) {
+                elements.editorAlias.value = generatedName;
+                autoResizeInput(elements.editorAlias);
+                elements.editorAlias.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            checkDirty();
+            updateYamlView();
+            showToast(`Named "${generatedName}"`, 'success');
+        }
+    } finally {
+        if (btn) btn.classList.remove('is-loading');
+    }
+}
+
+/**
+ * Auto-generate description for current automation/script with Gemini
+ */
+async function autoDescribeItemWithAI() {
+    if (!state.selectedItem) return;
+    const btn = elements.btnAiDescription;
+    if (btn) btn.classList.add('is-loading');
+    showToast('Generating description with Gemini...', 'info');
+
+    try {
+        const editorData = getEditorData();
+        const yamlStr = dumpYaml(editorData);
+        const prompt = `You are a Home Assistant automation expert. Given this automation/script definition:
+${yamlStr}
+
+Write a clear, natural 1-2 sentence description explaining what this automation/script does, when it triggers, and its main actions.
+Rules:
+- Return ONLY the plain text description.
+- Do NOT wrap in quotes.
+- No markdown formatting.`;
+
+        const generatedDesc = await callGemini(prompt);
+        if (generatedDesc) {
+            if (elements.editorDescription) {
+                elements.editorDescription.value = generatedDesc;
+                elements.editorDescription.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            checkDirty();
+            updateYamlView();
+            showToast('Description updated with Gemini', 'success');
+        }
+    } finally {
+        if (btn) btn.classList.remove('is-loading');
+    }
+}
+
+/**
+ * Auto-name a single action or condition block with Gemini
+ */
+async function autoNameBlockWithAI(blockEl) {
+    const section = inferBlockSectionFromElement(blockEl);
+    const parseSection = section === 'triggers' ? 'trigger' : (section === 'conditions' ? 'condition' : 'action');
+    const parsed = parseBlockElement(blockEl, parseSection);
+    
+    showToast('Generating block title with Gemini...', 'info');
+    const prompt = `You are a Home Assistant automation expert. Given the following Home Assistant ${parseSection} block definition:
+${JSON.stringify(parsed, null, 2)}
+
+Provide a concise, human-friendly 2 to 5 word title/alias describing what this block does (e.g. "Turn on Bed Light", "Wait for Front Door Motion", "Dim Bed Light to 20%", "If Bed Light Is On").
+Rules:
+- Return ONLY the short title text.
+- Capitalize words cleanly.
+- No markdown, no quotes, no explanations, no trailing punctuation.`;
+
+    const generatedName = await callGemini(prompt);
+    if (generatedName) {
+        const titleInput = blockEl.querySelector('.block-title-input');
+        if (titleInput) {
+            titleInput.value = generatedName;
+            titleInput.dispatchEvent(new Event('input', { bubbles: true }));
+            titleInput.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        const aliasText = blockEl.querySelector('.block-alias-text');
+        if (aliasText) aliasText.textContent = generatedName;
+
+        checkDirty();
+        updateYamlView();
+        showToast(`Action named "${generatedName}"`, 'success');
+    }
 }

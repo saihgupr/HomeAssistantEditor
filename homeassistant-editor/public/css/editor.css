@@ -1244,6 +1244,72 @@ body.light-theme .item-card:hover {
   border-bottom: none;
 }
 
+/* AI Sparkle Controls */
+.editor-name-input-wrapper,
+.editor-desc-input-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.editor-desc-input-wrapper {
+  flex: 1;
+}
+
+.btn-ai-sparkle {
+  background: transparent;
+  border: none;
+  color: #a855f7;
+  opacity: 0.6;
+  cursor: pointer;
+  padding: 4px;
+  margin-left: 2px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.15s ease, transform 0.15s ease, color 0.15s ease;
+  vertical-align: middle;
+}
+
+.btn-ai-sparkle:hover {
+  opacity: 1;
+  color: #c084fc;
+  transform: scale(1.15);
+}
+
+.btn-ai-sparkle.is-loading {
+  animation: ai-pulse 1s infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes ai-pulse {
+  0% { opacity: 0.3; transform: scale(0.9); }
+  100% { opacity: 1; transform: scale(1.2); color: #ec4899; }
+}
+
+.settings-input-action-group {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  width: 100%;
+}
+
+.settings-input-action-group .settings-input {
+  flex: 1;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  outline: none;
+}
+
+.settings-input-action-group .settings-input:focus {
+  border-color: var(--accent-blue);
+}
+
 .editor-tags {
   display: none;
 }
