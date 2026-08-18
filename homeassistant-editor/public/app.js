@@ -6872,21 +6872,92 @@ function showAddBlockModal(section, onSelect) {
 
     elements.modalSectionType.textContent = label;
 
-    elements.blockTypesGrid.innerHTML = types.map(type => `
-        <div class="block-type-option" data-type="${type.id}">
-          ${getTypeIcon(type.icon)}
-          <span>${type.name}</span>
-        </div>
-      `).join('');
+    const searchInput = document.getElementById('add-block-search');
+    const searchClear = document.getElementById('add-block-search-clear');
+    const emptyEl = document.getElementById('block-types-empty');
+    if (searchInput) {
+        searchInput.value = '';
+        searchInput.placeholder = `Search ${label.toLowerCase()}s...`;
+    }
+    if (searchClear) searchClear.style.display = 'none';
+    if (emptyEl) {
+        emptyEl.style.display = 'none';
+        const span = emptyEl.querySelector('span');
+        if (span) span.textContent = `No matching ${label.toLowerCase()}s found`;
+    }
 
-    elements.blockTypesGrid.querySelectorAll('.block-type-option').forEach(option => {
-        option.addEventListener('click', () => {
-            if (modalSelectHandler) modalSelectHandler(option.dataset.type);
-            closeModal();
+    const renderGrid = (filterText = '') => {
+        const query = filterText.trim().toLowerCase();
+        const filteredTypes = query
+            ? types.filter(t => t.name.toLowerCase().includes(query) || t.id.toLowerCase().includes(query))
+            : types;
+
+        if (filteredTypes.length === 0) {
+            elements.blockTypesGrid.innerHTML = '';
+            if (emptyEl) emptyEl.style.display = 'block';
+            return;
+        }
+
+        if (emptyEl) emptyEl.style.display = 'none';
+
+        elements.blockTypesGrid.innerHTML = filteredTypes.map((type, idx) => `
+            <div class="block-type-option ${idx === 0 && query ? 'focused' : ''}" data-type="${type.id}">
+              ${getTypeIcon(type.icon)}
+              <span>${type.name}</span>
+            </div>
+          `).join('');
+
+        elements.blockTypesGrid.querySelectorAll('.block-type-option').forEach(option => {
+            option.addEventListener('click', () => {
+                if (modalSelectHandler) modalSelectHandler(option.dataset.type);
+                closeModal();
+            });
         });
-    });
+    };
+
+    renderGrid();
+
+    // Attach search listeners once
+    if (searchInput && !searchInput.dataset.listenerAttached) {
+        searchInput.addEventListener('input', (e) => {
+            const val = e.target.value;
+            if (searchClear) searchClear.style.display = val ? 'flex' : 'none';
+            renderGrid(val);
+        });
+
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const firstOption = elements.blockTypesGrid.querySelector('.block-type-option');
+                if (firstOption) {
+                    firstOption.click();
+                }
+            } else if (e.key === 'Escape') {
+                if (searchInput.value) {
+                    searchInput.value = '';
+                    if (searchClear) searchClear.style.display = 'none';
+                    renderGrid('');
+                    e.stopPropagation();
+                }
+            }
+        });
+
+        if (searchClear) {
+            searchClear.addEventListener('click', () => {
+                searchInput.value = '';
+                searchClear.style.display = 'none';
+                renderGrid('');
+                searchInput.focus();
+            });
+        }
+
+        searchInput.dataset.listenerAttached = 'true';
+    }
 
     elements.addBlockModal.classList.add('active');
+    setTimeout(() => {
+        if (searchInput) searchInput.focus();
+    }, 50);
 }
 
 function closeModal() {

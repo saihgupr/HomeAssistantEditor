@@ -485,8 +485,24 @@
           <button class="modal-close">&times;</button>
         </div>
         <div class="modal-body">
+          <div class="modal-search-box">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="add-block-search" class="modal-search-input" placeholder="Search actions..." autocomplete="off">
+            <button type="button" class="search-clear-btn" id="add-block-search-clear" style="display: none;" aria-label="Clear search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
           <div class="block-types-grid" id="block-types-grid">
             <!-- Block types will be inserted here -->
+          </div>
+          <div class="block-types-empty" id="block-types-empty" style="display: none;">
+            <span>No matching actions found</span>
           </div>
         </div>
       </div>
