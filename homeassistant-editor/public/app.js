@@ -3089,44 +3089,115 @@ function initializeBlockComponents(blockEl) {
     blockEl.querySelectorAll('textarea').forEach(adjustTextareaHeight);
 }
 
-function initBlockDragAndDrop(blockEl, section, header) {
-    header.addEventListener('mousedown', (e) => {
-        if (e.button !== 0) return;
-        if (e.target.closest('.block-action-btn') || e.target.closest('.block-menu-trigger') || e.target.closest('.block-title-input')) return;
+function handleBlockDragStart(e, blockEl, section, header) {
+    if (e.button !== 0) return;
+    if (e.target.closest('.block-action-btn') || e.target.closest('.block-menu-trigger') || e.target.closest('.block-title-input')) return;
 
-        e.preventDefault();
-        e.stopPropagation();
+    // Detect if this block is nested or root
+    const nestedWrapper = blockEl.closest('.nested-block-wrapper');
+    const isNested = !!nestedWrapper;
+    const dragItem = isNested ? nestedWrapper : blockEl;
+    const sourceContainer = dragItem.parentElement;
+    if (!sourceContainer) return;
 
-        const container = document.getElementById(`${section}-container`);
-        const startX = e.clientX;
-        const startY = e.clientY;
-        let isDragging = false;
-        let placeholder = null;
-        let currentBlocks = null;
-        let rect = null;
-        let lastScrollY = window.scrollY;
+    // Determine section type: 'triggers', 'conditions', or 'actions'
+    let effectiveSection = section;
+    if (!effectiveSection) {
+        if (blockEl.classList.contains('trigger')) effectiveSection = 'triggers';
+        else if (blockEl.classList.contains('condition')) effectiveSection = 'conditions';
+        else effectiveSection = 'actions';
+    }
 
-        let lastClientY = 0;
-        const onMouseMove = (moveEvent) => {
-            const clientY = moveEvent ? moveEvent.clientY : lastClientY;
-            const clientX = moveEvent ? moveEvent.clientX : startX;
-            if (moveEvent) lastClientY = moveEvent.clientY;
+    e.preventDefault();
+    e.stopPropagation();
 
-            const deltaX = clientX - startX;
-            const deltaY = clientY - startY;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    let isDragging = false;
+    let placeholder = null;
+    let rect = null;
+    let lastClientY = startY;
+    let lastClientX = startX;
 
-            if (!isDragging) {
-                if (Math.hypot(deltaX, deltaY) > 8) {
-                    startDrag();
-                } else return;
+    const getCandidateContainers = () => {
+        const list = [];
+        // Root container
+        const rootContainer = document.getElementById(`${effectiveSection}-container`);
+        if (rootContainer) list.push(rootContainer);
+
+        // Nested containers for this type
+        let selector = '';
+        if (effectiveSection === 'actions') {
+            selector = '.nested-blocks[data-role="then"], .nested-blocks[data-role="else"], .nested-blocks[data-role="choose-sequence"], .nested-blocks[data-role="choose-default"], .nested-blocks[data-role="repeat-sequence"], .nested-blocks[data-role="sequence-items"], .nested-blocks[data-role="parallel-items"]';
+        } else if (effectiveSection === 'conditions') {
+            selector = '.nested-blocks[data-role="if"], .nested-blocks[data-role="choose-conditions"], .nested-blocks[data-role="repeat-while"], .nested-blocks[data-role="repeat-until"], .nested-blocks[data-role="condition-group"]';
+        } else if (effectiveSection === 'triggers') {
+            selector = '.nested-blocks[data-role="wait-for-trigger"]';
+        }
+
+        if (selector) {
+            document.querySelectorAll(selector).forEach(c => {
+                // Must not be inside the dragged item itself
+                if (!dragItem.contains(c)) {
+                    list.push(c);
+                }
+            });
+        }
+        return list;
+    };
+
+    const onMouseMove = (moveEvent) => {
+        const clientY = moveEvent ? moveEvent.clientY : lastClientY;
+        const clientX = moveEvent ? moveEvent.clientX : lastClientX;
+        if (moveEvent) {
+            lastClientY = moveEvent.clientY;
+            lastClientX = moveEvent.clientX;
+        }
+
+        const deltaX = clientX - startX;
+        const deltaY = clientY - startY;
+
+        if (!isDragging) {
+            if (Math.hypot(deltaX, deltaY) > 8) {
+                startDrag();
+            } else return;
+        }
+
+        if (isDragging) {
+            dragItem.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+
+            // Find matching candidate container under cursor
+            const candidates = getCandidateContainers();
+            
+            // Find which container the cursor is currently over
+            let targetContainer = null;
+            let smallestArea = Infinity;
+
+            for (const c of candidates) {
+                const b = c.getBoundingClientRect();
+                const pad = 12;
+                if (clientX >= b.left - pad && clientX <= b.right + pad &&
+                    clientY >= b.top - pad && clientY <= b.bottom + pad) {
+                    const area = b.width * b.height;
+                    if (area < smallestArea) {
+                        smallestArea = area;
+                        targetContainer = c;
+                    }
+                }
             }
 
-            if (isDragging) {
-                blockEl.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+            // Fallback to placeholder's current parent or source container
+            if (!targetContainer) {
+                targetContainer = (placeholder && placeholder.parentElement) || sourceContainer;
+            }
 
-                // Fix: Only look at direct children to avoid picking up nested actions
-                const siblings = Array.from(container.children).filter(el =>
-                    el.classList.contains('action-block') && !el.classList.contains('dragging-active')
+            // Position placeholder within targetContainer
+            if (targetContainer) {
+                const isTargetNested = targetContainer.classList.contains('nested-blocks');
+                const childSelector = isTargetNested ? '.nested-block-wrapper' : '.action-block';
+                
+                const siblings = Array.from(targetContainer.children).filter(el =>
+                    el.matches(childSelector) && el !== dragItem && el !== placeholder
                 );
 
                 const nextSibling = siblings.find(sibling => {
@@ -3135,191 +3206,124 @@ function initBlockDragAndDrop(blockEl, section, header) {
                 });
 
                 if (nextSibling) {
-                    if (nextSibling.previousElementSibling !== placeholder) container.insertBefore(placeholder, nextSibling);
+                    if (nextSibling.previousElementSibling !== placeholder) {
+                        targetContainer.insertBefore(placeholder, nextSibling);
+                    }
                 } else {
-                    // Check if it's already at the end
-                    if (placeholder.nextElementSibling !== null || container.lastElementChild !== placeholder) {
-                        container.appendChild(placeholder);
+                    if (placeholder.parentElement !== targetContainer || placeholder.nextElementSibling !== null) {
+                        targetContainer.appendChild(placeholder);
                     }
                 }
             }
-        };
+        }
+    };
 
-        const startDrag = () => {
-            pushToHistory();
-            isDragging = true;
-            currentBlocks = getBlocksData(section);
-            rect = blockEl.getBoundingClientRect();
-            placeholder = document.createElement('div');
-            placeholder.className = 'action-block-placeholder';
-            placeholder.style.height = `${rect.height}px`;
-            blockEl.parentNode.insertBefore(placeholder, blockEl);
-            blockEl.style.width = `${rect.width}px`;
-            blockEl.style.height = `${rect.height}px`;
-            blockEl.style.position = 'fixed';
-            blockEl.style.left = `${rect.left}px`;
-            blockEl.style.top = `${rect.top}px`;
-            blockEl.style.zIndex = '1000';
-            blockEl.classList.add('dragging-active');
-            document.body.classList.add('dragging-active-global');
-        };
+    const startDrag = () => {
+        pushToHistory();
+        isDragging = true;
+        rect = dragItem.getBoundingClientRect();
+        placeholder = document.createElement('div');
+        placeholder.className = 'action-block-placeholder';
+        placeholder.style.height = `${rect.height}px`;
+        placeholder.style.width = '100%';
+        dragItem.parentNode.insertBefore(placeholder, dragItem);
 
-        const onMouseUp = () => {
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
-            // Stop scroll tracking
-            document.removeEventListener('scroll', updateScrollDelta);
+        dragItem.style.width = `${rect.width}px`;
+        dragItem.style.height = `${rect.height}px`;
+        dragItem.style.position = 'fixed';
+        dragItem.style.left = `${rect.left}px`;
+        dragItem.style.top = `${rect.top}px`;
+        dragItem.style.zIndex = '1000';
+        dragItem.style.pointerEvents = 'none';
+        dragItem.classList.add('dragging-active');
+        document.body.classList.add('dragging-active-global');
+    };
 
-            if (isDragging) {
-                blockEl.classList.remove('dragging-active');
-                document.body.classList.remove('dragging-active-global');
-                blockEl.style.cssText = '';
-                if (placeholder && placeholder.parentNode) {
-                    placeholder.parentNode.insertBefore(blockEl, placeholder);
-                    placeholder.remove();
+    const onMouseUp = () => {
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+        window.removeEventListener('scroll', updateScrollDelta, true);
+
+        if (isDragging) {
+            dragItem.classList.remove('dragging-active');
+            document.body.classList.remove('dragging-active-global');
+            dragItem.style.cssText = '';
+
+            const targetContainer = placeholder ? placeholder.parentElement : sourceContainer;
+
+            if (targetContainer && placeholder && placeholder.parentNode) {
+                const isTargetNested = targetContainer.classList.contains('nested-blocks');
+
+                if (isTargetNested) {
+                    // Dropping into a nested section
+                    if (isNested) {
+                        // Already a wrapper: move it directly
+                        targetContainer.insertBefore(dragItem, placeholder);
+                        dragItem.dataset.parentPath = targetContainer.dataset.path || '';
+                    } else {
+                        // Was a root .action-block: wrap it in .nested-block-wrapper
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'nested-block-wrapper';
+                        wrapper.dataset.parentPath = targetContainer.dataset.path || '';
+                        targetContainer.insertBefore(wrapper, placeholder);
+                        wrapper.appendChild(dragItem);
+                        initNestedDragAndDrop(dragItem, header);
+                    }
+                    updateNestedWrapperIndices(targetContainer);
+                    syncNestedEmpty(targetContainer);
+                } else {
+                    // Dropping into root container (#actions-container, #triggers-container, #conditions-container)
+                    if (isNested) {
+                        // Was a nested wrapper: unwrap the inner .action-block
+                        const innerBlock = dragItem.querySelector('.action-block') || dragItem;
+                        targetContainer.insertBefore(innerBlock, placeholder);
+                        dragItem.remove();
+                        initBlockDragAndDrop(innerBlock, effectiveSection, innerBlock.querySelector('.block-header'));
+                    } else {
+                        // Was a root block: insert directly
+                        targetContainer.insertBefore(dragItem, placeholder);
+                    }
+                    
+                    // Update direct child indices
+                    const directBlocks = Array.from(targetContainer.children).filter(el => el.classList.contains('action-block'));
+                    directBlocks.forEach((el, idx) => el.dataset.index = String(idx));
                 }
 
-                // Fix: Only look at direct children for reordering
-                const directBlocks = Array.from(container.children)
-                    .filter(el => el.classList.contains('action-block'));
-                const newOrderIndices = directBlocks.map(el => parseInt(el.dataset.index));
+                // If source was a nested container and different from target, sync source
+                if (sourceContainer.classList.contains('nested-blocks') && sourceContainer !== targetContainer) {
+                    updateNestedWrapperIndices(sourceContainer);
+                    syncNestedEmpty(sourceContainer);
+                }
 
-                const reorderedData = newOrderIndices.map(index => currentBlocks[index]).filter(Boolean);
-                if (reorderedData.length === currentBlocks.length) {
-                    if (section === 'actions') {
-                        state.selectedActionIndices = new Set(
-                            directBlocks
-                                .map((el, idx) => (el.classList.contains('is-selected') ? idx : null))
-                                .filter(v => v !== null)
-                        );
-                        state.actionSelectionAnchor = null;
-                    }
-                    updateSectionBlocks(section, reorderedData);
-                    renderBlocks(section, reorderedData);
-                    // Re-check dirty after render so data-index/order state is normalized
-                    checkDirty();
-                    updateYamlView();
-                } else renderBlocks(section, currentBlocks);
+                placeholder.remove();
             }
-        };
 
-        const updateScrollDelta = () => {
-            if (isDragging) {
-                onMouseMove(); // Re-calculate placeholder position on scroll
-            }
-        };
+            checkDirty();
+            updateYamlView();
+        }
+    };
 
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
-        window.addEventListener('scroll', updateScrollDelta, true);
-    });
+    const updateScrollDelta = () => {
+        if (isDragging) {
+            onMouseMove();
+        }
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+    window.addEventListener('scroll', updateScrollDelta, true);
+}
+
+function initBlockDragAndDrop(blockEl, section, header) {
+    if (!header || header.dataset.dragInit === 'true') return;
+    header.dataset.dragInit = 'true';
+    header.addEventListener('mousedown', (e) => handleBlockDragStart(e, blockEl, section, header));
 }
 
 function initNestedDragAndDrop(blockEl, header) {
-    header.addEventListener('mousedown', (e) => {
-        if (e.button !== 0) return;
-        if (e.target.closest('.block-action-btn') || e.target.closest('.block-menu-trigger') || e.target.closest('.block-title-input')) return;
-
-        const wrapper = blockEl.closest('.nested-block-wrapper');
-        if (!wrapper) return;
-        const container = wrapper.parentElement;
-        if (!container) return;
-
-        e.preventDefault();
-        e.stopPropagation();
-
-        const startX = e.clientX;
-        const startY = e.clientY;
-        let isDragging = false;
-        let placeholder = null;
-        let rect = null;
-        let lastScrollY = window.scrollY;
-
-        let lastClientY = 0;
-        const onMouseMove = (moveEvent) => {
-            const clientY = moveEvent ? moveEvent.clientY : lastClientY;
-            const clientX = moveEvent ? moveEvent.clientX : startX;
-            if (moveEvent) lastClientY = moveEvent.clientY;
-
-            const deltaX = clientX - startX;
-            const deltaY = clientY - startY;
-
-            if (!isDragging) {
-                if (Math.hypot(deltaX, deltaY) > 8) {
-                    startDrag();
-                } else return;
-            }
-
-            if (isDragging) {
-                wrapper.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
-
-                // Fix: Only look at direct children
-                const siblings = Array.from(container.children).filter(el =>
-                    el.classList.contains('nested-block-wrapper') && !el.classList.contains('dragging-active')
-                );
-
-                const nextSibling = siblings.find(sibling => {
-                    const box = sibling.getBoundingClientRect();
-                    return clientY < (box.top + box.height / 2);
-                });
-
-                if (nextSibling) {
-                    if (nextSibling.previousElementSibling !== placeholder) container.insertBefore(placeholder, nextSibling);
-                } else {
-                    if (placeholder.nextElementSibling !== null || container.lastElementChild !== placeholder) {
-                        container.appendChild(placeholder);
-                    }
-                }
-            }
-        };
-
-        const startDrag = () => {
-            pushToHistory();
-            isDragging = true;
-            rect = wrapper.getBoundingClientRect();
-            placeholder = document.createElement('div');
-            placeholder.className = 'action-block-placeholder';
-            placeholder.style.height = `${rect.height}px`;
-            wrapper.parentNode.insertBefore(placeholder, wrapper);
-            wrapper.style.width = `${rect.width}px`;
-            wrapper.style.height = `${rect.height}px`;
-            wrapper.style.position = 'fixed';
-            wrapper.style.left = `${rect.left}px`;
-            wrapper.style.top = `${rect.top}px`;
-            wrapper.style.zIndex = '1000';
-            wrapper.classList.add('dragging-active');
-            document.body.classList.add('dragging-active-global');
-        };
-
-        const onMouseUp = () => {
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
-            window.removeEventListener('scroll', updateScrollDelta, true);
-
-            if (isDragging) {
-                wrapper.classList.remove('dragging-active');
-                document.body.classList.remove('dragging-active-global');
-                wrapper.style.cssText = '';
-                if (placeholder && placeholder.parentNode) {
-                    placeholder.parentNode.insertBefore(wrapper, placeholder);
-                    placeholder.remove();
-                }
-                updateNestedWrapperIndices(container);
-                checkDirty();
-                updateYamlView();
-            }
-        };
-
-        const updateScrollDelta = () => {
-            if (isDragging) {
-                onMouseMove();
-            }
-        };
-
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
-        window.addEventListener('scroll', updateScrollDelta, true);
-    });
+    if (!header || header.dataset.dragInit === 'true') return;
+    header.dataset.dragInit = 'true';
+    header.addEventListener('mousedown', (e) => handleBlockDragStart(e, blockEl, null, header));
 }
 function initBlockContextMenu(blockEl) {
     const menuTrigger = blockEl.querySelector('.block-menu-trigger');
