@@ -5839,7 +5839,7 @@ async function updateYamlView(itemOverride = null) {
     const textarea = document.getElementById('yaml-content');
     const yamlEditor = document.getElementById('yaml-editor');
     if (!textarea) return;
-    if (yamlEditor) yamlEditor.classList.add('plain');
+    if (yamlEditor) yamlEditor.classList.remove('plain');
 
     // If in version preview mode or explicit item provided, generate YAML from object
     if ((state.versionControl?.previewMode) || itemOverride) {
