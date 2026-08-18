@@ -1731,11 +1731,11 @@ body.dragging-active-global .nested-block-wrapper {
 
 .action-block-placeholder {
   background: rgba(54, 123, 235, 0.08);
-  border: 2px dashed rgba(54, 123, 235, 0.5);
+  border: 1.5px dashed rgba(54, 123, 235, 0.6);
   border-radius: var(--block-radius);
-  margin-bottom: var(--spacing-sm);
-  margin-top: 4px;
-  min-height: 48px;
+  margin-bottom: 2px;
+  margin-top: 2px;
+  min-height: calc(var(--block-header-height) + 2px);
   pointer-events: none;
   box-sizing: border-box;
 }
