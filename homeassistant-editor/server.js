@@ -1377,7 +1377,7 @@ app.get('*', (req, res) => {
 // Start server
 // ============================================
 
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, () => {
     console.log(`[Home Assistant Editor] Server running on port ${PORT}`);
     console.log(`[Home Assistant Editor] Config path: ${CONFIG_PATH}`);
     console.log(`[Home Assistant Editor] Home Assistant URL: ${HA_URL || 'Not specified (using Supervisor API)'}`);
