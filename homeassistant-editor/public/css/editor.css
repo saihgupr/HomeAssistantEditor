@@ -1589,10 +1589,12 @@ body.dragging-active-global .nested-block-wrapper {
 }
 
 .action-block-placeholder {
-  background: rgba(128, 128, 128, 0.05);
-  border: 2px dashed rgba(128, 128, 128, 0.3);
+  background: rgba(54, 123, 235, 0.08);
+  border: 2px dashed rgba(54, 123, 235, 0.5);
   border-radius: var(--block-radius);
   margin-bottom: var(--spacing-sm);
+  margin-top: 4px;
+  min-height: 48px;
   pointer-events: none;
   box-sizing: border-box;
 }

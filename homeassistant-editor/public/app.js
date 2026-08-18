@@ -3089,6 +3089,34 @@ function initializeBlockComponents(blockEl) {
     blockEl.querySelectorAll('textarea').forEach(adjustTextareaHeight);
 }
 
+function isContainerCompatible(containerEl, effectiveSection) {
+    if (!containerEl) return false;
+    const role = containerEl.dataset.role || containerEl.dataset.path || '';
+    const actionRoles = ['then', 'else', 'choose-sequence', 'choose-default', 'repeat-sequence', 'sequence', 'parallel', 'sequence-items', 'parallel-items'];
+    const conditionRoles = ['if', 'conditions', 'choose-conditions', 'repeat-while', 'repeat-until', 'condition-group'];
+    const triggerRoles = ['wait-for-trigger', 'triggers'];
+
+    if (effectiveSection === 'actions') {
+        return actionRoles.includes(role) || containerEl.classList.contains('action-sequence') || role.endsWith('.sequence') || role.endsWith('sequence');
+    }
+    if (effectiveSection === 'conditions') {
+        return conditionRoles.includes(role) || role.endsWith('.conditions') || role.endsWith('conditions') || role.endsWith('.while') || role.endsWith('.until');
+    }
+    if (effectiveSection === 'triggers') {
+        return triggerRoles.includes(role) || role.endsWith('triggers');
+    }
+    return false;
+}
+
+function findCompatibleNestedBlocks(sectionEl, effectiveSection) {
+    if (!sectionEl) return null;
+    if (sectionEl.classList.contains('nested-blocks') && isContainerCompatible(sectionEl, effectiveSection)) {
+        return sectionEl;
+    }
+    const allNested = Array.from(sectionEl.querySelectorAll('.nested-blocks'));
+    return allNested.find(c => isContainerCompatible(c, effectiveSection)) || null;
+}
+
 function handleBlockDragStart(e, blockEl, section, header) {
     if (e.button !== 0) return;
     if (e.target.closest('.block-action-btn') || e.target.closest('.block-menu-trigger') || e.target.closest('.block-title-input')) return;
@@ -3119,33 +3147,6 @@ function handleBlockDragStart(e, blockEl, section, header) {
     let lastClientY = startY;
     let lastClientX = startX;
 
-    const getCandidateContainers = () => {
-        const list = [];
-        // Root container
-        const rootContainer = document.getElementById(`${effectiveSection}-container`);
-        if (rootContainer) list.push(rootContainer);
-
-        // Nested containers for this type
-        let selector = '';
-        if (effectiveSection === 'actions') {
-            selector = '.nested-blocks[data-role="then"], .nested-blocks[data-role="else"], .nested-blocks[data-role="choose-sequence"], .nested-blocks[data-role="choose-default"], .nested-blocks[data-role="repeat-sequence"], .nested-blocks[data-role="sequence-items"], .nested-blocks[data-role="parallel-items"]';
-        } else if (effectiveSection === 'conditions') {
-            selector = '.nested-blocks[data-role="if"], .nested-blocks[data-role="choose-conditions"], .nested-blocks[data-role="repeat-while"], .nested-blocks[data-role="repeat-until"], .nested-blocks[data-role="condition-group"]';
-        } else if (effectiveSection === 'triggers') {
-            selector = '.nested-blocks[data-role="wait-for-trigger"]';
-        }
-
-        if (selector) {
-            document.querySelectorAll(selector).forEach(c => {
-                // Must not be inside the dragged item itself
-                if (!dragItem.contains(c)) {
-                    list.push(c);
-                }
-            });
-        }
-        return list;
-    };
-
     const onMouseMove = (moveEvent) => {
         const clientY = moveEvent ? moveEvent.clientY : lastClientY;
         const clientX = moveEvent ? moveEvent.clientX : lastClientX;
@@ -3166,22 +3167,50 @@ function handleBlockDragStart(e, blockEl, section, header) {
         if (isDragging) {
             dragItem.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
 
-            // Find matching candidate container under cursor
-            const candidates = getCandidateContainers();
-            
-            // Find which container the cursor is currently over
+            // 1. Check element directly under cursor
             let targetContainer = null;
-            let smallestArea = Infinity;
+            const elUnderPoint = document.elementFromPoint(clientX, clientY);
 
-            for (const c of candidates) {
-                const b = c.getBoundingClientRect();
-                const pad = 12;
-                if (clientX >= b.left - pad && clientX <= b.right + pad &&
-                    clientY >= b.top - pad && clientY <= b.bottom + pad) {
-                    const area = b.width * b.height;
-                    if (area < smallestArea) {
-                        smallestArea = area;
-                        targetContainer = c;
+            if (elUnderPoint) {
+                // Check if inside nested-blocks
+                const nb = elUnderPoint.closest('.nested-blocks');
+                if (nb && !dragItem.contains(nb) && isContainerCompatible(nb, effectiveSection)) {
+                    targetContainer = nb;
+                } else {
+                    // Check if inside a nested section / card / option
+                    const sec = elUnderPoint.closest('.nested-section, .section-content, .choose-option, .condition-group-content, .repeat-section');
+                    if (sec && !dragItem.contains(sec)) {
+                        const match = findCompatibleNestedBlocks(sec, effectiveSection);
+                        if (match && !dragItem.contains(match)) {
+                            targetContainer = match;
+                        }
+                    }
+                }
+            }
+
+            // 2. If not found via elementFromPoint, search all candidate nested section bounding boxes
+            if (!targetContainer) {
+                const candidateSections = Array.from(document.querySelectorAll('.nested-section, .choose-option, .condition-group'));
+                for (const sec of candidateSections) {
+                    if (dragItem.contains(sec)) continue;
+                    const b = sec.getBoundingClientRect();
+                    if (clientX >= b.left && clientX <= b.right && clientY >= b.top && clientY <= b.bottom) {
+                        const match = findCompatibleNestedBlocks(sec, effectiveSection);
+                        if (match && !dragItem.contains(match)) {
+                            targetContainer = match;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // 3. If still not in a nested container, check root container
+            if (!targetContainer) {
+                const rootContainer = document.getElementById(`${effectiveSection}-container`);
+                if (rootContainer) {
+                    const rb = rootContainer.getBoundingClientRect();
+                    if (clientX >= rb.left - 20 && clientX <= rb.right + 20 && clientY >= rb.top - 20 && clientY <= rb.bottom + 20) {
+                        targetContainer = rootContainer;
                     }
                 }
             }
@@ -3259,15 +3288,17 @@ function handleBlockDragStart(e, blockEl, section, header) {
                     if (isNested) {
                         // Already a wrapper: move it directly
                         targetContainer.insertBefore(dragItem, placeholder);
-                        dragItem.dataset.parentPath = targetContainer.dataset.path || '';
+                        dragItem.dataset.parentPath = targetContainer.dataset.path || targetContainer.dataset.role || '';
                     } else {
                         // Was a root .action-block: wrap it in .nested-block-wrapper
                         const wrapper = document.createElement('div');
                         wrapper.className = 'nested-block-wrapper';
-                        wrapper.dataset.parentPath = targetContainer.dataset.path || '';
+                        wrapper.dataset.parentPath = targetContainer.dataset.path || targetContainer.dataset.role || '';
                         targetContainer.insertBefore(wrapper, placeholder);
                         wrapper.appendChild(dragItem);
-                        initNestedDragAndDrop(dragItem, header);
+                        const hdr = dragItem.querySelector('.block-header');
+                        if (hdr) hdr.dataset.dragInit = 'false';
+                        initNestedDragAndDrop(dragItem, hdr);
                     }
                     updateNestedWrapperIndices(targetContainer);
                     syncNestedEmpty(targetContainer);
@@ -3278,13 +3309,16 @@ function handleBlockDragStart(e, blockEl, section, header) {
                         const innerBlock = dragItem.querySelector('.action-block') || dragItem;
                         targetContainer.insertBefore(innerBlock, placeholder);
                         dragItem.remove();
-                        initBlockDragAndDrop(innerBlock, effectiveSection, innerBlock.querySelector('.block-header'));
+                        innerBlock.style.cssText = '';
+                        const hdr = innerBlock.querySelector('.block-header');
+                        if (hdr) hdr.dataset.dragInit = 'false';
+                        initBlockDragAndDrop(innerBlock, effectiveSection, hdr);
                     } else {
                         // Was a root block: insert directly
                         targetContainer.insertBefore(dragItem, placeholder);
                     }
                     
-                    // Update direct child indices
+                    // Update direct child indices on root container
                     const directBlocks = Array.from(targetContainer.children).filter(el => el.classList.contains('action-block'));
                     directBlocks.forEach((el, idx) => el.dataset.index = String(idx));
                 }
