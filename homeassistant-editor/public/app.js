@@ -158,6 +158,7 @@ const _state = {
     folders: [],
     selectedFolder: null,
     selectedTagGroup: null,
+    selectedCategory: null,
     isNewItem: false,
     isDirty: false,
     originalItemSnapshot: null,
@@ -178,7 +179,10 @@ const _state = {
         colorModeEnabled: localStorage.getItem('ha-editor-color-mode') === 'true', // Default to false
         miniListMode: localStorage.getItem('ha-editor-mini-list') === 'true',
         autoSaveDangerously: localStorage.getItem('ha-editor-autosave-danger') === 'true',
-        showRequiredBadges: localStorage.getItem('ha-editor-show-required') !== 'false'
+        showRequiredBadges: localStorage.getItem('ha-editor-show-required') !== 'false',
+        showCategories: localStorage.getItem('ha-editor-show-categories') === 'true',
+        geminiApiKey: localStorage.getItem('ha-editor-gemini-api-key') || '',
+        geminiModel: localStorage.getItem('ha-editor-gemini-model') || 'gemini-2.5-flash'
     },
     clipboard: null, // For copy/paste blocks
     draggingBlock: null, // { section, index }
@@ -201,11 +205,13 @@ const _state = {
         previewData: null, // The historical automation/script data
         loading: false
     },
-    // Home Assistant Metadata (Areas, Labels, Icons)
+    // Home Assistant Metadata (Areas, Labels, Icons, Categories)
     haMetadata: {
         areas: [],
         labels: [],
         entities: {}, // mapping of entity_id -> { icon, area_id, labels }
+        automationCategories: [],
+        scriptCategories: [],
         syncInProgress: false
     },
     runningEntities: new Set()
@@ -291,6 +297,14 @@ const elements = {
     settingColorMode: document.getElementById('setting-color-mode'),
     settingMiniList: document.getElementById('setting-mini-list'),
     settingAutoSaveDanger: document.getElementById('setting-autosave-danger'),
+    settingShowCategories: document.getElementById('setting-show-categories'),
+    sidebarCategoriesGroup: document.getElementById('sidebar-categories-group'),
+    settingGeminiApiKey: document.getElementById('setting-gemini-api-key'),
+    btnToggleGeminiKey: document.getElementById('btn-toggle-gemini-key'),
+    btnTestGeminiKey: document.getElementById('btn-test-gemini-key'),
+    settingGeminiModel: document.getElementById('setting-gemini-model'),
+    btnAiName: document.getElementById('btn-ai-name'),
+    btnAiDescription: document.getElementById('btn-ai-description'),
 
     // Trace Panel
     panelTrace: document.getElementById('panel-trace'),
@@ -343,7 +357,10 @@ const elements = {
     btnAddFolder: document.getElementById('btn-add-folder'),
     folderList: document.getElementById('folder-list'),
     btnAddTag: document.getElementById('btn-add-tag'),
-    tagGroupList: document.getElementById('tag-group-list')
+    tagGroupList: document.getElementById('tag-group-list'),
+    categoryList: document.getElementById('category-list'),
+    btnSyncCategories: document.getElementById('btn-sync-categories'),
+    editorCategory: document.getElementById('editor-category')
 };
 
 // ============================================
@@ -1933,14 +1950,27 @@ function renderCurrentItems() {
             item.last_triggered = haState.attributes?.last_triggered || null;
             item.entity_id = entityId;
 
-            // Sync enabled state from HA (only for automations)
+            // Sync enabled state from HA (for automations, state 'on' = enabled, 'off' = disabled)
             if (domain === 'automation') {
-                item.enabled = haState.state === 'on';
+                if (haState.state === 'off') {
+                    item.enabled = false;
+                } else if (haState.state === 'on') {
+                    item.enabled = (item.enabled !== false);
+                }
             }
         } else {
             // Fallback (keep what we guessed, or null)
             item.last_triggered = null;
             item.entity_id = entityId;
+        }
+
+        // Check if disabled by registry or YAML initial_state
+        const entityMeta = state.haMetadata?.entities?.[entityId] || state.haMetadata?.entities?.[`${domain}.${item.id}`];
+        if (entityMeta && (entityMeta.disabled_by || entityMeta.disabled)) {
+            item.enabled = false;
+        }
+        if (item.initial_state === false || item.initial_state === 'off' || item.initial_state === 'false') {
+            item.enabled = false;
         }
     });
 
@@ -1963,6 +1993,7 @@ function renderCurrentItems() {
 
     renderItemsList(items);
     renderTagGroups();
+    renderCategories();
 }
 
 async function loadItems() {
@@ -2008,9 +2039,14 @@ function renderItemsList(items) {
         if (group && group.tags && group.tags.length) {
             filtered = filtered.filter(item => {
                 const itemTags = getItemTags(item).normalized;
-                return group.tags.some(tag => itemTags.includes(tag.toLowerCase()));
+                return group.tags.some(tag => itemTags.includes(tag.toLowerCase().replace(/^#/, '')));
             });
         }
+    }
+
+    // Filter by category if one is selected
+    if (state.selectedCategory && state.settings.showCategories) {
+        filtered = filtered.filter(item => String(item.category) === String(state.selectedCategory));
     }
 
     filtered = filtered.filter(item => {
@@ -2035,6 +2071,13 @@ function renderItemsList(items) {
         const activeClass = (state.selectedItem && String(state.selectedItem.id) === String(item.id)) ? 'active' : '';
         const descText = stripTagsFromText(item.description || '');
         const itemIconHtml = getItemIconHtml(item);
+        const catInfo = state.settings.showCategories ? getItemCategoryInfo(item) : null;
+        const catBadgeHtml = catInfo ? `
+            <div class="item-category-badge">
+                <ha-icon icon="${catInfo.icon || 'mdi:folder-outline'}"></ha-icon>
+                <span>${escapeHtml(catInfo.name)}</span>
+            </div>
+        ` : '';
 
         return `
     <div class="item-card ${item.enabled === false ? 'disabled' : ''} ${activeClass}" 
@@ -2047,6 +2090,7 @@ function renderItemsList(items) {
             <span class="item-text">${escapeHtml(item.alias || item.id)}</span>
           </div>
           ${descText ? `<div class="item-description">${escapeHtml(descText)}</div>` : ''}
+          ${catBadgeHtml}
         </div>
         <div class="item-last-run">${lastRunText}</div>
       </div>
@@ -2458,7 +2502,31 @@ function populateEditor(item, expansionState = null) {
         if (elements.editorDescription) elements.editorDescription.value = stripTagsFromText(descText);
         if (elements.editorTags) elements.editorTags.value = mergedTags.join(' ');
         updateEditorTagsPreview();
-        if (elements.editorEnabled) elements.editorEnabled.checked = item.enabled !== false;
+        if (elements.editorEnabled) {
+            const isEnabled = item.enabled !== false;
+            elements.editorEnabled.checked = isEnabled;
+            const toggleLabel = elements.editorEnabled.closest('.enabled-toggle')?.querySelector('.toggle-label');
+            if (toggleLabel) toggleLabel.textContent = isEnabled ? 'Enabled' : 'Disabled';
+        }
+
+        // Populate Categories dropdown (only if categories exist)
+        if (elements.editorCategory) {
+            const categories = isAutomation ? (state.haMetadata.automationCategories || []) : (state.haMetadata.scriptCategories || []);
+            const hasCategories = categories.length > 0;
+            elements.editorCategory.style.display = (state.settings.showCategories && hasCategories) ? '' : 'none';
+            if (hasCategories) {
+                elements.editorCategory.innerHTML = '<option value="">No Category</option>';
+                categories.forEach(cat => {
+                    const opt = document.createElement('option');
+                    opt.value = cat.id;
+                    opt.textContent = cat.name;
+                    elements.editorCategory.appendChild(opt);
+                });
+                elements.editorCategory.value = item.category || '';
+            } else {
+                elements.editorCategory.innerHTML = '';
+            }
+        }
 
         // Show/hide automation-specific sections
         const triggersInfo = document.getElementById('triggers-section');
@@ -2497,6 +2565,10 @@ function adjustTextareaHeight(textarea) {
 // Helper to auto-resize input width based on content
 function autoResizeInput(input) {
     if (!input) return;
+    if (input.id === 'editor-alias' || input.classList.contains('editor-alias')) {
+        input.style.width = '100%';
+        return;
+    }
 
     // Create a temporary span to measure text width
     // We need to match font properties exactly
@@ -3052,44 +3124,145 @@ function initializeBlockComponents(blockEl) {
     blockEl.querySelectorAll('textarea').forEach(adjustTextareaHeight);
 }
 
-function initBlockDragAndDrop(blockEl, section, header) {
-    header.addEventListener('mousedown', (e) => {
-        if (e.button !== 0) return;
-        if (e.target.closest('.block-action-btn') || e.target.closest('.block-menu-trigger') || e.target.closest('.block-title-input')) return;
+function isContainerCompatible(containerEl, effectiveSection) {
+    if (!containerEl) return false;
+    const role = containerEl.dataset.role || containerEl.dataset.path || '';
+    const actionRoles = ['then', 'else', 'choose-sequence', 'choose-default', 'repeat-sequence', 'sequence', 'parallel', 'sequence-items', 'parallel-items'];
+    const conditionRoles = ['if', 'conditions', 'choose-conditions', 'repeat-while', 'repeat-until', 'condition-group'];
+    const triggerRoles = ['wait-for-trigger', 'triggers'];
 
-        e.preventDefault();
-        e.stopPropagation();
+    if (effectiveSection === 'actions') {
+        return actionRoles.includes(role) || containerEl.classList.contains('action-sequence') || role.endsWith('.sequence') || role.endsWith('sequence');
+    }
+    if (effectiveSection === 'conditions') {
+        return conditionRoles.includes(role) || role.endsWith('.conditions') || role.endsWith('conditions') || role.endsWith('.while') || role.endsWith('.until');
+    }
+    if (effectiveSection === 'triggers') {
+        return triggerRoles.includes(role) || role.endsWith('triggers');
+    }
+    return false;
+}
 
-        const container = document.getElementById(`${section}-container`);
-        const startX = e.clientX;
-        const startY = e.clientY;
-        let isDragging = false;
-        let placeholder = null;
-        let currentBlocks = null;
-        let rect = null;
-        let lastScrollY = window.scrollY;
+function findCompatibleNestedBlocks(sectionEl, effectiveSection) {
+    if (!sectionEl) return null;
+    if (sectionEl.classList.contains('nested-blocks') && isContainerCompatible(sectionEl, effectiveSection)) {
+        return sectionEl;
+    }
+    const allNested = Array.from(sectionEl.querySelectorAll('.nested-blocks'));
+    return allNested.find(c => isContainerCompatible(c, effectiveSection)) || null;
+}
 
-        let lastClientY = 0;
-        const onMouseMove = (moveEvent) => {
-            const clientY = moveEvent ? moveEvent.clientY : lastClientY;
-            const clientX = moveEvent ? moveEvent.clientX : startX;
-            if (moveEvent) lastClientY = moveEvent.clientY;
+function handleBlockDragStart(e, blockEl, section, header) {
+    if (e.button !== 0) return;
+    if (document.body.classList.contains('dragging-active-global')) return;
+    if (e.target.closest('.block-action-btn') || e.target.closest('.block-menu-trigger') || e.target.closest('.block-title-input')) return;
 
-            const deltaX = clientX - startX;
-            const deltaY = clientY - startY;
+    // Detect if this block is nested or root
+    const nestedWrapper = blockEl.closest('.nested-block-wrapper');
+    const isNested = !!nestedWrapper;
+    const dragItem = isNested ? nestedWrapper : blockEl;
+    const sourceContainer = dragItem.parentElement;
+    if (!sourceContainer) return;
 
-            if (!isDragging) {
-                if (Math.hypot(deltaX, deltaY) > 8) {
-                    startDrag();
-                } else return;
+    // Determine section type: 'triggers', 'conditions', or 'actions'
+    let effectiveSection = section;
+    if (!effectiveSection) {
+        if (blockEl.classList.contains('trigger')) effectiveSection = 'triggers';
+        else if (blockEl.classList.contains('condition')) effectiveSection = 'conditions';
+        else effectiveSection = 'actions';
+    }
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    let isDragging = false;
+    let placeholder = null;
+    let rect = null;
+    let lastClientY = startY;
+    let lastClientX = startX;
+
+    const onMouseMove = (moveEvent) => {
+        const clientY = moveEvent ? moveEvent.clientY : lastClientY;
+        const clientX = moveEvent ? moveEvent.clientX : lastClientX;
+        if (moveEvent) {
+            lastClientY = moveEvent.clientY;
+            lastClientX = moveEvent.clientX;
+        }
+
+        const deltaX = clientX - startX;
+        const deltaY = clientY - startY;
+
+        if (!isDragging) {
+            if (Math.hypot(deltaX, deltaY) > 8) {
+                startDrag();
+            } else return;
+        }
+
+        if (isDragging) {
+            dragItem.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+
+            // 1. Check element directly under cursor
+            let targetContainer = null;
+            const elUnderPoint = document.elementFromPoint(clientX, clientY);
+
+            if (elUnderPoint) {
+                // Check if inside nested-blocks
+                const nb = elUnderPoint.closest('.nested-blocks');
+                if (nb && !dragItem.contains(nb) && isContainerCompatible(nb, effectiveSection)) {
+                    targetContainer = nb;
+                } else {
+                    // Check if inside a nested section / card / option
+                    const sec = elUnderPoint.closest('.nested-section, .section-content, .choose-option, .condition-group-content, .repeat-section');
+                    if (sec && !dragItem.contains(sec)) {
+                        const match = findCompatibleNestedBlocks(sec, effectiveSection);
+                        if (match && !dragItem.contains(match)) {
+                            targetContainer = match;
+                        }
+                    }
+                }
             }
 
-            if (isDragging) {
-                blockEl.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+            // 2. If not found via elementFromPoint, search all candidate nested section bounding boxes
+            if (!targetContainer) {
+                const candidateSections = Array.from(document.querySelectorAll('.nested-section, .choose-option, .condition-group'));
+                for (const sec of candidateSections) {
+                    if (dragItem.contains(sec)) continue;
+                    const b = sec.getBoundingClientRect();
+                    if (clientX >= b.left && clientX <= b.right && clientY >= b.top && clientY <= b.bottom) {
+                        const match = findCompatibleNestedBlocks(sec, effectiveSection);
+                        if (match && !dragItem.contains(match)) {
+                            targetContainer = match;
+                            break;
+                        }
+                    }
+                }
+            }
 
-                // Fix: Only look at direct children to avoid picking up nested actions
-                const siblings = Array.from(container.children).filter(el =>
-                    el.classList.contains('action-block') && !el.classList.contains('dragging-active')
+            // 3. If still not in a nested container, check root container
+            if (!targetContainer) {
+                const rootContainer = document.getElementById(`${effectiveSection}-container`);
+                if (rootContainer) {
+                    const rb = rootContainer.getBoundingClientRect();
+                    if (clientX >= rb.left - 20 && clientX <= rb.right + 20 && clientY >= rb.top - 20 && clientY <= rb.bottom + 20) {
+                        targetContainer = rootContainer;
+                    }
+                }
+            }
+
+            // Fallback to placeholder's current parent or source container
+            if (!targetContainer) {
+                targetContainer = (placeholder && placeholder.parentElement) || sourceContainer;
+            }
+
+            // Position placeholder within targetContainer
+            if (targetContainer) {
+                const isTargetNested = targetContainer.classList.contains('nested-blocks');
+                const childSelector = isTargetNested ? '.nested-block-wrapper' : '.action-block';
+                
+                const siblings = Array.from(targetContainer.children).filter(el =>
+                    el.matches(childSelector) && el !== dragItem && el !== placeholder
                 );
 
                 const nextSibling = siblings.find(sibling => {
@@ -3098,191 +3271,133 @@ function initBlockDragAndDrop(blockEl, section, header) {
                 });
 
                 if (nextSibling) {
-                    if (nextSibling.previousElementSibling !== placeholder) container.insertBefore(placeholder, nextSibling);
+                    if (nextSibling.previousElementSibling !== placeholder) {
+                        targetContainer.insertBefore(placeholder, nextSibling);
+                    }
                 } else {
-                    // Check if it's already at the end
-                    if (placeholder.nextElementSibling !== null || container.lastElementChild !== placeholder) {
-                        container.appendChild(placeholder);
+                    if (placeholder.parentElement !== targetContainer || placeholder.nextElementSibling !== null) {
+                        targetContainer.appendChild(placeholder);
                     }
                 }
             }
-        };
+        }
+    };
 
-        const startDrag = () => {
-            pushToHistory();
-            isDragging = true;
-            currentBlocks = getBlocksData(section);
-            rect = blockEl.getBoundingClientRect();
-            placeholder = document.createElement('div');
-            placeholder.className = 'action-block-placeholder';
-            placeholder.style.height = `${rect.height}px`;
-            blockEl.parentNode.insertBefore(placeholder, blockEl);
-            blockEl.style.width = `${rect.width}px`;
-            blockEl.style.height = `${rect.height}px`;
-            blockEl.style.position = 'fixed';
-            blockEl.style.left = `${rect.left}px`;
-            blockEl.style.top = `${rect.top}px`;
-            blockEl.style.zIndex = '1000';
-            blockEl.classList.add('dragging-active');
-            document.body.classList.add('dragging-active-global');
-        };
+    const startDrag = () => {
+        pushToHistory();
+        isDragging = true;
+        rect = dragItem.getBoundingClientRect();
+        document.querySelectorAll('.action-block-placeholder').forEach(p => p.remove());
+        placeholder = document.createElement('div');
+        placeholder.className = 'action-block-placeholder';
+        placeholder.style.height = `${rect.height}px`;
+        placeholder.style.width = '100%';
+        dragItem.parentNode.insertBefore(placeholder, dragItem);
 
-        const onMouseUp = () => {
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
-            // Stop scroll tracking
-            document.removeEventListener('scroll', updateScrollDelta);
+        dragItem.style.width = `${rect.width}px`;
+        dragItem.style.height = `${rect.height}px`;
+        dragItem.style.position = 'fixed';
+        dragItem.style.left = `${rect.left}px`;
+        dragItem.style.top = `${rect.top}px`;
+        dragItem.style.zIndex = '1000';
+        dragItem.style.pointerEvents = 'none';
+        dragItem.classList.add('dragging-active');
+        document.body.classList.add('dragging-active-global');
+    };
 
-            if (isDragging) {
-                blockEl.classList.remove('dragging-active');
-                document.body.classList.remove('dragging-active-global');
-                blockEl.style.cssText = '';
-                if (placeholder && placeholder.parentNode) {
-                    placeholder.parentNode.insertBefore(blockEl, placeholder);
-                    placeholder.remove();
+    const onMouseUp = () => {
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+        window.removeEventListener('scroll', updateScrollDelta, true);
+
+        if (isDragging) {
+            dragItem.classList.remove('dragging-active');
+            document.body.classList.remove('dragging-active-global');
+            dragItem.style.cssText = '';
+
+            const targetContainer = placeholder ? placeholder.parentElement : sourceContainer;
+
+            if (targetContainer && placeholder && placeholder.parentNode) {
+                const isTargetNested = targetContainer.classList.contains('nested-blocks');
+
+                if (isTargetNested) {
+                    // Dropping into a nested section
+                    if (isNested) {
+                        // Already a wrapper: move it directly
+                        targetContainer.insertBefore(dragItem, placeholder);
+                        dragItem.dataset.parentPath = targetContainer.dataset.path || targetContainer.dataset.role || '';
+                    } else {
+                        // Was a root .action-block: wrap it in .nested-block-wrapper
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'nested-block-wrapper';
+                        wrapper.dataset.parentPath = targetContainer.dataset.path || targetContainer.dataset.role || '';
+                        targetContainer.insertBefore(wrapper, placeholder);
+                        wrapper.appendChild(dragItem);
+                        const hdr = dragItem.querySelector('.block-header');
+                        if (hdr && hdr.dataset.dragInit !== 'true') {
+                            initNestedDragAndDrop(dragItem, hdr);
+                        }
+                    }
+                    updateNestedWrapperIndices(targetContainer);
+                    syncNestedEmpty(targetContainer);
+                } else {
+                    // Dropping into root container (#actions-container, #triggers-container, #conditions-container)
+                    if (isNested) {
+                        // Was a nested wrapper: unwrap the inner .action-block
+                        const innerBlock = dragItem.querySelector('.action-block') || dragItem;
+                        targetContainer.insertBefore(innerBlock, placeholder);
+                        dragItem.remove();
+                        innerBlock.style.cssText = '';
+                        const hdr = innerBlock.querySelector('.block-header');
+                        if (hdr && hdr.dataset.dragInit !== 'true') {
+                            initBlockDragAndDrop(innerBlock, effectiveSection, hdr);
+                        }
+                    } else {
+                        // Was a root block: insert directly
+                        targetContainer.insertBefore(dragItem, placeholder);
+                    }
+                    
+                    // Update direct child indices on root container
+                    const directBlocks = Array.from(targetContainer.children).filter(el => el.classList.contains('action-block'));
+                    directBlocks.forEach((el, idx) => el.dataset.index = String(idx));
                 }
 
-                // Fix: Only look at direct children for reordering
-                const directBlocks = Array.from(container.children)
-                    .filter(el => el.classList.contains('action-block'));
-                const newOrderIndices = directBlocks.map(el => parseInt(el.dataset.index));
+                // If source was a nested container and different from target, sync source
+                if (sourceContainer.classList.contains('nested-blocks') && sourceContainer !== targetContainer) {
+                    updateNestedWrapperIndices(sourceContainer);
+                    syncNestedEmpty(sourceContainer);
+                }
 
-                const reorderedData = newOrderIndices.map(index => currentBlocks[index]).filter(Boolean);
-                if (reorderedData.length === currentBlocks.length) {
-                    if (section === 'actions') {
-                        state.selectedActionIndices = new Set(
-                            directBlocks
-                                .map((el, idx) => (el.classList.contains('is-selected') ? idx : null))
-                                .filter(v => v !== null)
-                        );
-                        state.actionSelectionAnchor = null;
-                    }
-                    updateSectionBlocks(section, reorderedData);
-                    renderBlocks(section, reorderedData);
-                    // Re-check dirty after render so data-index/order state is normalized
-                    checkDirty();
-                    updateYamlView();
-                } else renderBlocks(section, currentBlocks);
+                document.querySelectorAll('.action-block-placeholder').forEach(p => p.remove());
             }
-        };
 
-        const updateScrollDelta = () => {
-            if (isDragging) {
-                onMouseMove(); // Re-calculate placeholder position on scroll
-            }
-        };
+            document.querySelectorAll('.action-block-placeholder').forEach(p => p.remove());
+            checkDirty();
+            updateYamlView();
+        }
+    };
 
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
-        window.addEventListener('scroll', updateScrollDelta, true);
-    });
+    const updateScrollDelta = () => {
+        if (isDragging) {
+            onMouseMove();
+        }
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+    window.addEventListener('scroll', updateScrollDelta, true);
+}
+
+function initBlockDragAndDrop(blockEl, section, header) {
+    if (!header || header.dataset.dragInit === 'true') return;
+    header.dataset.dragInit = 'true';
+    header.addEventListener('mousedown', (e) => handleBlockDragStart(e, blockEl, section, header));
 }
 
 function initNestedDragAndDrop(blockEl, header) {
-    header.addEventListener('mousedown', (e) => {
-        if (e.button !== 0) return;
-        if (e.target.closest('.block-action-btn') || e.target.closest('.block-menu-trigger') || e.target.closest('.block-title-input')) return;
-
-        const wrapper = blockEl.closest('.nested-block-wrapper');
-        if (!wrapper) return;
-        const container = wrapper.parentElement;
-        if (!container) return;
-
-        e.preventDefault();
-        e.stopPropagation();
-
-        const startX = e.clientX;
-        const startY = e.clientY;
-        let isDragging = false;
-        let placeholder = null;
-        let rect = null;
-        let lastScrollY = window.scrollY;
-
-        let lastClientY = 0;
-        const onMouseMove = (moveEvent) => {
-            const clientY = moveEvent ? moveEvent.clientY : lastClientY;
-            const clientX = moveEvent ? moveEvent.clientX : startX;
-            if (moveEvent) lastClientY = moveEvent.clientY;
-
-            const deltaX = clientX - startX;
-            const deltaY = clientY - startY;
-
-            if (!isDragging) {
-                if (Math.hypot(deltaX, deltaY) > 8) {
-                    startDrag();
-                } else return;
-            }
-
-            if (isDragging) {
-                wrapper.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
-
-                // Fix: Only look at direct children
-                const siblings = Array.from(container.children).filter(el =>
-                    el.classList.contains('nested-block-wrapper') && !el.classList.contains('dragging-active')
-                );
-
-                const nextSibling = siblings.find(sibling => {
-                    const box = sibling.getBoundingClientRect();
-                    return clientY < (box.top + box.height / 2);
-                });
-
-                if (nextSibling) {
-                    if (nextSibling.previousElementSibling !== placeholder) container.insertBefore(placeholder, nextSibling);
-                } else {
-                    if (placeholder.nextElementSibling !== null || container.lastElementChild !== placeholder) {
-                        container.appendChild(placeholder);
-                    }
-                }
-            }
-        };
-
-        const startDrag = () => {
-            pushToHistory();
-            isDragging = true;
-            rect = wrapper.getBoundingClientRect();
-            placeholder = document.createElement('div');
-            placeholder.className = 'action-block-placeholder';
-            placeholder.style.height = `${rect.height}px`;
-            wrapper.parentNode.insertBefore(placeholder, wrapper);
-            wrapper.style.width = `${rect.width}px`;
-            wrapper.style.height = `${rect.height}px`;
-            wrapper.style.position = 'fixed';
-            wrapper.style.left = `${rect.left}px`;
-            wrapper.style.top = `${rect.top}px`;
-            wrapper.style.zIndex = '1000';
-            wrapper.classList.add('dragging-active');
-            document.body.classList.add('dragging-active-global');
-        };
-
-        const onMouseUp = () => {
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
-            window.removeEventListener('scroll', updateScrollDelta, true);
-
-            if (isDragging) {
-                wrapper.classList.remove('dragging-active');
-                document.body.classList.remove('dragging-active-global');
-                wrapper.style.cssText = '';
-                if (placeholder && placeholder.parentNode) {
-                    placeholder.parentNode.insertBefore(wrapper, placeholder);
-                    placeholder.remove();
-                }
-                updateNestedWrapperIndices(container);
-                checkDirty();
-                updateYamlView();
-            }
-        };
-
-        const updateScrollDelta = () => {
-            if (isDragging) {
-                onMouseMove();
-            }
-        };
-
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
-        window.addEventListener('scroll', updateScrollDelta, true);
-    });
+    if (!header || header.dataset.dragInit === 'true') return;
+    header.dataset.dragInit = 'true';
+    header.addEventListener('mousedown', (e) => handleBlockDragStart(e, blockEl, null, header));
 }
 function initBlockContextMenu(blockEl) {
     const menuTrigger = blockEl.querySelector('.block-menu-trigger');
@@ -3343,6 +3458,12 @@ function initBlockContextMenu(blockEl) {
                 <span>Test</span>
             </div>
             ` : ''}
+            <div class="block-menu-item ai-autoname-block">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2">
+                    <path d="M12 2L14.4 7.6L20 10L14.4 12.4L12 18L9.6 12.4L4 10L9.6 7.6L12 2Z"/>
+                </svg>
+                <span>Auto-name with AI</span>
+            </div>
             <div class="block-menu-item danger delete-block">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="3 6 5 6 21 6" />
@@ -3378,6 +3499,15 @@ function initBlockContextMenu(blockEl) {
         }
 
         // Action Handlers
+        const aiAutonameBtn = menu.querySelector('.ai-autoname-block');
+        if (aiAutonameBtn) {
+            aiAutonameBtn.addEventListener('click', async (me) => {
+                me.stopPropagation();
+                menu.remove();
+                await autoNameBlockWithAI(blockEl);
+            });
+        }
+
         menu.querySelector('.toggle-enabled').addEventListener('click', (me) => {
             me.stopPropagation();
             blockEl.classList.toggle('is-disabled');
@@ -3953,11 +4083,6 @@ function renderNestedIfThenBlock(block) {
 
     let html = '<div class="nested-block-container">';
 
-    // Alias field (if exists)
-    if (block.alias) {
-        html += createFieldHtml('Alias', 'alias', block.alias);
-    }
-
     // IF SECTION
     html += `
         <div class="nested-section if-section" data-section-type="if">
@@ -4044,10 +4169,6 @@ function renderConditionGroupBlock(block) {
 
     let html = '<div class="nested-block-container">';
 
-    if (block.alias) {
-        html += createFieldHtml('Alias', 'alias', block.alias);
-    }
-
     html += `
         <div class="nested-section condition-group" data-section-type="conditions">
             <div class="section-header">
@@ -4082,10 +4203,6 @@ function renderChooseBlock(block) {
     const hasOptions = options.length > 0;
 
     let html = '<div class="nested-block-container choose-block-layout">';
-
-    if (block.alias) {
-        html += createFieldHtml('Alias', 'alias', block.alias);
-    }
 
     html += `
         <div class="choose-options" data-choose-options="true">
@@ -4190,10 +4307,6 @@ function renderWaitForTriggerBlock(block) {
     const triggers = Array.isArray(block.wait_for_trigger) ? block.wait_for_trigger : (block.wait_for_trigger ? [block.wait_for_trigger] : []);
     const hasTriggers = triggers.length > 0;
     let html = '<div class="nested-block-container">';
-
-    if (block.alias) {
-        html += createFieldHtml('Alias', 'alias', block.alias);
-    }
 
     html += `
         <div class="nested-section wait-for-trigger-section" data-section-type="wait_for_trigger">
@@ -4598,43 +4711,20 @@ function refreshBlockTitle(blockEl) {
     const aliasTextEl = blockEl.querySelector('.block-alias-text');
     if (!aliasTextEl || !aliasTextEl.classList.contains('is-placeholder')) return;
 
-    // Harvest current values from all inputs in the block
-    const blockData = {};
-    const inputs = blockEl.querySelectorAll('input, select, textarea');
-    inputs.forEach(input => {
-        if (!input.name) return;
-
-        let value = input.value;
-        if (input.type === 'number') {
-            const trimmed = String(value).trim();
-            value = trimmed === '' ? '' : parseFloat(trimmed);
-        }
-        if (input.type === 'checkbox') value = input.checked;
-
-        // Handle nested paths (though usually simpler for titles)
-        blockData[input.name] = value;
-    });
-
     // Determine type (trigger, condition, or action)
     let type = 'action';
     if (blockEl.classList.contains('trigger')) type = 'trigger';
     else if (blockEl.classList.contains('condition')) type = 'condition';
 
-    // Preserve the trigger/condition platform type from data attribute 
-    // (set when block was created - needed for correct title generation)
-    const blockType = blockEl.dataset.blockType;
-    if (blockType) {
-        if (type === 'trigger') {
-            blockData.platform = blockType;
-            blockData.trigger = blockType;
-        } else if (type === 'condition') {
-            blockData.condition = blockType;
-        }
-    }
-
-    // Get the updated title
+    const blockData = parseBlockElement(blockEl, type);
     const newTitle = getBlockTitle(blockData, type);
     aliasTextEl.textContent = newTitle;
+
+    const aliasInput = blockEl.querySelector('.block-title-input');
+    if (aliasInput) {
+        aliasInput.setAttribute('placeholder', newTitle);
+    }
+
     renderBlockTags(blockEl, newTitle);
 }
 
@@ -4881,10 +4971,12 @@ function getBlockTitle(block, type) {
     }
 
     // Wait for trigger
-    if (block.wait_for_trigger) {
-        const triggers = Array.isArray(block.wait_for_trigger) ? block.wait_for_trigger : [block.wait_for_trigger];
-        if (triggers.length > 0 && triggers[0].entity_id) {
-            return `Wait for ${getEntityName(triggers[0].entity_id)}`;
+    if (block.wait_for_trigger !== undefined) {
+        const triggers = Array.isArray(block.wait_for_trigger) ? block.wait_for_trigger : (block.wait_for_trigger ? [block.wait_for_trigger] : []);
+        if (triggers.length > 0 && triggers[0] && (triggers[0].entity_id || triggers[0].platform || triggers[0].trigger)) {
+            const first = triggers[0];
+            const target = first.entity_id ? getEntityName(first.entity_id) : (first.platform || first.trigger || '');
+            return `Wait for ${target}`;
         }
         return 'Wait for trigger';
     }
@@ -4910,11 +5002,11 @@ function getBlockTitle(block, type) {
         return service;
     }
 
-    if (block.delay) {
-        return `Wait ${typeof block.delay === 'object' ? formatDuration(block.delay) : block.delay}`;
+    if (block.delay !== undefined) {
+        return `Wait ${typeof block.delay === 'object' ? formatDuration(block.delay) : (block.delay || 'delay')}`;
     }
-    if (block.wait_template) {
-        return 'Wait for template';
+    if (block.wait_template !== undefined) {
+        return block.wait_template ? `Wait for: ${block.wait_template}` : 'Wait for template';
     }
     if (block.scene) {
         return `Scene: ${block.scene}`;
@@ -4922,7 +5014,7 @@ function getBlockTitle(block, type) {
     if (block.event) {
         return `Fire event: ${block.event}`;
     }
-    if (block.variables) {
+    if (block.variables !== undefined) {
         return 'Set variables';
     }
     if (block.stop !== undefined) {
@@ -4931,11 +5023,13 @@ function getBlockTitle(block, type) {
 
     // Conditions
     if (block.condition === 'state') {
+        if (!block.entity_id && !block.state) return 'State condition';
         const entity = getEntityName(block.entity_id);
         const stateLabel = block.state ? formatStateValue(block.state) : '...';
         return `${entity} is ${stateLabel}`;
     }
     if (block.condition === 'numeric_state') {
+        if (!block.entity_id && block.above === undefined && block.below === undefined) return 'Numeric state condition';
         const entity = getEntityName(block.entity_id);
         const above = (block.above !== undefined && block.above !== '' && !Number.isNaN(block.above)) ? block.above : null;
         const below = (block.below !== undefined && block.below !== '' && !Number.isNaN(block.below)) ? block.below : null;
@@ -4950,7 +5044,7 @@ function getBlockTitle(block, type) {
         return `${entity} numeric`;
     }
     if (block.condition === 'time') {
-        let timeDesc = 'Time';
+        let timeDesc = 'Time condition';
         if (block.after && block.before) {
             timeDesc = `${block.after} - ${block.before}`;
         } else if (block.after) {
@@ -4959,6 +5053,15 @@ function getBlockTitle(block, type) {
             timeDesc = `Before ${block.before}`;
         }
         return timeDesc;
+    }
+    if (block.condition === 'sun') {
+        const after = block.after ? `after ${block.after}` : '';
+        const before = block.before ? `before ${block.before}` : '';
+        const parts = [after, before].filter(Boolean).join(', ');
+        return `Sun: ${parts || 'sun event'}`;
+    }
+    if (block.condition === 'device') {
+        return `Device: ${getDeviceName(block.device_id)}`;
     }
     if (block.condition === 'trigger') {
         const ids = Array.isArray(block.id) ? block.id.join(', ') : block.id;
@@ -4984,7 +5087,9 @@ function getBlockTitle(block, type) {
         return `Not (${count} conditions)`;
     }
 
-    return type.charAt(0).toUpperCase() + type.slice(1);
+    if (type === 'trigger') return 'Trigger';
+    if (type === 'condition') return 'Condition';
+    return 'Action';
 }
 
 // Helper to truncate long entity names
@@ -5819,7 +5924,7 @@ async function updateYamlView(itemOverride = null) {
     const textarea = document.getElementById('yaml-content');
     const yamlEditor = document.getElementById('yaml-editor');
     if (!textarea) return;
-    if (yamlEditor) yamlEditor.classList.add('plain');
+    if (yamlEditor) yamlEditor.classList.remove('plain');
 
     // If in version preview mode or explicit item provided, generate YAML from object
     if ((state.versionControl?.previewMode) || itemOverride) {
@@ -6229,6 +6334,11 @@ function getEditorData() {
         mode: state.selectedItem?.mode || 'single',
         _type: state.selectedItem?._type || (isAutomation ? 'automation' : 'script')
     };
+
+    const categoryVal = elements.editorCategory ? elements.editorCategory.value : '';
+    if (categoryVal) {
+        data.category = categoryVal;
+    }
 
     // Explicitly copy entity_id, area, labels if they exist safely
     if (state.selectedItem?.entity_id) data.entity_id = state.selectedItem.entity_id;
@@ -6847,21 +6957,92 @@ function showAddBlockModal(section, onSelect) {
 
     elements.modalSectionType.textContent = label;
 
-    elements.blockTypesGrid.innerHTML = types.map(type => `
-        <div class="block-type-option" data-type="${type.id}">
-          ${getTypeIcon(type.icon)}
-          <span>${type.name}</span>
-        </div>
-      `).join('');
+    const searchInput = document.getElementById('add-block-search');
+    const searchClear = document.getElementById('add-block-search-clear');
+    const emptyEl = document.getElementById('block-types-empty');
+    if (searchInput) {
+        searchInput.value = '';
+        searchInput.placeholder = `Search ${label.toLowerCase()}s...`;
+    }
+    if (searchClear) searchClear.style.display = 'none';
+    if (emptyEl) {
+        emptyEl.style.display = 'none';
+        const span = emptyEl.querySelector('span');
+        if (span) span.textContent = `No matching ${label.toLowerCase()}s found`;
+    }
 
-    elements.blockTypesGrid.querySelectorAll('.block-type-option').forEach(option => {
-        option.addEventListener('click', () => {
-            if (modalSelectHandler) modalSelectHandler(option.dataset.type);
-            closeModal();
+    const renderGrid = (filterText = '') => {
+        const query = filterText.trim().toLowerCase();
+        const filteredTypes = query
+            ? types.filter(t => t.name.toLowerCase().includes(query) || t.id.toLowerCase().includes(query))
+            : types;
+
+        if (filteredTypes.length === 0) {
+            elements.blockTypesGrid.innerHTML = '';
+            if (emptyEl) emptyEl.style.display = 'block';
+            return;
+        }
+
+        if (emptyEl) emptyEl.style.display = 'none';
+
+        elements.blockTypesGrid.innerHTML = filteredTypes.map((type, idx) => `
+            <div class="block-type-option ${idx === 0 && query ? 'focused' : ''}" data-type="${type.id}">
+              ${getTypeIcon(type.icon)}
+              <span>${type.name}</span>
+            </div>
+          `).join('');
+
+        elements.blockTypesGrid.querySelectorAll('.block-type-option').forEach(option => {
+            option.addEventListener('click', () => {
+                if (modalSelectHandler) modalSelectHandler(option.dataset.type);
+                closeModal();
+            });
         });
-    });
+    };
+
+    renderGrid();
+
+    // Attach search listeners once
+    if (searchInput && !searchInput.dataset.listenerAttached) {
+        searchInput.addEventListener('input', (e) => {
+            const val = e.target.value;
+            if (searchClear) searchClear.style.display = val ? 'flex' : 'none';
+            renderGrid(val);
+        });
+
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const firstOption = elements.blockTypesGrid.querySelector('.block-type-option');
+                if (firstOption) {
+                    firstOption.click();
+                }
+            } else if (e.key === 'Escape') {
+                if (searchInput.value) {
+                    searchInput.value = '';
+                    if (searchClear) searchClear.style.display = 'none';
+                    renderGrid('');
+                    e.stopPropagation();
+                }
+            }
+        });
+
+        if (searchClear) {
+            searchClear.addEventListener('click', () => {
+                searchInput.value = '';
+                searchClear.style.display = 'none';
+                renderGrid('');
+                searchInput.focus();
+            });
+        }
+
+        searchInput.dataset.listenerAttached = 'true';
+    }
 
     elements.addBlockModal.classList.add('active');
+    setTimeout(() => {
+        if (searchInput) searchInput.focus();
+    }, 50);
 }
 
 function closeModal() {
@@ -7293,6 +7474,7 @@ function selectTagGroup(groupId) {
     } else {
         state.selectedTagGroup = groupId;
         state.selectedFolder = null;
+        state.selectedCategory = null;
         state.selectedItem = null;
     }
 
@@ -7300,9 +7482,124 @@ function selectTagGroup(groupId) {
     elements.groupItems.forEach(i => i.classList.remove('active'));
     renderFolders();
     renderTagGroups();
+    renderCategories();
 
     showEmptyState();
     loadItems();
+}
+
+// ============================================
+// Category Functions
+// ============================================
+
+function loadCategories() {
+    try {
+        const rawAuto = localStorage.getItem('ha-editor-categories-automation');
+        const rawScript = localStorage.getItem('ha-editor-categories-script');
+        const autoCats = rawAuto ? JSON.parse(rawAuto) : [];
+        const scriptCats = rawScript ? JSON.parse(rawScript) : [];
+        
+        state.haMetadata.automationCategories = autoCats.map(cat => ({
+            ...cat,
+            id: cat.category_id || cat.id
+        }));
+        state.haMetadata.scriptCategories = scriptCats.map(cat => ({
+            ...cat,
+            id: cat.category_id || cat.id
+        }));
+    } catch (e) {
+        console.warn('Failed to load categories:', e);
+        state.haMetadata.automationCategories = [];
+        state.haMetadata.scriptCategories = [];
+    }
+    renderCategories();
+}
+
+function saveCategories() {
+    localStorage.setItem('ha-editor-categories-automation', JSON.stringify(state.haMetadata.automationCategories || []));
+    localStorage.setItem('ha-editor-categories-script', JSON.stringify(state.haMetadata.scriptCategories || []));
+}
+
+function loadHAMetadata() {
+    try {
+        const raw = localStorage.getItem('ha-editor-metadata-entities');
+        state.haMetadata.entities = raw ? JSON.parse(raw) : {};
+    } catch (e) {
+        console.warn('Failed to load HA metadata entities:', e);
+        state.haMetadata.entities = {};
+    }
+}
+
+function saveHAMetadata() {
+    localStorage.setItem('ha-editor-metadata-entities', JSON.stringify(state.haMetadata.entities || {}));
+}
+
+
+function renderCategories() {
+    if (!elements.categoryList) return;
+
+    const categories = state.currentGroup === 'automations' ? 
+        (state.haMetadata.automationCategories || []) : 
+        (state.haMetadata.scriptCategories || []);
+
+    if (!categories.length) {
+        elements.categoryList.innerHTML = '';
+        if (elements.sidebarCategoriesGroup) {
+            elements.sidebarCategoriesGroup.style.display = 'none';
+        }
+        return;
+    }
+
+    if (elements.sidebarCategoriesGroup) {
+        elements.sidebarCategoriesGroup.style.display = state.settings.showCategories ? '' : 'none';
+    }
+
+    elements.categoryList.innerHTML = categories.map(cat => {
+        const isActive = String(state.selectedCategory) === String(cat.id);
+        const iconName = cat.icon || 'mdi:folder-outline';
+        return `
+            <div class="group-item category-item ${isActive ? 'active' : ''}" data-category-id="${cat.id}" role="button" tabindex="0">
+                <ha-icon class="group-icon" icon="${iconName}"></ha-icon>
+                <span class="folder-name">${escapeHtml(cat.name)}</span>
+            </div>
+        `;
+    }).join('');
+
+    // Add click handlers
+    elements.categoryList.querySelectorAll('.category-item').forEach(item => {
+        item.addEventListener('click', () => {
+            selectCategory(item.dataset.categoryId);
+        });
+    });
+}
+
+function selectCategory(categoryId) {
+    if (!categoryId) return;
+    if (String(state.selectedCategory) === String(categoryId)) {
+        state.selectedCategory = null;
+    } else {
+        state.selectedCategory = categoryId;
+        state.selectedFolder = null;
+        state.selectedTagGroup = null;
+        state.selectedItem = null;
+    }
+
+    // Update active state in sidebar
+    elements.groupItems.forEach(i => i.classList.remove('active'));
+    renderFolders();
+    renderTagGroups();
+    renderCategories();
+
+    showEmptyState();
+    loadItems();
+}
+
+function getItemCategoryInfo(item) {
+    if (!item || !item.category) return null;
+    const categories = item._type === 'automation' ? 
+        (state.haMetadata.automationCategories || []) : 
+        (state.haMetadata.scriptCategories || []);
+    return categories.find(c => String(c.id) === String(item.category)) || { id: item.category, name: item.category };
 }
 
 let currentEditTagGroupId = null;
@@ -7400,6 +7697,7 @@ function selectFolder(folderId) {
     } else {
         state.selectedFolder = folderId;
         state.selectedTagGroup = null;
+        state.selectedCategory = null;
     }
     state.selectedItem = null;
 
@@ -7407,6 +7705,7 @@ function selectFolder(folderId) {
     elements.groupItems.forEach(i => i.classList.remove('active'));
     renderFolders();
     renderTagGroups();
+    renderCategories();
 
     showEmptyState();
     loadItems();
@@ -7736,8 +8035,11 @@ function initEventListeners() {
             item.classList.add('active');
             state.selectedFolder = null;
             state.selectedTagGroup = null;
+            state.selectedCategory = null;
             state.currentGroup = item.dataset.group;
             renderFolders(); // Update folder active states
+            renderTagGroups();
+            renderCategories();
             showEmptyState();
             loadItems();
         });
@@ -7775,6 +8077,12 @@ function initEventListeners() {
         btnSyncTags.addEventListener('click', (e) => {
             e.stopPropagation();
             syncHAMetadata('tags');
+        });
+    }
+    if (elements.btnSyncCategories) {
+        elements.btnSyncCategories.addEventListener('click', (e) => {
+            e.stopPropagation();
+            syncHAMetadata('categories');
         });
     }
 
@@ -8068,6 +8376,9 @@ function initEventListeners() {
     // Track changes
     elements.editorAlias.addEventListener('input', () => { checkDirty(); });
     elements.editorDescription.addEventListener('input', () => { checkDirty(); });
+    if (elements.editorCategory) {
+        elements.editorCategory.addEventListener('change', () => { checkDirty(); });
+    }
     if (elements.editorTags) {
         elements.editorTags.addEventListener('input', () => {
             updateEditorTagsPreview();
@@ -8177,7 +8488,7 @@ function initEventListeners() {
     });
 
     // Track changes with history
-    const mainInputs = [elements.editorAlias, elements.editorDescription, elements.yamlContent];
+    const mainInputs = [elements.editorAlias, elements.editorDescription, elements.yamlContent, elements.editorCategory].filter(Boolean);
     mainInputs.forEach(input => {
         let snapshot = null;
         input.addEventListener('focus', () => {
@@ -8323,6 +8634,93 @@ function initEventListeners() {
                 showToast('Autosave disabled', 'info');
             }
         });
+    }
+
+    // Settings - Show Categories toggle
+    if (elements.settingShowCategories) {
+        elements.settingShowCategories.checked = state.settings.showCategories;
+        if (elements.sidebarCategoriesGroup) {
+            elements.sidebarCategoriesGroup.style.display = state.settings.showCategories ? '' : 'none';
+        }
+        elements.settingShowCategories.addEventListener('change', (e) => {
+            state.settings.showCategories = e.target.checked;
+            localStorage.setItem('ha-editor-show-categories', e.target.checked);
+            
+            const isAutomation = state.selectedItem ? state.selectedItem._type === 'automation' : true;
+            const categories = isAutomation ? (state.haMetadata.automationCategories || []) : (state.haMetadata.scriptCategories || []);
+            const hasCategories = categories.length > 0;
+
+            if (elements.sidebarCategoriesGroup) {
+                elements.sidebarCategoriesGroup.style.display = (e.target.checked && hasCategories) ? '' : 'none';
+            }
+            if (elements.editorCategory) {
+                elements.editorCategory.style.display = (e.target.checked && hasCategories) ? '' : 'none';
+                if (e.target.checked && hasCategories && state.selectedItem) {
+                    elements.editorCategory.innerHTML = '<option value="">No Category</option>';
+                    categories.forEach(cat => {
+                        const opt = document.createElement('option');
+                        opt.value = cat.id;
+                        opt.textContent = cat.name;
+                        elements.editorCategory.appendChild(opt);
+                    });
+                    elements.editorCategory.value = state.selectedItem.category || '';
+                } else {
+                    elements.editorCategory.innerHTML = '';
+                }
+            }
+            if (!e.target.checked) {
+                state.selectedCategory = null;
+            }
+            renderCategories();
+            loadItems();
+        });
+    }
+
+    // Settings - Gemini AI Configuration
+    if (elements.settingGeminiApiKey) {
+        elements.settingGeminiApiKey.value = state.settings.geminiApiKey || '';
+        elements.settingGeminiApiKey.addEventListener('input', (e) => {
+            state.settings.geminiApiKey = e.target.value;
+            localStorage.setItem('ha-editor-gemini-api-key', e.target.value.trim());
+        });
+    }
+
+    if (elements.btnToggleGeminiKey && elements.settingGeminiApiKey) {
+        elements.btnToggleGeminiKey.addEventListener('click', () => {
+            const isPassword = elements.settingGeminiApiKey.type === 'password';
+            elements.settingGeminiApiKey.type = isPassword ? 'text' : 'password';
+        });
+    }
+
+    if (elements.settingGeminiModel) {
+        elements.settingGeminiModel.value = state.settings.geminiModel || 'gemini-2.5-flash';
+        elements.settingGeminiModel.addEventListener('change', (e) => {
+            state.settings.geminiModel = e.target.value;
+            localStorage.setItem('ha-editor-gemini-model', e.target.value);
+        });
+    }
+
+    if (elements.btnTestGeminiKey) {
+        elements.btnTestGeminiKey.addEventListener('click', async () => {
+            const key = elements.settingGeminiApiKey ? elements.settingGeminiApiKey.value : state.settings.geminiApiKey;
+            const model = elements.settingGeminiModel ? elements.settingGeminiModel.value : state.settings.geminiModel;
+            elements.btnTestGeminiKey.disabled = true;
+            elements.btnTestGeminiKey.textContent = 'Testing...';
+            try {
+                await testGeminiKey(key, model);
+            } finally {
+                elements.btnTestGeminiKey.disabled = false;
+                elements.btnTestGeminiKey.textContent = 'Test';
+            }
+        });
+    }
+
+    // Header Gemini AI Buttons
+    if (elements.btnAiName) {
+        elements.btnAiName.addEventListener('click', autoNameItemWithAI);
+    }
+    if (elements.btnAiDescription) {
+        elements.btnAiDescription.addEventListener('click', autoDescribeItemWithAI);
     }
 
     // Replay controls
@@ -9565,6 +9963,8 @@ async function init() {
     initTheme();
     initSidebar();
     loadTagGroups();
+    loadCategories();
+    loadHAMetadata();
     initUITweaker();   // Initialize UI Tweaker
     initEventListeners();
     initResizers();
@@ -9629,12 +10029,14 @@ async function syncHAMetadata(type = 'all') {
 
     const btnSyncFolders = document.getElementById('btn-sync-folders');
     const btnSyncTags = document.getElementById('btn-sync-tags');
+    const btnSyncCategories = document.getElementById('btn-sync-categories');
     if (btnSyncFolders) btnSyncFolders.classList.add('syncing');
     if (btnSyncTags) btnSyncTags.classList.add('syncing');
+    if (btnSyncCategories) btnSyncCategories.classList.add('syncing');
 
     try {
         console.log('[HA Sync] Fetching metadata...');
-        const response = await fetch('/api/ha-metadata');
+        const response = await fetch('./api/ha-metadata');
         const data = await response.json();
 
         if (!data.success) throw new Error(data.error);
@@ -9693,7 +10095,7 @@ async function syncHAMetadata(type = 'all') {
             const labels = data.labels.map(l => ({
                 id: 'ha-label-' + l.label_id,
                 name: l.name,
-                tags: ['#' + l.name.toLowerCase().replace(/\s+/g, '-')],
+                tags: [l.name.toLowerCase().replace(/\s+/g, '-')],
                 isAutoGenerated: true
             }));
 
@@ -9715,13 +10117,33 @@ async function syncHAMetadata(type = 'all') {
         // 3. Process Entity Registry -> Icon Mapping
         const entityMap = {};
         data.entities.forEach(ent => {
-            entityMap[ent.entity_id] = {
+            const meta = {
                 icon: ent.icon || ent.original_icon,
                 area_id: ent.area_id,
                 labels: ent.labels || []
             };
+            entityMap[ent.entity_id] = meta;
+            if (ent.unique_id) {
+                const domain = ent.entity_id.split('.')[0];
+                entityMap[`${domain}.${ent.unique_id}`] = meta;
+            }
         });
         state.haMetadata.entities = entityMap;
+        saveHAMetadata();
+
+        // 4. Process Categories
+        if (type === 'all' || type === 'categories') {
+            state.haMetadata.automationCategories = (data.automation_categories || []).map(cat => ({
+                ...cat,
+                id: cat.category_id || cat.id
+            }));
+            state.haMetadata.scriptCategories = (data.script_categories || []).map(cat => ({
+                ...cat,
+                id: cat.category_id || cat.id
+            }));
+            saveCategories();
+            renderCategories();
+        }
 
         // Refresh UI
         loadItems();
@@ -9729,11 +10151,13 @@ async function syncHAMetadata(type = 'all') {
 
     } catch (error) {
         console.error('[HA Sync] Error:', error);
-        showToast('Sync failed: ' + error.message, 'error');
+        if (error.stack) console.error(error.stack);
+        showToast('Sync failed: ' + error.message + '\n' + (error.stack ? error.stack.split('\n')[1] : ''), 'error');
     } finally {
         state.haMetadata.syncInProgress = false;
         if (btnSyncFolders) btnSyncFolders.classList.remove('syncing');
         if (btnSyncTags) btnSyncTags.classList.remove('syncing');
+        if (btnSyncCategories) btnSyncCategories.classList.remove('syncing');
     }
 }
 
@@ -9757,4 +10181,243 @@ function getItemIconHtml(item) {
         return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg>`;
     }
     return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg>`;
+}
+
+// ============================================
+// Gemini AI Integration
+// ============================================
+
+/**
+ * Ensure an API key exists or prompt the user for one on the fly
+ */
+async function ensureGeminiApiKey() {
+    let apiKey = (state.settings.geminiApiKey || '').trim();
+    if (apiKey) return apiKey;
+
+    const userKey = prompt('Please enter your Google Gemini API Key:\n(Get one free at https://aistudio.google.com/app/apikey)');
+    if (userKey && userKey.trim()) {
+        const trimmed = userKey.trim();
+        state.settings.geminiApiKey = trimmed;
+        localStorage.setItem('ha-editor-gemini-api-key', trimmed);
+        if (elements.settingGeminiApiKey) {
+            elements.settingGeminiApiKey.value = trimmed;
+        }
+        showToast('Gemini API Key saved!', 'success');
+        return trimmed;
+    } else {
+        showToast('Gemini API Key is required to use AI features', 'warning');
+        return null;
+    }
+}
+
+/**
+ * Call the Google Gemini API with a prompt
+ */
+async function callGemini(prompt, systemInstruction = '') {
+    const apiKey = await ensureGeminiApiKey();
+    if (!apiKey) return null;
+
+    const model = state.settings.geminiModel || 'gemini-2.5-flash';
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+    const body = {
+        contents: [
+            {
+                role: 'user',
+                parts: [{ text: prompt }]
+            }
+        ]
+    };
+    if (systemInstruction) {
+        body.systemInstruction = {
+            parts: [{ text: systemInstruction }]
+        };
+    }
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        const data = await response.json();
+        if (data.error) {
+            throw new Error(data.error.message || 'Gemini API Error');
+        }
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        return text ? text.trim().replace(/^["']|["']$/g, '') : '';
+    } catch (err) {
+        console.error('[Gemini API] Error:', err);
+        showToast(`Gemini error: ${err.message}`, 'error');
+        return null;
+    }
+}
+
+/**
+ * Test Gemini API key validity
+ */
+async function testGeminiKey(apiKey, model = 'gemini-2.5-flash') {
+    const key = (apiKey || state.settings.geminiApiKey || '').trim();
+    if (!key) {
+        showToast('Please enter a Gemini API Key first', 'warning');
+        return false;
+    }
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
+    try {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: 'Respond with OK.' }] }]
+            })
+        });
+        const data = await res.json();
+        if (data.error) {
+            throw new Error(data.error.message || 'Invalid API Key');
+        }
+        showToast('Gemini API Key is valid and working!', 'success');
+        return true;
+    } catch (err) {
+        showToast(`Gemini test failed: ${err.message}`, 'error');
+        return false;
+    }
+}
+
+/**
+ * Auto-name current automation or script with Gemini
+ */
+async function autoNameItemWithAI() {
+    if (!state.selectedItem) return;
+    const btn = elements.btnAiName;
+    if (btn) btn.classList.add('is-loading');
+    showToast('Generating title with Gemini...', 'info');
+
+    try {
+        const editorData = getEditorData();
+        let definitionText = '';
+        try {
+            if (typeof generateYamlFromItem === 'function') {
+                definitionText = generateYamlFromItem(editorData);
+            } else {
+                definitionText = JSON.stringify(editorData, null, 2);
+            }
+        } catch (e) {
+            definitionText = JSON.stringify(editorData, null, 2);
+        }
+
+        const prompt = `You are a Home Assistant automation expert. Given this automation/script definition:
+${definitionText}
+
+Suggest a concise, friendly, descriptive title for this automation/script (e.g. "Bedroom Motion Night Light", "Evening Living Room Ambience", "Away Security Mode").
+Rules:
+- Return ONLY the title text.
+- Maximum 3 to 6 words.
+- No markdown, no quotes, no explanations.`;
+
+        const generatedName = await callGemini(prompt);
+        if (generatedName) {
+            if (elements.editorAlias) {
+                elements.editorAlias.value = generatedName;
+                autoResizeInput(elements.editorAlias);
+                elements.editorAlias.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            checkDirty();
+            updateYamlView();
+            showToast(`Named "${generatedName}"`, 'success');
+        }
+    } catch (err) {
+        console.error('[Gemini AI] Auto-name error:', err);
+        showToast(`Auto-name failed: ${err.message}`, 'error');
+    } finally {
+        if (btn) btn.classList.remove('is-loading');
+    }
+}
+
+/**
+ * Auto-generate description for current automation/script with Gemini
+ */
+async function autoDescribeItemWithAI() {
+    if (!state.selectedItem) return;
+    const btn = elements.btnAiDescription;
+    if (btn) btn.classList.add('is-loading');
+    showToast('Generating description with Gemini...', 'info');
+
+    try {
+        const editorData = getEditorData();
+        let definitionText = '';
+        try {
+            if (typeof generateYamlFromItem === 'function') {
+                definitionText = generateYamlFromItem(editorData);
+            } else {
+                definitionText = JSON.stringify(editorData, null, 2);
+            }
+        } catch (e) {
+            definitionText = JSON.stringify(editorData, null, 2);
+        }
+
+        const prompt = `You are a Home Assistant automation expert. Given this automation/script definition:
+${definitionText}
+
+Write a clear, natural 1-2 sentence description explaining what this automation/script does, when it triggers, and its main actions.
+Rules:
+- Return ONLY the plain text description.
+- Do NOT wrap in quotes.
+- No markdown formatting.`;
+
+        const generatedDesc = await callGemini(prompt);
+        if (generatedDesc) {
+            if (elements.editorDescription) {
+                elements.editorDescription.value = generatedDesc;
+                elements.editorDescription.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            checkDirty();
+            updateYamlView();
+            showToast('Description updated with Gemini', 'success');
+        }
+    } catch (err) {
+        console.error('[Gemini AI] Auto-describe error:', err);
+        showToast(`Auto-describe failed: ${err.message}`, 'error');
+    } finally {
+        if (btn) btn.classList.remove('is-loading');
+    }
+}
+
+/**
+ * Auto-name a single action or condition block with Gemini
+ */
+async function autoNameBlockWithAI(blockEl) {
+    const section = inferBlockSectionFromElement(blockEl);
+    const parseSection = section === 'triggers' ? 'trigger' : (section === 'conditions' ? 'condition' : 'action');
+    const parsed = parseBlockElement(blockEl, parseSection);
+    
+    showToast('Generating block title with Gemini...', 'info');
+    try {
+        const prompt = `You are a Home Assistant automation expert. Given the following Home Assistant ${parseSection} block definition:
+${JSON.stringify(parsed, null, 2)}
+
+Provide a concise, human-friendly 2 to 5 word title/alias describing what this block does (e.g. "Turn on Bed Light", "Wait for Front Door Motion", "Dim Bed Light to 20%", "If Bed Light Is On").
+Rules:
+- Return ONLY the short title text.
+- Capitalize words cleanly.
+- No markdown, no quotes, no explanations, no trailing punctuation.`;
+
+        const generatedName = await callGemini(prompt);
+        if (generatedName) {
+            const titleInput = blockEl.querySelector('.block-title-input');
+            if (titleInput) {
+                titleInput.value = generatedName;
+                titleInput.dispatchEvent(new Event('input', { bubbles: true }));
+                titleInput.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            const aliasText = blockEl.querySelector('.block-alias-text');
+            if (aliasText) aliasText.textContent = generatedName;
+
+            checkDirty();
+            updateYamlView();
+            showToast(`Action named "${generatedName}"`, 'success');
+        }
+    } catch (err) {
+        console.error('[Gemini AI] Auto-name block error:', err);
+        showToast(`Block auto-name failed: ${err.message}`, 'error');
+    }
 }

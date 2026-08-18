@@ -14,6 +14,39 @@ const __dirname = path.dirname(__filename);
 // Cache for parsed YAML files to reduce I/O and parsing overhead
 const fileCache = new Map();
 
+// Define custom Home Assistant YAML tags so js-yaml safely loads files without throwing unknown tag errors
+const HA_TAGS = [
+  '!include',
+  '!include_dir_list',
+  '!include_dir_named',
+  '!include_dir_merge_list',
+  '!include_dir_merge_named',
+  '!secret',
+  '!env_var',
+  '!input'
+];
+
+const customYamlTypes = [];
+for (const tag of HA_TAGS) {
+  customYamlTypes.push(new yaml.Type(tag, {
+    kind: 'scalar',
+    construct: (data) => data,
+    predicate: () => false
+  }));
+  customYamlTypes.push(new yaml.Type(tag, {
+    kind: 'sequence',
+    construct: (data) => data,
+    predicate: () => false
+  }));
+  customYamlTypes.push(new yaml.Type(tag, {
+    kind: 'mapping',
+    construct: (data) => data,
+    predicate: () => false
+  }));
+}
+
+export const HA_SCHEMA = yaml.DEFAULT_SCHEMA.extend(customYamlTypes);
+
 /**
  * Get cached file entry, refreshing if necessary
  * @param {string} filePath - Path to file
@@ -56,9 +89,27 @@ async function getCachedContent(filePath) {
 async function getCachedYaml(filePath) {
   const entry = await getCachedFileEntry(filePath);
   if (entry.data === undefined) {
-    entry.data = yaml.load(entry.content);
+    entry.data = yaml.load(entry.content, { schema: HA_SCHEMA });
   }
   return entry.data;
+}
+
+async function addYamlFilesFromDir(dirPath, targetArray) {
+  try {
+    const entries = await fs.promises.readdir(dirPath, { withFileTypes: true });
+    for (const entry of entries) {
+      const full = path.join(dirPath, entry.name);
+      if (entry.isDirectory()) {
+        await addYamlFilesFromDir(full, targetArray);
+      } else if (entry.isFile() && (entry.name.endsWith('.yaml') || entry.name.endsWith('.yml'))) {
+        if (!targetArray.includes(full)) {
+          targetArray.push(full);
+        }
+      }
+    }
+  } catch (err) {
+    // Ignore missing directories
+  }
 }
 
 /**
@@ -71,104 +122,95 @@ export async function getConfigFilePaths(configPath) {
   const automationPaths = [];
   const scriptPaths = [];
 
+  const addPathIfUnique = (list, p) => {
+    if (p && !list.includes(p)) list.push(p);
+  };
+
   try {
     const configContent = await getCachedContent(configFile);
-
     const lines = configContent.split('\n');
+
     for (const line of lines) {
       const trimmedLine = line.trim();
+      if (!trimmedLine || trimmedLine.startsWith('#')) continue;
 
-      // Match automation: !include filename.yaml
-      const autoMatch = trimmedLine.match(/^automation:\s*!include\s+(.+)$/);
-      if (autoMatch) {
-        const file = autoMatch[1].trim();
-        automationPaths.push(path.join(configPath, file));
-      }
+      // Match automation / script / packages includes
+      const includeMatch = trimmedLine.match(/^([\w\-]+(?:\s+[\w\-]+)?):\s*!(include|include_dir_list|include_dir_named|include_dir_merge_list|include_dir_merge_named)\s+(.+)$/);
+      if (includeMatch) {
+        const key = includeMatch[1].toLowerCase();
+        const tag = includeMatch[2];
+        const rawTarget = includeMatch[3].trim().replace(/^['"]|['"]$/g, '');
+        const targetPath = path.isAbsolute(rawTarget) ? rawTarget : path.resolve(configPath, rawTarget);
+        const isDir = tag.startsWith('include_dir');
 
-      // Match script: !include filename.yaml
-      const scriptMatch = trimmedLine.match(/^script:\s*!include\s+(.+)$/);
-      if (scriptMatch) {
-        const file = scriptMatch[1].trim();
-        scriptPaths.push(path.join(configPath, file));
-      }
+        const isAuto = key.includes('automation');
+        const isScript = key.includes('script');
+        const isPackage = key.includes('package');
 
-      // Match automation: !include_dir_list dir_name
-      const autoDirMatch = trimmedLine.match(/^automation:\s*!include_dir_list\s+(.+)$/);
-      if (autoDirMatch) {
-        const dir = autoDirMatch[1].trim();
-        const fullDir = path.join(configPath, dir);
-        try {
-          const files = await fs.promises.readdir(fullDir);
-          for (const file of files) {
-            if (file.endsWith('.yaml') || file.endsWith('.yml')) {
-              automationPaths.push(path.join(fullDir, file));
-            }
-          }
-        } catch (err) {
-          // Directory might not exist
-        }
-      }
-
-      // Match script: !include_dir_list dir_name
-      const scriptDirMatch = trimmedLine.match(/^script:\s*!include_dir_list\s+(.+)$/);
-      if (scriptDirMatch) {
-        const dir = scriptDirMatch[1].trim();
-        const fullDir = path.join(configPath, dir);
-        try {
-          const files = await fs.promises.readdir(fullDir);
-          for (const file of files) {
-            if (file.endsWith('.yaml') || file.endsWith('.yml')) {
-              scriptPaths.push(path.join(fullDir, file));
-            }
-          }
-        } catch (err) {
-          // Directory might not exist
-        }
-      }
-
-      // Match packages: !include_dir_named packages_dir or packages: !include individual_file.yaml
-      const packageMatch = trimmedLine.match(/packages:\s*(!include\s+|!include_dir_named\s+)(.+)$/);
-      if (packageMatch) {
-        const isDir = packageMatch[1].includes('_dir');
-        const pathPart = packageMatch[2].trim();
-        const fullPath = path.join(configPath, pathPart);
-        
         if (isDir) {
+          if (isAuto || isPackage) await addYamlFilesFromDir(targetPath, automationPaths);
+          if (isScript || isPackage) await addYamlFilesFromDir(targetPath, scriptPaths);
+        } else {
+          if (isAuto || isPackage) addPathIfUnique(automationPaths, targetPath);
+          if (isScript || isPackage) addPathIfUnique(scriptPaths, targetPath);
+
+          // If this is an included file (e.g. integrations/automation.yaml), scan it for nested includes
           try {
-            const files = await fs.promises.readdir(fullPath);
-            for (const file of files) {
-              if (file.endsWith('.yaml') || file.endsWith('.yml')) {
-                const p = path.join(fullPath, file);
-                automationPaths.push(p);
-                scriptPaths.push(p);
+            const subContent = await getCachedContent(targetPath);
+            const subLines = subContent.split('\n');
+            const subDir = path.dirname(targetPath);
+            for (const subLine of subLines) {
+              const subTrim = subLine.trim();
+              const subMatch = subTrim.match(/^([\w\-]+(?:\s+[\w\-]+)?):\s*!(include|include_dir_list|include_dir_named|include_dir_merge_list|include_dir_merge_named)\s+(.+)$/);
+              if (subMatch) {
+                const subKey = subMatch[1].toLowerCase();
+                const subTag = subMatch[2];
+                const subRawTarget = subMatch[3].trim().replace(/^['"]|['"]$/g, '');
+                const subTargetPath = path.isAbsolute(subRawTarget) ? subRawTarget : path.resolve(subDir, subRawTarget);
+                const subIsDir = subTag.startsWith('include_dir');
+
+                const subIsAuto = subKey.includes('automation') || isAuto;
+                const subIsScript = subKey.includes('script') || isScript;
+                const subIsPackage = subKey.includes('package') || isPackage;
+
+                if (subIsDir) {
+                  if (subIsAuto || subIsPackage) await addYamlFilesFromDir(subTargetPath, automationPaths);
+                  if (subIsScript || subIsPackage) await addYamlFilesFromDir(subTargetPath, scriptPaths);
+                } else {
+                  if (subIsAuto || subIsPackage) addPathIfUnique(automationPaths, subTargetPath);
+                  if (subIsScript || subIsPackage) addPathIfUnique(scriptPaths, subTargetPath);
+                }
               }
             }
-          } catch (err) {
-            // Directory might not exist
+          } catch (e) {
+            // Ignore sub-file read errors
           }
-        } else {
-          // Individual file include
-          automationPaths.push(fullPath);
-          scriptPaths.push(fullPath);
         }
       }
     }
-
-    // Default fallback if nothing found in config
-    if (automationPaths.length === 0) {
-      automationPaths.push(path.join(configPath, 'automations.yaml'));
-    }
-    if (scriptPaths.length === 0) {
-      scriptPaths.push(path.join(configPath, 'scripts.yaml'));
-    }
-
   } catch (error) {
-    // If configuration.yaml doesn't exist or can't be read, use defaults
-    automationPaths.push(path.join(configPath, 'automations.yaml'));
-    scriptPaths.push(path.join(configPath, 'scripts.yaml'));
+    // If configuration.yaml doesn't exist or can't be read, continue to defaults
   }
 
+  // Always check standard locations
+  const defaultAuto = path.join(configPath, 'automations.yaml');
+  const defaultScript = path.join(configPath, 'scripts.yaml');
+  
+  if (fs.existsSync(defaultAuto)) addPathIfUnique(automationPaths, defaultAuto);
+  if (fs.existsSync(defaultScript)) addPathIfUnique(scriptPaths, defaultScript);
+
+  // If still empty, add default filenames
+  if (automationPaths.length === 0) automationPaths.push(defaultAuto);
+  if (scriptPaths.length === 0) scriptPaths.push(defaultScript);
+
   return { automationPaths, scriptPaths };
+}
+
+function isItemEnabled(obj) {
+  if (!obj || typeof obj !== 'object') return true;
+  if (obj.enabled === false || obj.enabled === 'false' || obj.enabled === 'off') return false;
+  if (obj.initial_state === false || obj.initial_state === 'false' || obj.initial_state === 'off') return false;
+  return true;
 }
 
 /**
@@ -201,6 +243,7 @@ export async function extractAutomations(configPath) {
                   alias: auto.alias || `Automation ${index}`,
                   description: auto.description || '',
                   mode: auto.mode || 'single',
+                  category: auto.category || '',
                   variables: auto.variables || {},
                   triggers: auto.triggers || auto.trigger || [],
                   conditions: auto.conditions || auto.condition || [],
@@ -208,7 +251,7 @@ export async function extractAutomations(configPath) {
                   file: relativeToConfigPath,
                   fullPath: filePath,
                   index: index,
-                  enabled: auto.enabled !== false && auto.initial_state !== false,
+                  enabled: isItemEnabled(auto),
                   lineNumber: lineNumber
                 });
               }
@@ -228,6 +271,7 @@ export async function extractAutomations(configPath) {
                       alias: auto.alias || `Automation ${index}`,
                       description: auto.description || '',
                       mode: auto.mode || 'single',
+                      category: auto.category || '',
                       variables: auto.variables || {},
                       triggers: auto.triggers || auto.trigger || [],
                       conditions: auto.conditions || auto.condition || [],
@@ -235,7 +279,7 @@ export async function extractAutomations(configPath) {
                       file: relativeToConfigPath,
                       fullPath: filePath,
                       index: index,
-                      enabled: auto.enabled !== false && auto.initial_state !== false,
+                      enabled: isItemEnabled(auto),
                       lineNumber: lineNumber
                     });
                   }
@@ -249,6 +293,7 @@ export async function extractAutomations(configPath) {
                       alias: auto.alias || key,
                       description: auto.description || '',
                       mode: auto.mode || 'single',
+                      category: auto.category || '',
                       variables: auto.variables || {},
                       triggers: auto.triggers || auto.trigger || [],
                       conditions: auto.conditions || auto.condition || [],
@@ -256,7 +301,7 @@ export async function extractAutomations(configPath) {
                       file: relativeToConfigPath,
                       fullPath: filePath,
                       key: key,
-                      enabled: auto.enabled !== false && auto.initial_state !== false
+                      enabled: isItemEnabled(auto)
                     });
                   }
                 });
@@ -273,6 +318,7 @@ export async function extractAutomations(configPath) {
                       alias: auto.alias || key,
                       description: auto.description || '',
                       mode: auto.mode || 'single',
+                      category: auto.category || '',
                       variables: auto.variables || {},
                       triggers: auto.triggers || auto.trigger || [],
                       conditions: auto.conditions || auto.condition || [],
@@ -280,7 +326,7 @@ export async function extractAutomations(configPath) {
                       file: relativeToConfigPath,
                       fullPath: filePath,
                       key: key,
-                      enabled: auto.enabled !== false && auto.initial_state !== false
+                      enabled: isItemEnabled(auto)
                     });
                   }
                 }
@@ -341,6 +387,7 @@ export async function extractScripts(configPath) {
                     alias: script.alias || key,
                     description: script.description || '',
                     mode: script.mode || 'single',
+                    category: script.category || '',
                     sequence: script.sequence || [],
                     variables: script.variables || {},
                     fields: script.fields || {},
@@ -348,6 +395,7 @@ export async function extractScripts(configPath) {
                     file: relativeToConfigPath,
                     fullPath: filePath,
                     key: key,
+                    enabled: isItemEnabled(script),
                     lineNumber: lineNumber
                   });
                 }
@@ -411,7 +459,7 @@ export async function updateAutomation(automationId, updatedAutomation, configPa
     }
 
     // Validate for unknown keys (common typos like 'triggersa' instead of 'triggers')
-    const knownKeys = ['id', 'alias', 'description', 'mode', 'triggers', 'conditions', 'actions', 'enabled', 'trigger', 'condition', 'action', 'initial_state', 'max', 'max_exceeded', 'variables', 'trace', '_type', 'entity_id'];
+    const knownKeys = ['id', 'alias', 'description', 'mode', 'triggers', 'conditions', 'actions', 'enabled', 'trigger', 'condition', 'action', 'initial_state', 'max', 'max_exceeded', 'variables', 'trace', '_type', 'entity_id', 'category'];
     const unknownKeys = Object.keys(updatedAutomation).filter(k => !knownKeys.includes(k));
     if (unknownKeys.length > 0) {
       throw new Error(`Unknown keys in automation: ${unknownKeys.join(', ')}`);
@@ -419,7 +467,7 @@ export async function updateAutomation(automationId, updatedAutomation, configPa
 
     const filePath = existing.fullPath;
     const content = await fs.promises.readFile(filePath, 'utf-8');
-    let data = yaml.load(content);
+    let data = yaml.load(content, { schema: HA_SCHEMA });
 
     // Build the automation object for YAML
     const autoObj = {
@@ -431,6 +479,10 @@ export async function updateAutomation(automationId, updatedAutomation, configPa
       conditions: updatedAutomation.conditions || [],
       actions: updatedAutomation.actions || []
     };
+
+    if (updatedAutomation.category) {
+      autoObj.category = updatedAutomation.category;
+    }
 
     const variables = updatedAutomation.variables || existing.variables || {};
     if (variables && Object.keys(variables).length > 0) {
@@ -487,7 +539,7 @@ export async function createAutomation(automation, configPath) {
     let data = [];
     try {
       const content = await fs.promises.readFile(filePath, 'utf-8');
-      data = yaml.load(content) || [];
+      data = yaml.load(content, { schema: HA_SCHEMA }) || [];
     } catch (e) {
       // File might not exist, start with empty array
     }
@@ -504,6 +556,10 @@ export async function createAutomation(automation, configPath) {
       conditions: automation.conditions || [],
       actions: automation.actions || []
     };
+
+    if (automation.category) {
+      autoObj.category = automation.category;
+    }
 
     if (automation.variables && Object.keys(automation.variables).length > 0) {
       autoObj.variables = automation.variables;
@@ -556,7 +612,7 @@ export async function deleteAutomation(automationId, configPath) {
 
     const filePath = existing.fullPath;
     const content = await fs.promises.readFile(filePath, 'utf-8');
-    let data = yaml.load(content);
+    let data = yaml.load(content, { schema: HA_SCHEMA });
 
     // Handle array format
     if (Array.isArray(data) && existing.index !== undefined) {
@@ -601,7 +657,7 @@ export async function updateScript(scriptId, updatedScript, configPath) {
 
     const filePath = existing.fullPath;
     const content = await fs.promises.readFile(filePath, 'utf-8');
-    let data = yaml.load(content);
+    let data = yaml.load(content, { schema: HA_SCHEMA });
 
     const scriptObj = {
       alias: updatedScript.alias,
@@ -609,6 +665,10 @@ export async function updateScript(scriptId, updatedScript, configPath) {
       mode: updatedScript.mode || 'single',
       sequence: updatedScript.sequence || []
     };
+
+    if (updatedScript.category) {
+      scriptObj.category = updatedScript.category;
+    }
 
     const variables = updatedScript.variables || existing.variables || {};
     if (variables && Object.keys(variables).length > 0) {
@@ -654,7 +714,7 @@ export async function createScript(script, configPath) {
     let data = {};
     try {
       const content = await fs.promises.readFile(filePath, 'utf-8');
-      data = yaml.load(content) || {};
+      data = yaml.load(content, { schema: HA_SCHEMA }) || {};
     } catch (e) {
       // File might not exist
     }
@@ -667,6 +727,10 @@ export async function createScript(script, configPath) {
       mode: script.mode || 'single',
       sequence: script.sequence || []
     };
+
+    if (script.category) {
+      scriptObj.category = script.category;
+    }
 
     if (script.variables && Object.keys(script.variables).length > 0) {
       scriptObj.variables = script.variables;
@@ -711,7 +775,7 @@ export async function deleteScript(scriptId, configPath) {
 
     const filePath = existing.fullPath;
     const content = await fs.promises.readFile(filePath, 'utf-8');
-    let data = yaml.load(content);
+    let data = yaml.load(content, { schema: HA_SCHEMA });
 
     delete data[existing.key];
 
@@ -764,6 +828,10 @@ export function automationToYaml(automation) {
     actions: automation.actions || []
   };
 
+  if (automation.category) {
+    obj.category = automation.category;
+  }
+
   if (automation.enabled === false) {
     obj.initial_state = false;
   } else {
@@ -790,6 +858,10 @@ export function scriptToYaml(script) {
       sequence: script.sequence || []
     }
   };
+
+  if (script.category) {
+    obj[script.id].category = script.category;
+  }
 
   if (script.icon) {
     obj[script.id].icon = script.icon;
@@ -920,7 +992,7 @@ export async function getRawScriptYaml(scriptId, configPath) {
 
 export function yamlToAutomation(yamlString) {
   try {
-    return yaml.load(yamlString);
+    return yaml.load(yamlString, { schema: HA_SCHEMA });
   } catch (error) {
     throw new Error(`Invalid YAML: ${error.message}`);
   }

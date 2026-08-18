@@ -37,7 +37,30 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 54002;
-const CONFIG_PATH = process.env.CONFIG_PATH || '/config';
+
+// Resolve the configuration path: check process.env.CONFIG_PATH, /config, and /homeassistant
+function resolveConfigPath() {
+    const candidates = [
+        process.env.CONFIG_PATH,
+        '/config',
+        '/homeassistant'
+    ].filter(Boolean);
+
+    for (const p of candidates) {
+        if (fs.existsSync(p)) {
+            const hasYaml = fs.existsSync(path.join(p, 'configuration.yaml')) || 
+                            fs.existsSync(path.join(p, 'automations.yaml')) || 
+                            fs.existsSync(path.join(p, 'scripts.yaml'));
+            if (hasYaml) return p;
+        }
+    }
+    for (const p of candidates) {
+        if (fs.existsSync(p)) return p;
+    }
+    return process.env.CONFIG_PATH || '/config';
+}
+
+const CONFIG_PATH = resolveConfigPath();
 const HA_URL = process.env.HA_URL ? process.env.HA_URL.replace(/\/$/, '') : null; // Remove trailing slash if present
 const VC_URL = process.env.VC_URL ? process.env.VC_URL.replace(/\/$/, '') : null;
 
@@ -57,7 +80,7 @@ app.use((req, res, next) => {
     // Set security headers
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws: wss:; frame-ancestors 'self' *;");
+    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws: wss: https://generativelanguage.googleapis.com; frame-ancestors 'self' *;");
 
     // CORS handling - Restrict to trusted origins
     const origin = req.headers.origin;
@@ -1219,18 +1242,154 @@ app.get('/api/traces/:domain/:itemId', async (req, res) => {
 // Fallback Route - Serve SPA index.html for unknown non-API routes
 // ============================================
 
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok', configPath: CONFIG_PATH });
+});
+
+// ============================================
+// Orphaned Entity Management
+// ============================================
+
+app.get('/api/orphaned/:type', async (req, res) => {
+    const { type } = req.params; // 'automations' or 'scripts'
+    const domain = type === 'automations' ? 'automation' : 'script';
+
+    try {
+        const supervisorToken = process.env.SUPERVISOR_TOKEN;
+        let haEntities = [];
+
+        if (supervisorToken) {
+            try {
+                const host = HA_URL ? null : await resolveSupervisorIP();
+                const apiUrl = HA_URL
+                    ? `${HA_URL}/api/states`
+                    : `http://${host}/core/api/states`;
+
+                const response = await fetch(apiUrl, {
+                    headers: { 'Authorization': `Bearer ${supervisorToken}` }
+                });
+                if (response.ok) {
+                    const states = await response.json();
+                    haEntities = states
+                        .filter(s => s.entity_id.startsWith(`${domain}.`))
+                        .map(s => ({
+                            entity_id: s.entity_id,
+                            attributes: s.attributes
+                        }));
+                }
+            } catch (e) {
+                console.error('[Orphans] Failed to fetch HA states:', e.message);
+            }
+        }
+
+        let yamlEntities = [];
+        if (type === 'automations') {
+            const automations = await extractAutomations(CONFIG_PATH);
+            yamlEntities = automations.map(a => a.id);
+        } else {
+            const scripts = await extractScripts(CONFIG_PATH);
+            yamlEntities = scripts.map(s => s.id);
+        }
+
+        const orphans = [];
+        for (const entity of haEntities) {
+            const entitySlug = entity.entity_id.split('.')[1];
+            const isMatch = yamlEntities.some(id =>
+                id === entitySlug ||
+                entity.attributes.friendly_name === id
+            );
+
+            if (!isMatch) {
+                orphans.push({
+                    id: entity.entity_id,
+                    entity_id: entity.entity_id,
+                    friendly_name: entity.attributes.friendly_name || entity.entity_id,
+                    type: type
+                });
+            }
+        }
+
+        res.json({ success: true, orphans });
+    } catch (error) {
+        console.error('[Orphans] Error scanning:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Delete specific orphan (manual trigger)
+app.delete('/api/orphaned/:type/:id', async (req, res) => {
+    try {
+        await cleanupOrphanedEntities();
+        res.json({ success: true, message: 'Triggered orphaned entity cleanup' });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Fetch metadata from Home Assistant (Areas, Labels, Entity Registry, Device Registry, Categories)
+app.get('/api/ha-metadata', async (req, res) => {
+    try {
+        const areaRegistry = await callHAWebSocket({ type: 'config/area_registry/list' });
+        const labelRegistry = await callHAWebSocket({ type: 'config/label_registry/list' });
+        const entityRegistry = await callHAWebSocket({ type: 'config/entity_registry/list' });
+        const deviceRegistry = await callHAWebSocket({ type: 'config/device_registry/list' });
+
+        let automationCategories = [];
+        let scriptCategories = [];
+        try {
+            automationCategories = await callHAWebSocket({ type: 'config/category_registry/list', scope: 'automation' }) || [];
+        } catch (err) {
+            console.warn('[API] Could not fetch automation categories registry:', err.message);
+        }
+        try {
+            scriptCategories = await callHAWebSocket({ type: 'config/category_registry/list', scope: 'script' }) || [];
+        } catch (err) {
+            console.warn('[API] Could not fetch script categories registry:', err.message);
+        }
+
+        res.json({
+            success: true,
+            areas: areaRegistry,
+            labels: labelRegistry,
+            entities: entityRegistry,
+            devices: deviceRegistry,
+            automation_categories: automationCategories,
+            script_categories: scriptCategories
+        });
+    } catch (error) {
+        console.error('[API] Error fetching HA metadata:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================
+// Static SPA Fallback Route
+// ============================================
+
 app.get('*', (req, res) => {
-    // If request looks like an API call that wasn't matched, return 404 JSON
     if (req.path.startsWith('/api/')) {
         return res.status(404).json({ success: false, error: 'API endpoint not found' });
     }
-    // Otherwise serve index.html for client-side routing
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Start Server
+// ============================================
+// Start server
+// ============================================
+
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`[Server] Home Assistant Editor running on port ${PORT}`);
-    console.log(`[Server] Config path: ${CONFIG_PATH}`);
-    console.log(`[Server] Home Assistant URL: ${HA_URL || 'Not specified (using Supervisor API)'}`);
+    console.log(`[Home Assistant Editor] Server running on port ${PORT}`);
+    console.log(`[Home Assistant Editor] Config path: ${CONFIG_PATH}`);
+    console.log(`[Home Assistant Editor] Home Assistant URL: ${HA_URL || 'Not specified (using Supervisor API)'}`);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+    console.log('[system] Received SIGTERM signal - shutting down...');
+    process.exit(0);
+});
+
+process.on('SIGINT', () => {
+    console.log('[system] Received SIGINT signal - shutting down...');
+    process.exit(0);
 });
