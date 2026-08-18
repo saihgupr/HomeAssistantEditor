@@ -1244,7 +1244,7 @@ body.light-theme .item-card:hover {
   border-bottom: none;
 }
 
-/* AI Sparkle Controls */
+/* AI Sparkle Controls - Hover Reveal */
 .editor-name-input-wrapper,
 .editor-desc-input-wrapper {
   position: relative;
@@ -1257,35 +1257,52 @@ body.light-theme .item-card:hover {
 }
 
 .btn-ai-sparkle {
-  background: transparent;
-  border: none;
-  color: #a855f7;
-  opacity: 0.6;
+  background: rgba(168, 85, 247, 0.12);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  color: #c084fc;
+  opacity: 0;
+  visibility: hidden;
   cursor: pointer;
-  padding: 4px;
-  margin-left: 2px;
-  border-radius: 4px;
+  padding: 2px 8px;
+  margin-left: 8px;
+  border-radius: 12px;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  transition: opacity 0.15s ease, transform 0.15s ease, color 0.15s ease;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s ease, background 0.15s ease, border-color 0.15s ease;
   vertical-align: middle;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.editor-name-row:hover .btn-ai-sparkle,
+.editor-desc-row:hover .btn-ai-sparkle,
+.editor-name-input-wrapper:focus-within .btn-ai-sparkle,
+.editor-desc-input-wrapper:focus-within .btn-ai-sparkle {
+  opacity: 0.85;
+  visibility: visible;
 }
 
 .btn-ai-sparkle:hover {
-  opacity: 1;
-  color: #c084fc;
-  transform: scale(1.15);
+  opacity: 1 !important;
+  background: rgba(168, 85, 247, 0.25);
+  border-color: rgba(168, 85, 247, 0.6);
+  color: #ffffff;
+  transform: scale(1.04);
 }
 
 .btn-ai-sparkle.is-loading {
+  opacity: 1 !important;
+  visibility: visible !important;
   animation: ai-pulse 1s infinite alternate;
   pointer-events: none;
 }
 
 @keyframes ai-pulse {
-  0% { opacity: 0.3; transform: scale(0.9); }
-  100% { opacity: 1; transform: scale(1.2); color: #ec4899; }
+  0% { opacity: 0.4; transform: scale(0.96); }
+  100% { opacity: 1; transform: scale(1.06); color: #f472b6; border-color: #f472b6; }
 }
 
 .settings-input-action-group {

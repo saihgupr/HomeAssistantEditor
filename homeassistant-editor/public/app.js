@@ -10251,9 +10251,19 @@ async function autoNameItemWithAI() {
 
     try {
         const editorData = getEditorData();
-        const yamlStr = dumpYaml(editorData);
+        let definitionText = '';
+        try {
+            if (typeof generateYamlFromItem === 'function') {
+                definitionText = generateYamlFromItem(editorData);
+            } else {
+                definitionText = JSON.stringify(editorData, null, 2);
+            }
+        } catch (e) {
+            definitionText = JSON.stringify(editorData, null, 2);
+        }
+
         const prompt = `You are a Home Assistant automation expert. Given this automation/script definition:
-${yamlStr}
+${definitionText}
 
 Suggest a concise, friendly, descriptive title for this automation/script (e.g. "Bedroom Motion Night Light", "Evening Living Room Ambience", "Away Security Mode").
 Rules:
@@ -10272,6 +10282,9 @@ Rules:
             updateYamlView();
             showToast(`Named "${generatedName}"`, 'success');
         }
+    } catch (err) {
+        console.error('[Gemini AI] Auto-name error:', err);
+        showToast(`Auto-name failed: ${err.message}`, 'error');
     } finally {
         if (btn) btn.classList.remove('is-loading');
     }
@@ -10288,9 +10301,19 @@ async function autoDescribeItemWithAI() {
 
     try {
         const editorData = getEditorData();
-        const yamlStr = dumpYaml(editorData);
+        let definitionText = '';
+        try {
+            if (typeof generateYamlFromItem === 'function') {
+                definitionText = generateYamlFromItem(editorData);
+            } else {
+                definitionText = JSON.stringify(editorData, null, 2);
+            }
+        } catch (e) {
+            definitionText = JSON.stringify(editorData, null, 2);
+        }
+
         const prompt = `You are a Home Assistant automation expert. Given this automation/script definition:
-${yamlStr}
+${definitionText}
 
 Write a clear, natural 1-2 sentence description explaining what this automation/script does, when it triggers, and its main actions.
 Rules:
@@ -10308,6 +10331,9 @@ Rules:
             updateYamlView();
             showToast('Description updated with Gemini', 'success');
         }
+    } catch (err) {
+        console.error('[Gemini AI] Auto-describe error:', err);
+        showToast(`Auto-describe failed: ${err.message}`, 'error');
     } finally {
         if (btn) btn.classList.remove('is-loading');
     }
@@ -10322,7 +10348,8 @@ async function autoNameBlockWithAI(blockEl) {
     const parsed = parseBlockElement(blockEl, parseSection);
     
     showToast('Generating block title with Gemini...', 'info');
-    const prompt = `You are a Home Assistant automation expert. Given the following Home Assistant ${parseSection} block definition:
+    try {
+        const prompt = `You are a Home Assistant automation expert. Given the following Home Assistant ${parseSection} block definition:
 ${JSON.stringify(parsed, null, 2)}
 
 Provide a concise, human-friendly 2 to 5 word title/alias describing what this block does (e.g. "Turn on Bed Light", "Wait for Front Door Motion", "Dim Bed Light to 20%", "If Bed Light Is On").
@@ -10331,19 +10358,23 @@ Rules:
 - Capitalize words cleanly.
 - No markdown, no quotes, no explanations, no trailing punctuation.`;
 
-    const generatedName = await callGemini(prompt);
-    if (generatedName) {
-        const titleInput = blockEl.querySelector('.block-title-input');
-        if (titleInput) {
-            titleInput.value = generatedName;
-            titleInput.dispatchEvent(new Event('input', { bubbles: true }));
-            titleInput.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-        const aliasText = blockEl.querySelector('.block-alias-text');
-        if (aliasText) aliasText.textContent = generatedName;
+        const generatedName = await callGemini(prompt);
+        if (generatedName) {
+            const titleInput = blockEl.querySelector('.block-title-input');
+            if (titleInput) {
+                titleInput.value = generatedName;
+                titleInput.dispatchEvent(new Event('input', { bubbles: true }));
+                titleInput.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            const aliasText = blockEl.querySelector('.block-alias-text');
+            if (aliasText) aliasText.textContent = generatedName;
 
-        checkDirty();
-        updateYamlView();
-        showToast(`Action named "${generatedName}"`, 'success');
+            checkDirty();
+            updateYamlView();
+            showToast(`Action named "${generatedName}"`, 'success');
+        }
+    } catch (err) {
+        console.error('[Gemini AI] Auto-name block error:', err);
+        showToast(`Block auto-name failed: ${err.message}`, 'error');
     }
 }
