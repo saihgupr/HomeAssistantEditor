@@ -182,7 +182,7 @@ const _state = {
         showRequiredBadges: localStorage.getItem('ha-editor-show-required') !== 'false',
         showCategories: localStorage.getItem('ha-editor-show-categories') === 'true',
         geminiApiKey: localStorage.getItem('ha-editor-gemini-api-key') || '',
-        geminiModel: localStorage.getItem('ha-editor-gemini-model') || 'gemini-1.5-flash'
+        geminiModel: localStorage.getItem('ha-editor-gemini-model') || 'gemini-2.5-flash'
     },
     clipboard: null, // For copy/paste blocks
     draggingBlock: null, // { section, index }
@@ -8650,7 +8650,7 @@ function initEventListeners() {
     }
 
     if (elements.settingGeminiModel) {
-        elements.settingGeminiModel.value = state.settings.geminiModel || 'gemini-1.5-flash';
+        elements.settingGeminiModel.value = state.settings.geminiModel || 'gemini-2.5-flash';
         elements.settingGeminiModel.addEventListener('change', (e) => {
             state.settings.geminiModel = e.target.value;
             localStorage.setItem('ha-editor-gemini-model', e.target.value);
@@ -10145,16 +10145,36 @@ function getItemIconHtml(item) {
 // ============================================
 
 /**
+ * Ensure an API key exists or prompt the user for one on the fly
+ */
+async function ensureGeminiApiKey() {
+    let apiKey = (state.settings.geminiApiKey || '').trim();
+    if (apiKey) return apiKey;
+
+    const userKey = prompt('Please enter your Google Gemini API Key:');
+    if (userKey && userKey.trim()) {
+        const trimmed = userKey.trim();
+        state.settings.geminiApiKey = trimmed;
+        localStorage.setItem('ha-editor-gemini-api-key', trimmed);
+        if (elements.settingGeminiApiKey) {
+            elements.settingGeminiApiKey.value = trimmed;
+        }
+        showToast('Gemini API Key saved!', 'success');
+        return trimmed;
+    } else {
+        showToast('Gemini API Key is required to use AI features', 'warning');
+        return null;
+    }
+}
+
+/**
  * Call the Google Gemini API with a prompt
  */
 async function callGemini(prompt, systemInstruction = '') {
-    const apiKey = (state.settings.geminiApiKey || '').trim();
-    if (!apiKey) {
-        showToast('Please set your Gemini API Key in Settings first', 'warning');
-        openSettingsModal();
-        return null;
-    }
-    const model = state.settings.geminiModel || 'gemini-1.5-flash';
+    const apiKey = await ensureGeminiApiKey();
+    if (!apiKey) return null;
+
+    const model = state.settings.geminiModel || 'gemini-2.5-flash';
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
     const body = {
@@ -10193,7 +10213,7 @@ async function callGemini(prompt, systemInstruction = '') {
 /**
  * Test Gemini API key validity
  */
-async function testGeminiKey(apiKey, model = 'gemini-1.5-flash') {
+async function testGeminiKey(apiKey, model = 'gemini-2.5-flash') {
     const key = (apiKey || state.settings.geminiApiKey || '').trim();
     if (!key) {
         showToast('Please enter a Gemini API Key first', 'warning');
