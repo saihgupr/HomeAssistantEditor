@@ -3286,6 +3286,7 @@ function handleBlockDragStart(e, blockEl, section, header) {
         pushToHistory();
         isDragging = true;
         rect = dragItem.getBoundingClientRect();
+        document.querySelectorAll('.action-block-placeholder').forEach(p => p.remove());
         placeholder = document.createElement('div');
         placeholder.className = 'action-block-placeholder';
         placeholder.style.height = `${rect.height}px`;

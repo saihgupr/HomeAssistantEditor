@@ -3369,6 +3369,14 @@ body.light-theme .section-header .section-label {
   margin: 4px 0 8px 0;
 }
 
+.nested-section:has(.action-block-placeholder) .nested-empty,
+.choose-option:has(.action-block-placeholder) .nested-empty,
+.condition-group:has(.action-block-placeholder) .nested-empty,
+.nested-blocks:has(.action-block-placeholder) + .nested-empty,
+.nested-blocks:has(.action-block-placeholder) ~ .nested-empty {
+  display: none !important;
+}
+
 /* Service Block Layout - Simplified */
 .service-block-layout,
 .notification-block-layout {
