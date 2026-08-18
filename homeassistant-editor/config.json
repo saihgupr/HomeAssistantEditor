@@ -22,6 +22,7 @@
   },
   "map": [
     "config:rw",
+    "homeassistant:rw",
     "ssl"
   ],
   "environment": {

@@ -37,7 +37,30 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 54002;
-const CONFIG_PATH = process.env.CONFIG_PATH || '/config';
+
+// Resolve the configuration path: check process.env.CONFIG_PATH, /config, and /homeassistant
+function resolveConfigPath() {
+    const candidates = [
+        process.env.CONFIG_PATH,
+        '/config',
+        '/homeassistant'
+    ].filter(Boolean);
+
+    for (const p of candidates) {
+        if (fs.existsSync(p)) {
+            const hasYaml = fs.existsSync(path.join(p, 'configuration.yaml')) || 
+                            fs.existsSync(path.join(p, 'automations.yaml')) || 
+                            fs.existsSync(path.join(p, 'scripts.yaml'));
+            if (hasYaml) return p;
+        }
+    }
+    for (const p of candidates) {
+        if (fs.existsSync(p)) return p;
+    }
+    return process.env.CONFIG_PATH || '/config';
+}
+
+const CONFIG_PATH = resolveConfigPath();
 const HA_URL = process.env.HA_URL ? process.env.HA_URL.replace(/\/$/, '') : null; // Remove trailing slash if present
 const VC_URL = process.env.VC_URL ? process.env.VC_URL.replace(/\/$/, '') : null;
 
