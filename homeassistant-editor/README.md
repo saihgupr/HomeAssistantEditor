@@ -14,18 +14,16 @@ A powerful visual editor for Home Assistant automations and scripts. This add-on
 ![Screenshot 7](https://raw.githubusercontent.com/saihgupr/HomeAssistantEditor/main/images/7.png)
 ![Screenshot 8](https://raw.githubusercontent.com/saihgupr/HomeAssistantEditor/main/images/8.png)
 
-## What's New in v1.1.0
+## What's New in v1.2.0
 
-The 1.1.0 release brings major quality-of-life improvements and performance optimizations:
+The 1.2.0 release brings major workflow enhancements, AI-assisted naming, and extended configuration support:
 
-- **Session Undo/Redo** — Accidentally deleted a block or changed a field? You can now undo and redo all actions during your editing session.
-- **Script Run & Stop Controls** — Full parity with the automation experience. Run, stop, and toggle scripts directly from the editor header.
-- **Condition Testing** — Test your conditions (including templates!) with a single click and get instant visual feedback.
-- **Live Trigger ID Suggestions** — Real-time autocomplete suggestions for Trigger IDs in conditions, gathered from your current triggers.
-- **Human-Readable Logic** — Technical math syntax in `numeric_state` blocks is replaced with natural phrasing like "is above" or "is between".
-- **Enhanced Performance** — Parallel processing and smart caching make loading large configurations significantly faster.
-- **Package Support** — Full support for automations and scripts organized within Home Assistant packages.
-- **HA Metadata Sync** — Sync Areas, Labels, and Icons directly from Home Assistant to automatically organize your folders and tags.
+- **Nested Drag & Drop** — Drag and drop actions, conditions, and triggers directly into nested branches (`choose`, `if/then`, `repeat`) and reorder complex sequences seamlessly.
+- **Optional Gemini AI Assistance** — Connect an optional Google Gemini API key to auto-generate descriptive action names and summary descriptions.
+- **Custom YAML Tags & Includes** — Full support for Home Assistant custom tags (`!include`, `!include_dir_*`, `!secret`, `!env_var`, `!input`) and multi-file package structures.
+- **Vibrant YAML Syntax Coloring** — Rich syntax theme with live bidirectional sync between visual blocks and raw code.
+- **Searchable Action Picker** — Instantly filter and search through actions when building automations.
+- **Dual-Stack Network Support** — Dual-stack IPv4/IPv6 support ensuring fast, reliable connections via mDNS (`.local`) and Safari.
 
 ## Features
 

@@ -1,14 +1,24 @@
 # Changelog
 
-## [1.1.1] - 2026-05-21
+## [1.2.0] - 2026-08-18
 
 ### Added
-- **Fallback SVG Icons**: Standard inline SVGs now render automatically in standalone and iframe views when custom `<ha-icon>` elements are not registered, ensuring icons display properly in all environments.
+- **Nested Drag & Drop**: Full drag-and-drop support into nested branches (`choose`, `if/then`, and `repeat` sequences) and reordering within actions, conditions, and triggers.
+- **Optional Gemini AI Assistance**: Integrate Google Gemini AI to auto-generate descriptive action names and automation summaries with a single click.
+- **Home Assistant Custom YAML Tags**: Full support for `!include`, `!include_dir_list`, `!include_dir_named`, `!include_dir_merge_list`, `!include_dir_merge_named`, `!secret`, `!env_var`, and `!input` custom tags.
+- **Split & Recursive Configs**: Recursive directory scanning for multi-file configurations, nested automation files, and package directories.
+- **Searchable Action Picker**: Integrated real-time search filter in the "Add Action" modal dialog.
+- **Dual-Stack Network Support**: Dual-stack IPv4 and IPv6 listener support for seamless mDNS (`.local`) and Safari connectivity.
+
+### Changed
+- **Vibrant YAML Syntax Coloring**: Enhanced YAML editor theme with crisp syntax highlighting for keys, values, and comments.
+- **Compact Drag Placeholders**: Adjusted drop placeholder sizing to match collapsed blocks and eliminated duplicate drop highlights.
+- **Cleaned Alias Rendering**: Streamlined block headers by eliminating redundant top-level alias fields.
 
 ### Fixed
-- **Tag & Category Matching**: Fixed tag and category lookup behavior by matching against resolved entity IDs rather than standard block IDs.
-- **Custom In-App Tags**: Restored support for merging custom, in-app tags (stored in `variables.__tags`) alongside synced Home Assistant labels.
-- **UI Category Badge**: Hidden the redundant category badge on individual item cards when a specific category filter is active.
+- **Live Entity State Sync**: Accurately synchronize enabled/disabled status and last triggered times from Home Assistant core states and entity registry.
+- **Config Path Discovery**: Automatically resolve and fall back across `/homeassistant`, `/config`, and environment variables.
+- **Direct Port Ingress Parity**: Unified API proxy endpoints so direct port (`54002`) and Ingress provide identical capabilities.
 
 ## [1.1.0] - 2026-03-26
 
