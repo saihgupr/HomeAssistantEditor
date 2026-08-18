@@ -4618,43 +4618,20 @@ function refreshBlockTitle(blockEl) {
     const aliasTextEl = blockEl.querySelector('.block-alias-text');
     if (!aliasTextEl || !aliasTextEl.classList.contains('is-placeholder')) return;
 
-    // Harvest current values from all inputs in the block
-    const blockData = {};
-    const inputs = blockEl.querySelectorAll('input, select, textarea');
-    inputs.forEach(input => {
-        if (!input.name) return;
-
-        let value = input.value;
-        if (input.type === 'number') {
-            const trimmed = String(value).trim();
-            value = trimmed === '' ? '' : parseFloat(trimmed);
-        }
-        if (input.type === 'checkbox') value = input.checked;
-
-        // Handle nested paths (though usually simpler for titles)
-        blockData[input.name] = value;
-    });
-
     // Determine type (trigger, condition, or action)
     let type = 'action';
     if (blockEl.classList.contains('trigger')) type = 'trigger';
     else if (blockEl.classList.contains('condition')) type = 'condition';
 
-    // Preserve the trigger/condition platform type from data attribute 
-    // (set when block was created - needed for correct title generation)
-    const blockType = blockEl.dataset.blockType;
-    if (blockType) {
-        if (type === 'trigger') {
-            blockData.platform = blockType;
-            blockData.trigger = blockType;
-        } else if (type === 'condition') {
-            blockData.condition = blockType;
-        }
-    }
-
-    // Get the updated title
+    const blockData = parseBlockElement(blockEl, type);
     const newTitle = getBlockTitle(blockData, type);
     aliasTextEl.textContent = newTitle;
+
+    const aliasInput = blockEl.querySelector('.block-title-input');
+    if (aliasInput) {
+        aliasInput.setAttribute('placeholder', newTitle);
+    }
+
     renderBlockTags(blockEl, newTitle);
 }
 
@@ -4901,10 +4878,12 @@ function getBlockTitle(block, type) {
     }
 
     // Wait for trigger
-    if (block.wait_for_trigger) {
-        const triggers = Array.isArray(block.wait_for_trigger) ? block.wait_for_trigger : [block.wait_for_trigger];
-        if (triggers.length > 0 && triggers[0].entity_id) {
-            return `Wait for ${getEntityName(triggers[0].entity_id)}`;
+    if (block.wait_for_trigger !== undefined) {
+        const triggers = Array.isArray(block.wait_for_trigger) ? block.wait_for_trigger : (block.wait_for_trigger ? [block.wait_for_trigger] : []);
+        if (triggers.length > 0 && triggers[0] && (triggers[0].entity_id || triggers[0].platform || triggers[0].trigger)) {
+            const first = triggers[0];
+            const target = first.entity_id ? getEntityName(first.entity_id) : (first.platform || first.trigger || '');
+            return `Wait for ${target}`;
         }
         return 'Wait for trigger';
     }
@@ -4930,11 +4909,11 @@ function getBlockTitle(block, type) {
         return service;
     }
 
-    if (block.delay) {
-        return `Wait ${typeof block.delay === 'object' ? formatDuration(block.delay) : block.delay}`;
+    if (block.delay !== undefined) {
+        return `Wait ${typeof block.delay === 'object' ? formatDuration(block.delay) : (block.delay || 'delay')}`;
     }
-    if (block.wait_template) {
-        return 'Wait for template';
+    if (block.wait_template !== undefined) {
+        return block.wait_template ? `Wait for: ${block.wait_template}` : 'Wait for template';
     }
     if (block.scene) {
         return `Scene: ${block.scene}`;
@@ -4942,7 +4921,7 @@ function getBlockTitle(block, type) {
     if (block.event) {
         return `Fire event: ${block.event}`;
     }
-    if (block.variables) {
+    if (block.variables !== undefined) {
         return 'Set variables';
     }
     if (block.stop !== undefined) {
@@ -4951,11 +4930,13 @@ function getBlockTitle(block, type) {
 
     // Conditions
     if (block.condition === 'state') {
+        if (!block.entity_id && !block.state) return 'State condition';
         const entity = getEntityName(block.entity_id);
         const stateLabel = block.state ? formatStateValue(block.state) : '...';
         return `${entity} is ${stateLabel}`;
     }
     if (block.condition === 'numeric_state') {
+        if (!block.entity_id && block.above === undefined && block.below === undefined) return 'Numeric state condition';
         const entity = getEntityName(block.entity_id);
         const above = (block.above !== undefined && block.above !== '' && !Number.isNaN(block.above)) ? block.above : null;
         const below = (block.below !== undefined && block.below !== '' && !Number.isNaN(block.below)) ? block.below : null;
@@ -4970,7 +4951,7 @@ function getBlockTitle(block, type) {
         return `${entity} numeric`;
     }
     if (block.condition === 'time') {
-        let timeDesc = 'Time';
+        let timeDesc = 'Time condition';
         if (block.after && block.before) {
             timeDesc = `${block.after} - ${block.before}`;
         } else if (block.after) {
@@ -4979,6 +4960,15 @@ function getBlockTitle(block, type) {
             timeDesc = `Before ${block.before}`;
         }
         return timeDesc;
+    }
+    if (block.condition === 'sun') {
+        const after = block.after ? `after ${block.after}` : '';
+        const before = block.before ? `before ${block.before}` : '';
+        const parts = [after, before].filter(Boolean).join(', ');
+        return `Sun: ${parts || 'sun event'}`;
+    }
+    if (block.condition === 'device') {
+        return `Device: ${getDeviceName(block.device_id)}`;
     }
     if (block.condition === 'trigger') {
         const ids = Array.isArray(block.id) ? block.id.join(', ') : block.id;
@@ -5004,7 +4994,9 @@ function getBlockTitle(block, type) {
         return `Not (${count} conditions)`;
     }
 
-    return type.charAt(0).toUpperCase() + type.slice(1);
+    if (type === 'trigger') return 'Trigger';
+    if (type === 'condition') return 'Condition';
+    return 'Action';
 }
 
 // Helper to truncate long entity names
