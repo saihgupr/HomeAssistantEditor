@@ -219,28 +219,44 @@
           <!-- Shared Editor Header (visible in both visual and YAML modes) -->
           <div class="editor-header" id="editor-header" style="display: none;">
             <div class="editor-name-row">
-              <input type="text" id="editor-alias" class="editor-alias" placeholder="Automation Name" autocomplete="one-time-code"
-                autocorrect="off" autocapitalize="off" spellcheck="false" data-1p-ignore data-lpignore="true">
-              <div class="editor-tags-area">
-                <div class="editor-tags-inline" id="editor-tags-inline"></div>
-                <input type="text" id="editor-tags-input" class="editor-tags-input" placeholder="#tag"
-                  autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-1p-ignore
-                  data-lpignore="true">
-                <button type="button" class="editor-tags-add" id="editor-tags-add" title="Add tag">+</button>
+              <div class="editor-name-input-wrapper">
+                <input type="text" id="editor-alias" class="editor-alias" placeholder="Automation Name" autocomplete="one-time-code"
+                  autocorrect="off" autocapitalize="off" spellcheck="false" data-1p-ignore data-lpignore="true">
+                <button type="button" id="btn-ai-name" class="btn-ai-sparkle" title="Auto-name with Gemini AI" aria-label="Auto-name with Gemini AI">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                    <path d="M12 2C12 7.52 7.52 12 2 12C7.52 12 12 16.48 12 22C12 16.48 16.48 12 22 12C16.48 12 12 7.52 12 2Z"/>
+                  </svg>
+                </button>
               </div>
-              <input type="hidden" id="editor-tags" class="editor-tags">
+              <div class="editor-header-actions">
+                <div class="editor-tags-area">
+                  <div class="editor-tags-inline" id="editor-tags-inline"></div>
+                  <input type="text" id="editor-tags-input" class="editor-tags-input" placeholder="#tag"
+                    autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-1p-ignore
+                    data-lpignore="true">
+                  <button type="button" class="editor-tags-add" id="editor-tags-add" title="Add tag">+</button>
+                </div>
+                <input type="hidden" id="editor-tags" class="editor-tags">
 
-              <label class="enabled-toggle">
-                <input type="checkbox" id="editor-enabled" checked>
-                <span class="toggle-slider"></span>
-                <span class="toggle-label">Enabled</span>
-              </label>
+                <label class="enabled-toggle">
+                  <input type="checkbox" id="editor-enabled" checked>
+                  <span class="toggle-slider"></span>
+                  <span class="toggle-label">Enabled</span>
+                </label>
+              </div>
             </div>
             <div class="editor-desc-row">
-              <input type="text" id="editor-description" class="editor-description" placeholder="Description (optional)"
-                autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-1p-ignore
-                data-lpignore="true">
-              <select id="editor-category" class="editor-category-select">
+              <div class="editor-desc-input-wrapper">
+                <input type="text" id="editor-description" class="editor-description" placeholder="Description (optional)"
+                  autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-1p-ignore
+                  data-lpignore="true">
+                <button type="button" id="btn-ai-description" class="btn-ai-sparkle" title="Auto-generate description with Gemini AI" aria-label="Auto-generate description with Gemini AI">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                    <path d="M12 2C12 7.52 7.52 12 2 12C7.52 12 12 16.48 12 22C12 16.48 16.48 12 22 12C16.48 12 12 7.52 12 2Z"/>
+                  </svg>
+                </button>
+              </div>
+              <select id="editor-category" class="editor-category-select" style="display: none;">
                 <option value="">No Category</option>
               </select>
             </div>
@@ -485,8 +501,24 @@
           <button class="modal-close">&times;</button>
         </div>
         <div class="modal-body">
+          <div class="modal-search-box">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="add-block-search" class="modal-search-input" placeholder="Search actions..." autocomplete="off">
+            <button type="button" class="search-clear-btn" id="add-block-search-clear" style="display: none;" aria-label="Clear search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
           <div class="block-types-grid" id="block-types-grid">
             <!-- Block types will be inserted here -->
+          </div>
+          <div class="block-types-empty" id="block-types-empty" style="display: none;">
+            <span>No matching actions found</span>
           </div>
         </div>
       </div>
@@ -576,6 +608,43 @@
                 <span class="settings-description">Enable Home Assistant automation/script categories support</span>
               </div>
             </label>
+            <div class="settings-divider"></div>
+            <div class="settings-item">
+              <div class="settings-label">
+                <span class="settings-title">Gemini API Key</span>
+                <span class="settings-description">
+                  Google AI key for auto-naming actions & generating descriptions.
+                  <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="settings-link">
+                    Get an API Key &nearr;
+                  </a>
+                </span>
+              </div>
+              <div class="settings-control-area">
+                <div class="settings-input-action-group">
+                  <input type="password" id="setting-gemini-api-key" class="settings-input" placeholder="AIzaSy..." autocomplete="off">
+                  <button type="button" id="btn-toggle-gemini-key" class="btn btn-secondary btn-sm" title="Show/Hide Key">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </button>
+                  <button type="button" id="btn-test-gemini-key" class="btn btn-secondary btn-sm">Test</button>
+                </div>
+              </div>
+            </div>
+            <div class="settings-divider"></div>
+            <div class="settings-item settings-item-inline">
+              <div class="settings-label">
+                <span class="settings-title">Gemini Model</span>
+                <span class="settings-description">Model used for intelligence tasks</span>
+              </div>
+              <div class="settings-control-area">
+                <select id="setting-gemini-model" class="settings-select" aria-label="Gemini model">
+                  <option value="gemini-2.5-flash" selected>Gemini 2.5 Flash (Fast & Recommended)</option>
+                  <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                  <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                  <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                  <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                </select>
+              </div>
+            </div>
           </div>
         </div>
       </div>
