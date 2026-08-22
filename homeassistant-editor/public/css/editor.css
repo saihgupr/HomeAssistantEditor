@@ -1257,13 +1257,14 @@ body.light-theme .item-card:hover {
   display: flex;
   align-items: center;
   gap: 12px;
+  margin-bottom: var(--spacing-sm);
 }
 
 .editor-desc-input-wrapper {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
   max-width: 100%;
 }
@@ -1271,13 +1272,15 @@ body.light-theme .item-card:hover {
 .editor-description {
   width: auto;
   field-sizing: content;
-  min-width: 160px;
+  min-width: 0;
   max-width: 100%;
   background: transparent;
   border: none;
   border-bottom: none;
-  padding: 0 0 var(--spacing-sm) 0;
+  padding: 0;
+  margin: 0;
   font-size: 14px;
+  line-height: 20px;
   color: var(--text-secondary);
   outline: none;
   transition: var(--transition-fast);
@@ -1287,69 +1290,78 @@ body.light-theme .item-card:hover {
   border-bottom: none;
 }
 
-/* AI Sparkle Controls - Apple Writing Tools Style */
+/* AI Sparkle Controls - Gemini Two-Stars Frameless Style */
 .btn-ai-sparkle {
   position: relative;
-  width: 26px;
-  height: 26px;
-  min-width: 26px;
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
   flex-shrink: 0;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: transparent;
+  border: none;
   color: #c084fc;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
   cursor: pointer;
   padding: 0;
-  border-radius: 50%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  align-self: center;
+  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), color 0.15s ease, filter 0.15s ease;
   user-select: none;
 }
 
 .btn-ai-sparkle svg {
+  width: 17px;
+  height: 17px;
   display: block;
   pointer-events: none;
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), filter 0.2s ease;
 }
 
 .editor-name-input-wrapper:hover .btn-ai-sparkle,
 .editor-desc-input-wrapper:hover .btn-ai-sparkle,
 .editor-name-input-wrapper:focus-within .btn-ai-sparkle,
 .editor-desc-input-wrapper:focus-within .btn-ai-sparkle {
-  opacity: 0.85;
+  opacity: 0.75;
   visibility: visible;
   pointer-events: auto;
 }
 
 .btn-ai-sparkle:hover {
   opacity: 1 !important;
-  background: linear-gradient(135deg, rgba(168, 85, 247, 0.35), rgba(56, 189, 248, 0.35));
-  border-color: rgba(192, 132, 252, 0.6);
-  color: #ffffff;
-  transform: scale(1.12) !important;
-  box-shadow: 0 0 12px rgba(168, 85, 247, 0.4), inset 0 0 6px rgba(255, 255, 255, 0.2);
+  color: #e879f9;
+  transform: scale(1.2) !important;
+  filter: drop-shadow(0 0 6px rgba(232, 121, 249, 0.8)) drop-shadow(0 0 10px rgba(56, 189, 248, 0.5));
 }
 
 .btn-ai-sparkle:hover svg {
-  transform: rotate(15deg);
+  transform: rotate(10deg);
 }
 
 .btn-ai-sparkle.is-loading {
   opacity: 1 !important;
   visibility: visible !important;
   pointer-events: none;
-  animation: ai-pulse 1s infinite alternate;
+  color: #f472b6;
+  filter: drop-shadow(0 0 8px rgba(244, 114, 182, 0.9));
+  animation: ai-pulse 0.9s infinite alternate;
 }
 
 @keyframes ai-pulse {
-  0% { opacity: 0.4; transform: scale(0.95); }
-  100% { opacity: 1; transform: scale(1.15); color: #f472b6; border-color: #f472b6; box-shadow: 0 0 14px rgba(244, 114, 182, 0.5); }
+  0% { opacity: 0.45; transform: scale(0.95); }
+  100% { opacity: 1; transform: scale(1.22); filter: drop-shadow(0 0 12px rgba(244, 114, 182, 1)); }
+}
+
+body.light-theme .btn-ai-sparkle {
+  color: #9333ea;
+}
+
+body.light-theme .btn-ai-sparkle:hover {
+  color: #7e22ce;
+  filter: drop-shadow(0 0 5px rgba(147, 51, 234, 0.5));
 }
 
 .settings-input-action-group {
@@ -7505,10 +7517,6 @@ body.light-theme .indent-color-5 { background-color: rgba(200, 200, 200, 0.15); 
   align-items: center;
   gap: 12px;
   width: 100%;
-}
-
-.editor-desc-row .editor-description {
-  flex: 1;
 }
 
 .editor-category-select {
