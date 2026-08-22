@@ -9,6 +9,9 @@
 - **Concise AI Descriptions**: Optimized description generation prompts to produce compact, single-sentence summaries (under 15 words) that fit cleanly within the editor UI.
 - **Contextual AI Sparkle Buttons**: Repositioned header AI buttons directly adjacent to title and description inputs, appearing smoothly on hover/focus.
 
+### Fixed
+- **Area & Folder Metadata Sync**: Safely handle entities with null default names when syncing Home Assistant areas into editor folders.
+
 ## [1.2.0] - 2026-08-18
 
 ### Added

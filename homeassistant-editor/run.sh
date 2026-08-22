@@ -4,7 +4,7 @@ export HOST="${HOST:-0.0.0.0}"
 export PORT="${PORT:-54002}"
 
 echo "======================================"
-echo "Home Assistant Editor v1.2.0"
+echo "Home Assistant Editor v1.2.1"
 echo "======================================"
 echo "Starting server..."
 echo "======================================"
