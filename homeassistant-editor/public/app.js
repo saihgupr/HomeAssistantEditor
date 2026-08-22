@@ -182,7 +182,7 @@ const _state = {
         showRequiredBadges: localStorage.getItem('ha-editor-show-required') !== 'false',
         showCategories: localStorage.getItem('ha-editor-show-categories') === 'true',
         geminiApiKey: localStorage.getItem('ha-editor-gemini-api-key') || '',
-        geminiModel: localStorage.getItem('ha-editor-gemini-model') || 'gemini-2.5-flash'
+        geminiModel: localStorage.getItem('ha-editor-gemini-model') || 'gemini-3.6-flash'
     },
     clipboard: null, // For copy/paste blocks
     draggingBlock: null, // { section, index }
@@ -8694,7 +8694,7 @@ function initEventListeners() {
     }
 
     if (elements.settingGeminiModel) {
-        elements.settingGeminiModel.value = state.settings.geminiModel || 'gemini-2.5-flash';
+        elements.settingGeminiModel.value = state.settings.geminiModel || 'gemini-3.6-flash';
         elements.settingGeminiModel.addEventListener('change', (e) => {
             state.settings.geminiModel = e.target.value;
             localStorage.setItem('ha-editor-gemini-model', e.target.value);
@@ -10218,7 +10218,7 @@ async function callGemini(prompt, systemInstruction = '') {
     const apiKey = await ensureGeminiApiKey();
     if (!apiKey) return null;
 
-    const model = state.settings.geminiModel || 'gemini-2.5-flash';
+    const model = state.settings.geminiModel || 'gemini-3.6-flash';
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
     const body = {
@@ -10257,7 +10257,7 @@ async function callGemini(prompt, systemInstruction = '') {
 /**
  * Test Gemini API key validity
  */
-async function testGeminiKey(apiKey, model = 'gemini-2.5-flash') {
+async function testGeminiKey(apiKey, model = 'gemini-3.6-flash') {
     const key = (apiKey || state.settings.geminiApiKey || '').trim();
     if (!key) {
         showToast('Please enter a Gemini API Key first', 'warning');
