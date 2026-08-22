@@ -10359,8 +10359,10 @@ async function autoDescribeItemWithAI() {
         const prompt = `You are a Home Assistant automation expert. Given this automation/script definition:
 ${definitionText}
 
-Write a clear, natural 1-2 sentence description explaining what this automation/script does, when it triggers, and its main actions.
+Write a short, concise, single-sentence summary of what this automation or script does (e.g. "Turns on kitchen lights when motion is detected.", "Sends a notification when garage door is left open.").
 Rules:
+- Keep it brief, simple, and under 12 to 15 words.
+- Single sentence only, avoid long subordinate clauses.
 - Return ONLY the plain text description.
 - Do NOT wrap in quotes.
 - No markdown formatting.`;
