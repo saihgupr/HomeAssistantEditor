@@ -1216,20 +1216,23 @@ body.light-theme .item-card:hover {
 }
 
 .editor-name-input-wrapper {
-  flex: 1;
   position: relative;
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  gap: 8px;
   min-width: 0;
+  max-width: calc(100% - 220px);
 }
 
 .editor-alias {
-  width: 100% !important;
+  width: auto;
+  field-sizing: content;
+  min-width: 140px;
   max-width: 100%;
   background: transparent;
   border: none;
   border-bottom: none;
-  padding: 2px 34px 2px 0;
+  padding: 2px 0;
   font-size: 24px;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -1241,14 +1244,6 @@ body.light-theme .item-card:hover {
 
 .editor-alias:focus {
   border-bottom: none;
-}
-
-.editor-name-input-wrapper .btn-ai-sparkle {
-  position: absolute;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  margin-left: 0;
 }
 
 .editor-header-actions {
@@ -1265,19 +1260,23 @@ body.light-theme .item-card:hover {
 }
 
 .editor-desc-input-wrapper {
-  flex: 1;
   position: relative;
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  gap: 8px;
   min-width: 0;
+  max-width: 100%;
 }
 
 .editor-description {
-  width: 100% !important;
+  width: auto;
+  field-sizing: content;
+  min-width: 160px;
+  max-width: 100%;
   background: transparent;
   border: none;
   border-bottom: none;
-  padding: 0 34px var(--spacing-sm) 0;
+  padding: 0 0 var(--spacing-sm) 0;
   font-size: 14px;
   color: var(--text-secondary);
   outline: none;
@@ -1288,24 +1287,19 @@ body.light-theme .item-card:hover {
   border-bottom: none;
 }
 
-.editor-desc-input-wrapper .btn-ai-sparkle {
-  position: absolute;
-  right: 0;
-  top: 35%;
-  transform: translateY(-50%);
-  margin-left: 0;
-}
-
 /* AI Sparkle Controls - Apple Writing Tools Style */
 .btn-ai-sparkle {
+  position: relative;
   width: 26px;
   height: 26px;
   min-width: 26px;
+  flex-shrink: 0;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.12);
   color: #c084fc;
   opacity: 0;
   visibility: hidden;
+  pointer-events: none;
   cursor: pointer;
   padding: 0;
   border-radius: 50%;
@@ -1330,6 +1324,7 @@ body.light-theme .item-card:hover {
 .editor-desc-input-wrapper:focus-within .btn-ai-sparkle {
   opacity: 0.85;
   visibility: visible;
+  pointer-events: auto;
 }
 
 .btn-ai-sparkle:hover {
@@ -1337,7 +1332,7 @@ body.light-theme .item-card:hover {
   background: linear-gradient(135deg, rgba(168, 85, 247, 0.35), rgba(56, 189, 248, 0.35));
   border-color: rgba(192, 132, 252, 0.6);
   color: #ffffff;
-  transform: translateY(-50%) scale(1.12) !important;
+  transform: scale(1.12) !important;
   box-shadow: 0 0 12px rgba(168, 85, 247, 0.4), inset 0 0 6px rgba(255, 255, 255, 0.2);
 }
 
@@ -1348,13 +1343,13 @@ body.light-theme .item-card:hover {
 .btn-ai-sparkle.is-loading {
   opacity: 1 !important;
   visibility: visible !important;
-  animation: ai-pulse 1s infinite alternate;
   pointer-events: none;
+  animation: ai-pulse 1s infinite alternate;
 }
 
 @keyframes ai-pulse {
-  0% { opacity: 0.4; transform: translateY(-50%) scale(0.95); }
-  100% { opacity: 1; transform: translateY(-50%) scale(1.15); color: #f472b6; border-color: #f472b6; box-shadow: 0 0 14px rgba(244, 114, 182, 0.5); }
+  0% { opacity: 0.4; transform: scale(0.95); }
+  100% { opacity: 1; transform: scale(1.15); color: #f472b6; border-color: #f472b6; box-shadow: 0 0 14px rgba(244, 114, 182, 0.5); }
 }
 
 .settings-input-action-group {

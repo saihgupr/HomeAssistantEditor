@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.2.1] - 2026-08-22
+
+### Added
+- **Gemini 3.6 Flash Support**: Added `gemini-3.6-flash` as the recommended default model for AI assistance and auto-naming.
+
+### Changed
+- **Concise AI Descriptions**: Optimized description generation prompts to produce compact, single-sentence summaries (under 15 words) that fit cleanly within the editor UI.
+- **Contextual AI Sparkle Buttons**: Repositioned header AI buttons directly adjacent to title and description inputs, appearing smoothly on hover/focus.
+
 ## [1.2.0] - 2026-08-18
 
 ### Added
