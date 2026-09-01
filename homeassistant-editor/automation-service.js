@@ -248,6 +248,7 @@ export async function extractAutomations(configPath) {
                   triggers: auto.triggers || auto.trigger || [],
                   conditions: auto.conditions || auto.condition || [],
                   actions: auto.actions || auto.action || [],
+                  use_blueprint: auto.use_blueprint || null,
                   file: relativeToConfigPath,
                   fullPath: filePath,
                   index: index,
@@ -276,6 +277,7 @@ export async function extractAutomations(configPath) {
                       triggers: auto.triggers || auto.trigger || [],
                       conditions: auto.conditions || auto.condition || [],
                       actions: auto.actions || auto.action || [],
+                      use_blueprint: auto.use_blueprint || null,
                       file: relativeToConfigPath,
                       fullPath: filePath,
                       index: index,
@@ -298,6 +300,7 @@ export async function extractAutomations(configPath) {
                       triggers: auto.triggers || auto.trigger || [],
                       conditions: auto.conditions || auto.condition || [],
                       actions: auto.actions || auto.action || [],
+                      use_blueprint: auto.use_blueprint || null,
                       file: relativeToConfigPath,
                       fullPath: filePath,
                       key: key,
@@ -307,11 +310,11 @@ export async function extractAutomations(configPath) {
                 });
               }
             } else {
-              // Flat object format (key: { triggers: ... })
+              // Flat object format (key: { triggers: ... } or key: { use_blueprint: ... })
               Object.keys(data).forEach(key => {
                 const auto = data[key];
                 if (auto && typeof auto === 'object') {
-                  const hasTriggers = auto.triggers || auto.trigger;
+                  const hasTriggers = auto.triggers || auto.trigger || auto.use_blueprint;
                   if (hasTriggers) {
                     fileAutomations.push({
                       id: auto.id || key,
@@ -323,6 +326,7 @@ export async function extractAutomations(configPath) {
                       triggers: auto.triggers || auto.trigger || [],
                       conditions: auto.conditions || auto.condition || [],
                       actions: auto.actions || auto.action || [],
+                      use_blueprint: auto.use_blueprint || null,
                       file: relativeToConfigPath,
                       fullPath: filePath,
                       key: key,
@@ -459,7 +463,7 @@ export async function updateAutomation(automationId, updatedAutomation, configPa
     }
 
     // Validate for unknown keys (common typos like 'triggersa' instead of 'triggers')
-    const knownKeys = ['id', 'alias', 'description', 'mode', 'triggers', 'conditions', 'actions', 'enabled', 'trigger', 'condition', 'action', 'initial_state', 'max', 'max_exceeded', 'variables', 'trace', '_type', 'entity_id', 'category'];
+    const knownKeys = ['id', 'alias', 'description', 'mode', 'triggers', 'conditions', 'actions', 'enabled', 'trigger', 'condition', 'action', 'initial_state', 'max', 'max_exceeded', 'variables', 'trace', '_type', 'entity_id', 'category', 'use_blueprint'];
     const unknownKeys = Object.keys(updatedAutomation).filter(k => !knownKeys.includes(k));
     if (unknownKeys.length > 0) {
       throw new Error(`Unknown keys in automation: ${unknownKeys.join(', ')}`);
@@ -479,6 +483,13 @@ export async function updateAutomation(automationId, updatedAutomation, configPa
       conditions: updatedAutomation.conditions || [],
       actions: updatedAutomation.actions || []
     };
+
+    if (updatedAutomation.use_blueprint || existing.use_blueprint) {
+      autoObj.use_blueprint = updatedAutomation.use_blueprint || existing.use_blueprint;
+      if (!updatedAutomation.triggers || updatedAutomation.triggers.length === 0) delete autoObj.triggers;
+      if (!updatedAutomation.conditions || updatedAutomation.conditions.length === 0) delete autoObj.conditions;
+      if (!updatedAutomation.actions || updatedAutomation.actions.length === 0) delete autoObj.actions;
+    }
 
     if (updatedAutomation.category) {
       autoObj.category = updatedAutomation.category;
@@ -822,11 +833,33 @@ export function automationToYaml(automation) {
     id: automation.id,
     alias: automation.alias,
     description: automation.description || '',
-    mode: automation.mode || 'single',
-    triggers: automation.triggers || [],
-    conditions: automation.conditions || [],
-    actions: automation.actions || []
+    mode: automation.mode || 'single'
   };
+
+  if (automation.use_blueprint) {
+    obj.use_blueprint = automation.use_blueprint;
+  }
+  if (automation.triggers && automation.triggers.length > 0) {
+    obj.triggers = automation.triggers;
+  } else if (!automation.use_blueprint) {
+    obj.triggers = [];
+  }
+
+  if (automation.conditions && automation.conditions.length > 0) {
+    obj.conditions = automation.conditions;
+  } else if (!automation.use_blueprint) {
+    obj.conditions = [];
+  }
+
+  if (automation.actions && automation.actions.length > 0) {
+    obj.actions = automation.actions;
+  } else if (!automation.use_blueprint) {
+    obj.actions = [];
+  }
+
+  if (automation.variables && Object.keys(automation.variables).length > 0) {
+    obj.variables = automation.variables;
+  }
 
   if (automation.category) {
     obj.category = automation.category;

@@ -1363,13 +1363,214 @@ app.delete('/api/orphaned/:type/:id', async (req, res) => {
     }
 });
 
+// ============================================
+// API Routes - Home Assistant Registry & Metadata
+// ============================================
+
+async function getHADevices(configPath) {
+    try {
+        const storageFile = path.join(configPath, '.storage', 'core.device_registry');
+        if (await fs.promises.access(storageFile).then(() => true).catch(() => false)) {
+            const raw = await fs.promises.readFile(storageFile, 'utf-8');
+            const parsed = JSON.parse(raw);
+            const list = parsed?.data?.devices || [];
+            return list.map(d => ({
+                device_id: d.id || d.device_id,
+                name: d.name_by_user || d.name || d.id,
+                manufacturer: d.manufacturer || '',
+                model: d.model || '',
+                area_id: d.area_id || null
+            })).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        }
+    } catch (e) {
+        console.warn('[Devices] Could not read from .storage/core.device_registry:', e.message);
+    }
+
+    try {
+        const deviceRegistry = await callHAWebSocket({ type: 'config/device_registry/list' });
+        if (Array.isArray(deviceRegistry)) {
+            return deviceRegistry.map(d => ({
+                device_id: d.id || d.device_id,
+                name: d.name_by_user || d.name || d.id,
+                manufacturer: d.manufacturer || '',
+                model: d.model || '',
+                area_id: d.area_id || null
+            })).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        }
+    } catch (e) {
+        console.warn('[Devices] Could not fetch via WebSocket:', e.message);
+    }
+
+    return [];
+}
+
+async function getHAAreas(configPath) {
+    try {
+        const storageFile = path.join(configPath, '.storage', 'core.area_registry');
+        if (await fs.promises.access(storageFile).then(() => true).catch(() => false)) {
+            const raw = await fs.promises.readFile(storageFile, 'utf-8');
+            const parsed = JSON.parse(raw);
+            const list = parsed?.data?.areas || [];
+            return list.map(a => ({
+                area_id: a.id || a.area_id,
+                name: a.name || a.id,
+                icon: a.icon || 'mdi:room'
+            })).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        }
+    } catch (e) {
+        console.warn('[Areas] Could not read from .storage/core.area_registry:', e.message);
+    }
+
+    try {
+        const areaRegistry = await callHAWebSocket({ type: 'config/area_registry/list' });
+        if (Array.isArray(areaRegistry)) {
+            return areaRegistry.map(a => ({
+                area_id: a.id || a.area_id,
+                name: a.name || a.id,
+                icon: a.icon || 'mdi:room'
+            })).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        }
+    } catch (e) {
+        console.warn('[Areas] Could not fetch via WebSocket:', e.message);
+    }
+
+    return [];
+}
+
+app.get('/api/devices', async (req, res) => {
+    try {
+        const devices = await getHADevices(CONFIG_PATH);
+        res.json({ success: true, devices });
+    } catch (error) {
+        console.error('[API] Error getting devices:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.get('/api/areas', async (req, res) => {
+    try {
+        const areas = await getHAAreas(CONFIG_PATH);
+        res.json({ success: true, areas });
+    } catch (error) {
+        console.error('[API] Error getting areas:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.get('/api/entities', async (req, res) => {
+    try {
+        const supervisorToken = process.env.SUPERVISOR_TOKEN;
+        if (!supervisorToken) {
+            return res.json({ success: true, entities: [] });
+        }
+
+        const host = HA_URL ? null : await resolveSupervisorIP();
+        const apiUrl = HA_URL ? `${HA_URL}/api/states` : `http://${host || 'supervisor'}/core/api/states`;
+
+        const response = await fetch(apiUrl, {
+            headers: {
+                'Authorization': `Bearer ${supervisorToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) throw new Error(`HA API returned ${response.status}`);
+        const states = await response.json();
+
+        const entities = (states || []).map(s => {
+            const domain = s.entity_id.split('.')[0];
+            return {
+                entity_id: s.entity_id,
+                domain: domain,
+                friendly_name: s.attributes?.friendly_name || s.entity_id,
+                state: s.state,
+                icon: s.attributes?.icon || null
+            };
+        }).sort((a, b) => (a.friendly_name || '').localeCompare(b.friendly_name || ''));
+
+        res.json({ success: true, entities });
+    } catch (error) {
+        console.error('[API] Error fetching entities:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.get('/api/services', async (req, res) => {
+    try {
+        const supervisorToken = process.env.SUPERVISOR_TOKEN;
+        if (!supervisorToken) {
+            return res.json({ success: true, services: [] });
+        }
+
+        const host = HA_URL ? null : await resolveSupervisorIP();
+        const apiUrl = HA_URL ? `${HA_URL}/api/services` : `http://${host || 'supervisor'}/core/api/services`;
+
+        const response = await fetch(apiUrl, {
+            headers: {
+                'Authorization': `Bearer ${supervisorToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) throw new Error(`HA API returned ${response.status}`);
+        const domains = await response.json();
+
+        const flatServices = [];
+        (domains || []).forEach(domainObj => {
+            const domain = domainObj.domain;
+            const services = domainObj.services || {};
+            Object.keys(services).forEach(serviceKey => {
+                const svc = services[serviceKey];
+                flatServices.push({
+                    service_id: `${domain}.${serviceKey}`,
+                    domain: domain,
+                    service: serviceKey,
+                    name: svc.name || `${domain}.${serviceKey}`,
+                    description: svc.description || '',
+                    fields: svc.fields || {}
+                });
+            });
+        });
+
+        flatServices.sort((a, b) => a.service_id.localeCompare(b.service_id));
+        res.json({ success: true, services: flatServices });
+    } catch (error) {
+        console.error('[API] Error fetching services:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // Fetch metadata from Home Assistant (Areas, Labels, Entity Registry, Device Registry, Categories)
 app.get('/api/ha-metadata', async (req, res) => {
     try {
-        const areaRegistry = await callHAWebSocket({ type: 'config/area_registry/list' });
-        const labelRegistry = await callHAWebSocket({ type: 'config/label_registry/list' });
-        const entityRegistry = await callHAWebSocket({ type: 'config/entity_registry/list' });
-        const deviceRegistry = await callHAWebSocket({ type: 'config/device_registry/list' });
+        let areaRegistry = [];
+        let labelRegistry = [];
+        let entityRegistry = [];
+        let deviceRegistry = [];
+
+        try {
+            areaRegistry = await getHAAreas(CONFIG_PATH);
+        } catch (err) {
+            console.warn('[API] Could not get areas:', err.message);
+        }
+
+        try {
+            deviceRegistry = await getHADevices(CONFIG_PATH);
+        } catch (err) {
+            console.warn('[API] Could not get devices:', err.message);
+        }
+
+        try {
+            labelRegistry = await callHAWebSocket({ type: 'config/label_registry/list' }) || [];
+        } catch (err) {
+            console.warn('[API] Could not fetch label registry:', err.message);
+        }
+
+        try {
+            entityRegistry = await callHAWebSocket({ type: 'config/entity_registry/list' }) || [];
+        } catch (err) {
+            console.warn('[API] Could not fetch entity registry:', err.message);
+        }
 
         let automationCategories = [];
         let scriptCategories = [];

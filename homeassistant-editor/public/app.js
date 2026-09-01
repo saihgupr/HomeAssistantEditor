@@ -168,10 +168,10 @@ const _state = {
     expandedGroups: new Set(['Ungrouped']),
     groupingEnabled: localStorage.getItem('ha-editor-grouping') === 'true',
     // Filter state
-    // Filter state
     filters: {
         searchFields: 'all' // 'all', 'name', 'description', 'entities'
     },
+    itemTypeFilter: 'all', // 'all', 'standard', 'blueprint'
     itemSortMode: localStorage.getItem('ha-editor-item-sort') || 'recent',
     settings: {
         themeMode: getInitialThemeMode(),
@@ -2050,6 +2050,13 @@ function renderItemsList(items) {
         filtered = filtered.filter(item => String(item.category) === String(state.selectedCategory));
     }
 
+    // Filter by standard vs blueprint type
+    if (state.itemTypeFilter === 'standard') {
+        filtered = filtered.filter(item => !item.use_blueprint);
+    } else if (state.itemTypeFilter === 'blueprint') {
+        filtered = filtered.filter(item => !!item.use_blueprint);
+    }
+
     filtered = filtered.filter(item => {
         const name = (item.alias || item.id || '').toLowerCase();
         const desc = (item.description || '').toLowerCase();
@@ -2073,10 +2080,19 @@ function renderItemsList(items) {
         const descText = stripTagsFromText(item.description || '');
         const itemIconHtml = getItemIconHtml(item);
         const catInfo = state.settings.showCategories ? getItemCategoryInfo(item) : null;
+        const isBlueprint = !!item.use_blueprint;
         const catBadgeHtml = catInfo ? `
             <div class="item-category-badge">
                 <ha-icon icon="${catInfo.icon || 'mdi:folder-outline'}"></ha-icon>
                 <span>${escapeHtml(catInfo.name)}</span>
+            </div>
+        ` : '';
+        const blueprintBadgeHtml = isBlueprint ? `
+            <div class="item-category-badge item-blueprint-badge" title="Blueprint: ${escapeHtml(item.use_blueprint?.path || '')}">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                </svg>
+                <span>Blueprint</span>
             </div>
         ` : '';
 
@@ -2091,7 +2107,10 @@ function renderItemsList(items) {
             <span class="item-text">${escapeHtml(item.alias || item.id)}</span>
           </div>
           ${descText ? `<div class="item-description">${escapeHtml(descText)}</div>` : ''}
-          ${catBadgeHtml}
+          <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+            ${catBadgeHtml}
+            ${blueprintBadgeHtml}
+          </div>
         </div>
         <div class="item-last-run">${lastRunText}</div>
       </div>
@@ -2534,6 +2553,42 @@ function populateEditor(item, expansionState = null) {
         const conditionsInfo = document.getElementById('conditions-section');
         if (triggersInfo) triggersInfo.style.display = isAutomation ? 'block' : 'none';
         if (conditionsInfo) conditionsInfo.style.display = isAutomation ? 'block' : 'none';
+
+        // Blueprint banner handling
+        const blueprintSection = document.getElementById('blueprint-section');
+        if (blueprintSection) {
+            if (isAutomation && item.use_blueprint) {
+                blueprintSection.style.display = 'block';
+                const pathDisplay = document.getElementById('blueprint-path-display');
+                if (pathDisplay) pathDisplay.textContent = item.use_blueprint.path || 'Custom Blueprint';
+
+                const inputsContainer = document.getElementById('blueprint-inputs-container');
+                if (inputsContainer) {
+                    const inputs = item.use_blueprint.input || {};
+                    const entries = Object.entries(inputs);
+                    if (entries.length === 0) {
+                        inputsContainer.innerHTML = '<span style="color: var(--text-muted);">No custom inputs configured.</span>';
+                    } else {
+                        inputsContainer.innerHTML = entries.map(([key, val]) => `
+                            <div class="blueprint-input-item">
+                                <div class="blueprint-input-key">${escapeHtml(key)}</div>
+                                <div class="blueprint-input-val">${escapeHtml(typeof val === 'object' ? JSON.stringify(val) : String(val))}</div>
+                            </div>
+                        `).join('');
+                    }
+                }
+
+                const btnBlueprintYaml = document.getElementById('btn-blueprint-yaml');
+                if (btnBlueprintYaml) {
+                    btnBlueprintYaml.onclick = () => {
+                        const viewYamlBtn = document.querySelector('[data-view="yaml"]');
+                        if (viewYamlBtn) viewYamlBtn.click();
+                    };
+                }
+            } else {
+                blueprintSection.style.display = 'none';
+            }
+        }
 
         // Populate blocks safely
         if (isAutomation) {
@@ -7989,6 +8044,17 @@ function clearHistory() {
 // ============================================
 
 function initEventListeners() {
+    // List filter pills (All / Standard / Blueprints)
+    const filterPills = document.querySelectorAll('#list-filter-bar .filter-pill');
+    filterPills.forEach(pill => {
+        pill.addEventListener('click', () => {
+            filterPills.forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            state.itemTypeFilter = pill.dataset.typeFilter || 'all';
+            renderCurrentItems();
+        });
+    });
+
     // Editor Alias Auto-Resize
     if (elements.editorAlias) {
         elements.editorAlias.addEventListener('input', () => {

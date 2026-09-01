@@ -21,7 +21,7 @@ const entityCache = {
 
         this.loading = true;
         try {
-            const res = await fetch('/api/entities');
+            const res = await fetch('./api/entities');
             const data = await res.json();
             if (data.success) {
                 this.entities = data.entities;
@@ -74,7 +74,7 @@ const serviceCache = {
 
         this.loading = true;
         try {
-            const res = await fetch('/api/services');
+            const res = await fetch('./api/services');
             const data = await res.json();
             if (data.success) {
                 this.services = data.services;
@@ -127,7 +127,7 @@ const deviceCache = {
 
         this.loading = true;
         try {
-            const res = await fetch('/api/devices');
+            const res = await fetch('./api/devices');
             const data = await res.json();
             if (data.success) {
                 this.devices = data.devices;
@@ -174,7 +174,7 @@ const areaCache = {
 
         this.loading = true;
         try {
-            const res = await fetch('/api/areas');
+            const res = await fetch('./api/areas');
             const data = await res.json();
             if (data.success) {
                 this.areas = data.areas;
