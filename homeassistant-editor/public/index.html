@@ -50,6 +50,46 @@
       </div>
     </header>
 
+    <!-- Configuration Warnings -->
+    <div class="config-warning-banner" id="config-warning-banner" role="status" aria-live="polite" hidden>
+      <span class="config-warning-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round">
+          <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+          <line x1="12" y1="9" x2="12" y2="13" />
+          <line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
+      </span>
+      <div class="config-warning-content">
+        <div class="config-warning-head">
+          <p class="config-warning-text">
+            <span class="config-warning-title" id="config-warning-title"></span>
+            <span class="config-warning-hint">Some automations and scripts may not appear until these files are
+              fixed.</span>
+          </p>
+          <button class="config-warning-details-btn" id="config-warning-details-btn" type="button" aria-expanded="false"
+            aria-controls="config-warning-details">
+            <span class="config-warning-details-label">Details</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+              stroke-linejoin="round" aria-hidden="true">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+          <button class="config-warning-dismiss" id="config-warning-dismiss" type="button"
+            aria-label="Dismiss configuration warnings" title="Dismiss">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+              aria-hidden="true">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+        <div class="config-warning-details" id="config-warning-details" hidden>
+          <ul class="config-warning-list" id="config-warning-list"></ul>
+        </div>
+      </div>
+    </div>
+
     <!-- Main Content -->
     <main class="main">
       <!-- Left Sidebar - Groups -->
@@ -166,7 +206,12 @@
             <span>New</span>
           </button>
         </div>
-        <!-- Filter Dropdown -->
+        <!-- Type Filter Bar -->
+        <div class="list-filter-bar" id="list-filter-bar">
+          <button type="button" class="filter-pill active" data-type-filter="all">All</button>
+          <button type="button" class="filter-pill" data-type-filter="standard">Standard</button>
+          <button type="button" class="filter-pill" data-type-filter="blueprint">Blueprints</button>
+        </div>
 
         <!-- Bulk Action Toolbar (hidden by default) -->
         <div class="bulk-actions" id="bulk-actions" style="display: none;">
@@ -266,6 +311,36 @@
 
           <!-- Visual Editor -->
           <div class="visual-editor" id="visual-editor" style="display: none;">
+
+            <!-- Blueprint Info Section (shown when automation uses blueprint) -->
+            <div class="blueprint-section" id="blueprint-section" style="display: none;">
+              <div class="blueprint-card">
+                <div class="blueprint-header">
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="background: rgba(139, 92, 246, 0.15); color: #a78bfa; padding: 6px; border-radius: 6px; display: flex;">
+                      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                        <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                      </svg>
+                    </div>
+                    <div class="blueprint-title-wrap">
+                      <span class="blueprint-title">Blueprint-Based Automation</span>
+                      <span class="blueprint-path" id="blueprint-path-display"></span>
+                    </div>
+                  </div>
+                  <button type="button" id="btn-blueprint-yaml" class="filter-pill" style="padding: 6px 12px; font-size: 12px;">
+                    Edit in YAML
+                  </button>
+                </div>
+                <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">
+                  This automation is generated from a Home Assistant blueprint template. The configured inputs are shown below:
+                </div>
+                <div class="blueprint-inputs-grid" id="blueprint-inputs-container">
+                  <!-- Blueprint inputs will be rendered here -->
+                </div>
+              </div>
+            </div>
 
             <!-- Triggers Section -->
             <div class="editor-section" id="triggers-section">

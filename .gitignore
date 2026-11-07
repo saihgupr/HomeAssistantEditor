@@ -11,3 +11,5 @@ git-backup-*/
 git-backup-test/
 .git-backup-test/
 todo.md
+# local-only verification tests
+tests/

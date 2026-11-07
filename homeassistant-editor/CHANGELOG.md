@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.3.0] - 2026-11-07
+
+### Added
+- **Blueprint Automations**: Automations built on blueprints now show up in the list, open with their blueprint inputs visible, and can be filtered.
+- **Configuration Warnings**: Files that cannot be read or parsed are reported through `/api/health` and shown in a banner with the file name and YAML error, instead of only being written to the add-on log.
+
+### Fixed
+- **Nested `!include` Discovery** (#17): Includes are now resolved recursively, so configurations that keep automations and scripts behind a chain like `packages: !include_dir_named packages/` → `automation ui: !include ../automations.yaml` are detected.
+- **`!include_dir_*` Contents**: Files pulled in by `!include_dir_list`, `!include_dir_named`, `!include_dir_merge_list` and `!include_dir_merge_named` are now parsed with the correct shape (single item, named map, or list) instead of being silently skipped.
+- **Package Automation Keys**: Automations and scripts defined under package keys such as `automation split:` or `script split:` are listed and editable in place.
+- **Package Writes**: Saving an automation or script that lives inside a package or an included file now writes back to the correct nested location instead of the file root.
+- **Device and Area IDs** (#22, #24): Device and area IDs are resolved from local storage so the visual editor shows names instead of raw IDs.
+- **Entity Lookup Fallback** (#25): Falls back to `/api/states` when `/api/entities` is unavailable, so entities are found on container installs.
+- **`<<: !include` Documents**: Files using an ESPHome style merge include no longer abort parsing, so a single unsupported file cannot hide the rest of the config.
+
 ## [1.2.1] - 2026-08-22
 
 ### Added

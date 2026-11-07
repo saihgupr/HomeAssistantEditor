@@ -470,6 +470,268 @@ body:hover::-webkit-scrollbar-thumb,
   position: relative;
 }
 
+/* ============================================
+   Configuration Warning Banner
+   ============================================ */
+
+.config-warning-banner {
+  --cw-accent-text: #fbbf24;
+  --cw-wash: rgba(245, 158, 11, 0.09);
+  --cw-wash-soft: rgba(245, 158, 11, 0.02);
+  --cw-border: rgba(245, 158, 11, 0.22);
+  --cw-chip: rgba(245, 158, 11, 0.12);
+  --cw-chip-hover: rgba(245, 158, 11, 0.22);
+
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex-shrink: 0;
+  padding: 10px 12px 10px 16px;
+  background:
+    linear-gradient(90deg, var(--cw-wash) 0%, var(--cw-wash-soft) 45%, transparent 100%),
+    var(--bg-secondary);
+  border-bottom: 1px solid var(--cw-border);
+  color: var(--text-primary);
+  animation: configWarningEnter 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.config-warning-banner[hidden] {
+  display: none;
+}
+
+.config-warning-banner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 2px;
+  background: linear-gradient(180deg, var(--cw-accent-text), rgba(245, 158, 11, 0.25));
+}
+
+@keyframes configWarningEnter {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.config-warning-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  margin-top: 1px;
+  border-radius: 7px;
+  background: var(--cw-chip);
+  color: var(--cw-accent-text);
+}
+
+.config-warning-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.config-warning-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.config-warning-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 26px;
+}
+
+.config-warning-text {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 8px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.config-warning-title {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.config-warning-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.config-warning-details-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  padding: 4px 9px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: var(--cw-accent-text);
+  background: var(--cw-chip);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.config-warning-details-btn:hover {
+  background: var(--cw-chip-hover);
+}
+
+.config-warning-details-btn:focus-visible,
+.config-warning-dismiss:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--bg-secondary), 0 0 0 4px var(--cw-border);
+}
+
+.config-warning-details-btn svg {
+  width: 12px;
+  height: 12px;
+  transition: transform var(--transition-fast);
+}
+
+.config-warning-details-btn[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+
+.config-warning-dismiss {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.config-warning-dismiss:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.config-warning-dismiss svg {
+  width: 14px;
+  height: 14px;
+}
+
+.config-warning-details {
+  margin: 6px 0 2px;
+}
+
+.config-warning-details[hidden] {
+  display: none;
+}
+
+.config-warning-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 168px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-top: 1px solid var(--cw-border);
+}
+
+.config-warning-item {
+  display: grid;
+  grid-template-columns: minmax(0, 260px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: baseline;
+  padding: 6px 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.config-warning-item:last-child {
+  border-bottom: none;
+}
+
+.config-warning-file {
+  min-width: 0;
+  font-family: 'JetBrains Mono', var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.config-warning-error {
+  min-width: 0;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.light-theme .config-warning-banner {
+  --cw-accent-text: #92400e;
+  --cw-wash: rgba(245, 158, 11, 0.14);
+  --cw-wash-soft: rgba(245, 158, 11, 0.05);
+  --cw-border: rgba(180, 83, 9, 0.22);
+  --cw-chip: rgba(245, 158, 11, 0.16);
+  --cw-chip-hover: rgba(245, 158, 11, 0.26);
+}
+
+body.light-theme .config-warning-item {
+  border-bottom-color: rgba(0, 0, 0, 0.06);
+}
+
+@media (max-width: 700px) {
+  .config-warning-banner {
+    gap: 8px;
+    padding: 9px 10px 9px 12px;
+  }
+
+  .config-warning-head {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+
+  .config-warning-text {
+    flex: 1 1 100%;
+  }
+
+  .config-warning-hint {
+    display: none;
+  }
+
+  .config-warning-dismiss {
+    margin-left: auto;
+  }
+
+  .config-warning-item {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+}
+
 body.resizing {
   cursor: col-resize;
   user-select: none;
@@ -7571,4 +7833,108 @@ body.light-theme .item-category-badge {
   border-color: #dddddd;
   color: #666666;
 }
+
+/* ============================================
+   List Type Filter Pills & Blueprint Styles
+   ============================================ */
+
+.list-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px 8px 12px;
+}
+
+.filter-pill {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.filter-pill:hover {
+  color: var(--text-primary);
+  border-color: var(--border-light);
+  background: var(--bg-hover);
+}
+
+.filter-pill.active {
+  background: var(--accent-blue);
+  color: #ffffff;
+  border-color: var(--accent-blue);
+}
+
+.item-blueprint-badge {
+  background: rgba(139, 92, 246, 0.12);
+  border-color: rgba(139, 92, 246, 0.3);
+  color: #a78bfa;
+}
+
+.blueprint-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--block-radius);
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.blueprint-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.blueprint-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.blueprint-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.blueprint-path {
+  font-size: 12px;
+  color: var(--accent-blue);
+  font-family: var(--font-mono);
+}
+
+.blueprint-inputs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.blueprint-input-item {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+}
+
+.blueprint-input-key {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 2px;
+}
+
+.blueprint-input-val {
+  font-size: 12px;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  word-break: break-all;
+}
+
 
