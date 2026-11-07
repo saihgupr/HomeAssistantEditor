@@ -14,27 +14,27 @@ A powerful visual editor for Home Assistant automations and scripts. This add-on
 ![Screenshot 7](https://raw.githubusercontent.com/saihgupr/HomeAssistantEditor/main/images/7.png)
 ![Screenshot 8](https://raw.githubusercontent.com/saihgupr/HomeAssistantEditor/main/images/8.png)
 
-## What's New in v1.2.0
+## What's New in v1.3.0
 
-The 1.2.0 release brings major workflow enhancements, AI-assisted naming, and extended configuration support:
+The 1.3.0 release focuses on configurations that live outside a single file:
 
-- **Nested Drag & Drop** — Drag and drop actions, conditions, and triggers directly into nested branches (`choose`, `if/then`, `repeat`) and reorder complex sequences seamlessly.
-- **Optional Gemini AI Assistance** — Connect an optional Google Gemini API key to auto-generate descriptive action names and summary descriptions.
-- **Custom YAML Tags & Includes** — Full support for Home Assistant custom tags (`!include`, `!include_dir_*`, `!secret`, `!env_var`, `!input`) and multi-file package structures.
-- **Vibrant YAML Syntax Coloring** — Rich syntax theme with live bidirectional sync between visual blocks and raw code.
-- **Searchable Action Picker** — Instantly filter and search through actions when building automations.
-- **Dual-Stack Network Support** — Dual-stack IPv4/IPv6 support ensuring fast, reliable connections via mDNS (`.local`) and Safari.
+- **Blueprint Automations** — Automations built on blueprints now appear in the list, open with their blueprint inputs visible, and can be filtered like any other automation.
+- **Recursive `!include` Support** — Includes are resolved at any depth, so a package directory that points at further files or directories is picked up. Every `!include_dir_*` variant is parsed with its correct shape: single item, named map, or list.
+- **Config Warnings** — Files that cannot be read or parsed are listed in the editor with the file name and the YAML error, instead of leaving you with an empty list.
+- **Device & Area Names** — Device and area IDs resolve to readable names in the visual editor using the local registry.
+- **Entity Lookup Fallback** — Falls back to `/api/states` when `/api/entities` is unavailable, so entities are found on container installs.
 
 ## Features
 
 - **Three-Column Layout** - Sidebar navigation, items list, and editor workspace side by side
 - **Visual Action Blocks** - Color-coded, expandable blocks for triggers, conditions, and actions
+- **Blueprint Support** - Automations built on blueprints render with their inputs and can be filtered
 - **Version History & Restore** - Browse "commits" and restore previous versions via Version Control integration
 - **Session Undo/Redo** - Full support for reversing structural changes and field edits during your editing session
 - **Advanced Editing** - Inline editing with searchable pickers, live Trigger ID suggestions, and instant Visual/YAML toggles
 - **Smart Folders & Hashtags** - Organize and filter your items using custom folders and tags
 - **Trace Replay Mode** - Navigate past runs step-by-step to debug logic or condition failures
-- **Professional YAML Support** - Handles `!include` patterns and orphan entity cleanup automatically
+- **Professional YAML Support** - Resolves `!include` chains recursively, including packages and split configs, and reports files it cannot read
 - **Instant Sync** - Changes are saved directly to your YAML and auto-reloaded in Home Assistant
 
 ## Installation
