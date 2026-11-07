@@ -21,14 +21,36 @@ const entityCache = {
 
         this.loading = true;
         try {
-            const res = await fetch('/api/entities');
+            const res = await fetch('./api/entities');
             const data = await res.json();
-            if (data.success) {
+            if (data.success && Array.isArray(data.entities) && data.entities.length > 0) {
                 this.entities = data.entities;
                 this.loaded = true;
+            } else {
+                throw new Error('No entities in /api/entities');
             }
         } catch (e) {
-            console.error('Failed to load entities:', e);
+            // Fallback to /api/states (e.g. In Docker or when /api/entities is not exposed/empty)
+            try {
+                const res = await fetch('./api/states');
+                const data = await res.json();
+                const states = Array.isArray(data) ? data : (Array.isArray(data?.states) ? data.states : []);
+                if (states.length > 0) {
+                    this.entities = states
+                        .filter(state => state && state.entity_id)
+                        .map(state => ({
+                            entity_id: state.entity_id,
+                            domain: state.entity_id.split('.')[0],
+                            friendly_name: state.attributes?.friendly_name || state.entity_id,
+                            state: state.state,
+                            icon: state.attributes?.icon || null
+                        }))
+                        .sort((a, b) => (a.friendly_name || '').localeCompare(b.friendly_name || ''));
+                    this.loaded = true;
+                }
+            } catch (err2) {
+                console.error('Failed to load entities from fallback:', err2);
+            }
         }
         this.loading = false;
 
@@ -74,7 +96,7 @@ const serviceCache = {
 
         this.loading = true;
         try {
-            const res = await fetch('/api/services');
+            const res = await fetch('./api/services');
             const data = await res.json();
             if (data.success) {
                 this.services = data.services;
@@ -127,7 +149,7 @@ const deviceCache = {
 
         this.loading = true;
         try {
-            const res = await fetch('/api/devices');
+            const res = await fetch('./api/devices');
             const data = await res.json();
             if (data.success) {
                 this.devices = data.devices;
@@ -174,7 +196,7 @@ const areaCache = {
 
         this.loading = true;
         try {
-            const res = await fetch('/api/areas');
+            const res = await fetch('./api/areas');
             const data = await res.json();
             if (data.success) {
                 this.areas = data.areas;
