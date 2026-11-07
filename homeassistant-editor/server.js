@@ -29,7 +29,8 @@ import {
     saveFolders,
     dumpYaml,
     getRawAutomationYaml,
-    getRawScriptYaml
+    getRawScriptYaml,
+    getParseWarnings
 } from './automation-service.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -61,6 +62,13 @@ function resolveConfigPath() {
 }
 
 const CONFIG_PATH = resolveConfigPath();
+const ADDON_VERSION = (() => {
+    try {
+        return JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8')).version || 'unknown';
+    } catch (error) {
+        return 'unknown';
+    }
+})();
 const HA_URL = process.env.HA_URL ? process.env.HA_URL.replace(/\/$/, '') : null; // Remove trailing slash if present
 const VC_URL = process.env.VC_URL ? process.env.VC_URL.replace(/\/$/, '') : null;
 
@@ -403,9 +411,28 @@ async function checkConfig() {
 app.get('/api/automations', async (req, res) => {
     try {
         const automations = await extractAutomations(CONFIG_PATH);
-        res.json({ success: true, automations });
+        res.json({ success: true, automations, warnings: getParseWarnings(CONFIG_PATH) });
     } catch (error) {
         console.error('[API] Error fetching automations:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Health/diagnostics: surfaces config files that could not be read or parsed
+app.get('/api/health', async (req, res) => {
+    try {
+        // Run a scan so warnings reflect the current state of the config
+        await extractAutomations(CONFIG_PATH);
+        await extractScripts(CONFIG_PATH);
+
+        res.json({
+            success: true,
+            version: ADDON_VERSION,
+            configPath: CONFIG_PATH,
+            warnings: getParseWarnings(CONFIG_PATH)
+        });
+    } catch (error) {
+        console.error('[API] Error building health response:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -482,7 +509,7 @@ app.delete('/api/automation/:id', async (req, res) => {
 app.get('/api/scripts', async (req, res) => {
     try {
         const scripts = await extractScripts(CONFIG_PATH);
-        res.json({ success: true, scripts });
+        res.json({ success: true, scripts, warnings: getParseWarnings(CONFIG_PATH) });
     } catch (error) {
         console.error('[API] Error fetching scripts:', error);
         res.status(500).json({ success: false, error: error.message });
@@ -947,18 +974,6 @@ app.post('/api/run/:domain/:itemId/toggle', async (req, res) => {
     } catch (error) {
         console.error(`[Toggle] Error toggling ${domain}:`, error.message);
         res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// Parse YAML to JSON (for the editor)
-app.post('/api/parse-yaml', async (req, res) => {
-    try {
-        const { yaml: yamlContent } = req.body;
-        const parsed = yamlToAutomation(yamlContent);
-        res.json({ success: true, data: parsed });
-    } catch (error) {
-        console.error('[API] Error parsing YAML:', error);
-        res.status(400).json({ success: false, error: error.message });
     }
 });
 

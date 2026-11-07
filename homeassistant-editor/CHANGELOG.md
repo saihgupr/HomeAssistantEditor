@@ -8,6 +8,7 @@
 - **Package Automation Keys**: Automations and scripts defined under package keys such as `automation split:` or `script split:` are listed and editable in place.
 - **Package Writes**: Saving an automation or script that lives inside a package or an included file now writes back to the correct nested location instead of the file root.
 - **`<<: !include` Documents**: Files using an ESPHome style merge include no longer abort parsing, so a single unsupported file cannot hide the rest of the config.
+- **Visible Config Errors**: Files that cannot be read or parsed are now reported through `/api/health` and shown in the editor instead of only being written to the add-on log.
 
 ## [1.2.1] - 2026-08-22
 

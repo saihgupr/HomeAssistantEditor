@@ -475,6 +475,118 @@ async function fetchScripts() {
 }
 
 // ============================================
+// Configuration Warnings
+// ============================================
+
+const CONFIG_WARNINGS_DISMISS_KEY = 'ha-editor-config-warnings-dismissed';
+
+function getConfigWarningsFingerprint(warnings) {
+    return warnings.map(w => `${w.file}\u0000${w.error || ''}`).join('\u0001');
+}
+
+function readDismissedConfigWarnings() {
+    try {
+        return sessionStorage.getItem(CONFIG_WARNINGS_DISMISS_KEY) || '';
+    } catch (error) {
+        return '';
+    }
+}
+
+function rememberDismissedConfigWarnings(fingerprint) {
+    try {
+        sessionStorage.setItem(CONFIG_WARNINGS_DISMISS_KEY, fingerprint);
+    } catch (error) {
+        // Session storage can be unavailable; dismissing just won't persist.
+    }
+}
+
+async function loadConfigWarnings() {
+    try {
+        const res = await fetch('./api/health');
+        const data = await res.json();
+        const warnings = Array.isArray(data && data.warnings) ? data.warnings : [];
+        renderConfigWarnings(warnings);
+    } catch (error) {
+        console.warn('[config-warnings] Could not check configuration warnings:', error);
+    }
+}
+
+function renderConfigWarnings(warnings) {
+    const banner = document.getElementById('config-warning-banner');
+    if (!banner) return;
+
+    const items = (warnings || []).filter(w => w && w.file);
+    if (!items.length) {
+        banner.hidden = true;
+        return;
+    }
+
+    const fingerprint = getConfigWarningsFingerprint(items);
+    if (readDismissedConfigWarnings() === fingerprint) {
+        banner.hidden = true;
+        return;
+    }
+
+    // Reveal the live region before filling it so screen readers announce the change.
+    banner.dataset.fingerprint = fingerprint;
+    banner.hidden = false;
+
+    const title = document.getElementById('config-warning-title');
+    title.textContent = items.length === 1
+        ? '1 configuration file could not be read'
+        : `${items.length} configuration files could not be read`;
+
+    const hint = banner.querySelector('.config-warning-hint');
+    if (hint) {
+        hint.textContent = items.length === 1
+            ? 'Some automations and scripts may not appear until this file is fixed.'
+            : 'Some automations and scripts may not appear until these files are fixed.';
+    }
+
+    const list = document.getElementById('config-warning-list');
+    list.textContent = '';
+    items.forEach(warning => {
+        const errorText = warning.error || 'Unknown error';
+
+        const fileEl = document.createElement('span');
+        fileEl.className = 'config-warning-file';
+        fileEl.textContent = warning.file;
+        fileEl.title = warning.file;
+
+        const errorEl = document.createElement('span');
+        errorEl.className = 'config-warning-error';
+        errorEl.textContent = errorText;
+        errorEl.title = errorText;
+
+        const item = document.createElement('li');
+        item.className = 'config-warning-item';
+        item.append(fileEl, errorEl);
+        list.appendChild(item);
+    });
+}
+
+function initConfigWarningBanner() {
+    const banner = document.getElementById('config-warning-banner');
+    const detailsBtn = document.getElementById('config-warning-details-btn');
+    const details = document.getElementById('config-warning-details');
+    const dismissBtn = document.getElementById('config-warning-dismiss');
+    if (!banner || !detailsBtn || !details || !dismissBtn) return;
+
+    detailsBtn.addEventListener('click', () => {
+        const expanded = detailsBtn.getAttribute('aria-expanded') === 'true';
+        detailsBtn.setAttribute('aria-expanded', String(!expanded));
+        details.hidden = expanded;
+        detailsBtn.querySelector('.config-warning-details-label').textContent = expanded ? 'Details' : 'Hide details';
+    });
+
+    dismissBtn.addEventListener('click', () => {
+        rememberDismissedConfigWarnings(banner.dataset.fingerprint || '');
+        banner.hidden = true;
+        if (elements.searchInput) elements.searchInput.focus();
+    });
+}
+
+// ============================================
 // Version Control API Functions
 // ============================================
 
@@ -10003,6 +10115,10 @@ async function init() {
     // Load the current group's items with full HA state info
     await loadItems();
     showEmptyState();
+
+    // Surface unreadable config files without holding up the initial render
+    initConfigWarningBanner();
+    loadConfigWarnings();
 }
 
 // Start the app

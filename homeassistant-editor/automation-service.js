@@ -53,11 +53,12 @@ export const HA_SCHEMA = yaml.DEFAULT_SCHEMA.extend(customYamlTypes);
  * reading the included file, so those lines are dropped and the parse retried
  * instead of failing the whole document.
  */
-export function loadHaYaml(content) {
+export function loadHaYaml(content, label) {
   try {
     return yaml.load(content, { schema: HA_SCHEMA });
   } catch (error) {
     if (/cannot merge mappings/i.test(error.message || '')) {
+      console.warn(`[YAML] Dropped unsupported "<<: !include" merge line${label ? ` in ${label}` : ''}`);
       const stripped = String(content)
         .split('\n')
         .filter((line) => !/^\s*<<:\s*!include/.test(line))
@@ -110,7 +111,7 @@ async function getCachedContent(filePath) {
 async function getCachedYaml(filePath) {
   const entry = await getCachedFileEntry(filePath);
   if (entry.data === undefined) {
-    entry.data = loadHaYaml(entry.content);
+    entry.data = loadHaYaml(entry.content, filePath);
   }
   return entry.data;
 }
@@ -123,6 +124,53 @@ const INCLUDE_LINE_RE = /^([A-Za-z0-9_][A-Za-z0-9_\- ]*?):\s*!(include_dir_merge
 
 // Safety valve so a malformed config with include cycles cannot hang the add-on
 const MAX_SCANNED_FILES = 1000;
+
+// Files that could not be read or parsed, surfaced to the UI instead of only
+// being written to the add-on log.
+const parseWarnings = new Map();
+const PARSE_WARNING_TTL_MS = 10 * 60 * 1000;
+
+// Short lived cache for the resolved include graph, keyed by config path
+const configPathsCache = new Map();
+const CONFIG_PATHS_TTL_MS = 2000;
+
+function recordParseWarning(filePath, error, kind = 'parse') {
+  parseWarnings.set(filePath, {
+    file: filePath,
+    error: error && error.message ? error.message.split('\n')[0] : String(error),
+    missing: Boolean(error && error.code === 'ENOENT'),
+    kind,
+    at: Date.now()
+  });
+}
+
+function clearParseWarning(filePath) {
+  parseWarnings.delete(filePath);
+}
+
+/**
+ * Get configuration files that failed to load, newest first.
+ * Entries expire so a file that was fixed or removed stops being reported.
+ */
+export function getParseWarnings(configPath) {
+  const now = Date.now();
+  const warnings = [];
+
+  for (const [filePath, warning] of parseWarnings) {
+    const expired = now - warning.at > PARSE_WARNING_TTL_MS;
+    const vanished = !warning.missing && !fs.existsSync(filePath);
+    if (expired || vanished) {
+      parseWarnings.delete(filePath);
+      continue;
+    }
+    warnings.push({
+      file: configPath ? path.relative(configPath, filePath) : filePath,
+      error: warning.error
+    });
+  }
+
+  return warnings;
+}
 
 /**
  * Strip surrounding quotes and trailing comments from an include target
@@ -200,22 +248,23 @@ function addSource(sources, domain, filePath, shape, isPackage = false) {
 /**
  * Recursively walk a YAML file following Home Assistant !include directives
  */
-async function scanConfigFile(filePath, domain, shape, sources, visited) {
+async function scanConfigFile(filePath, domain, shape, sources, visited, options = {}) {
   if (!filePath || visited.has(filePath) || visited.size >= MAX_SCANNED_FILES) return;
   visited.add(filePath);
+
+  let content;
+  try {
+    content = await getCachedContent(filePath);
+  } catch (err) {
+    if (!options.optional) recordParseWarning(filePath, err, 'scan');
+    return;
+  }
 
   if (domain === 'package') {
     addSource(sources, 'automation', filePath, 'auto', true);
     addSource(sources, 'script', filePath, 'auto', true);
   } else if (domain === 'automation' || domain === 'script') {
     addSource(sources, domain, filePath, shape);
-  }
-
-  let content;
-  try {
-    content = await getCachedContent(filePath);
-  } catch (err) {
-    return;
   }
 
   const dir = path.dirname(filePath);
@@ -257,11 +306,23 @@ async function scanConfigFile(filePath, domain, shape, sources, visited) {
  * @param {string} configPath - Path to the config directory
  * @returns {Object} automationPaths, scriptPaths plus per-file source metadata
  */
-export async function getConfigFilePaths(configPath) {
+export async function getConfigFilePaths(configPath, { fresh = false } = {}) {
+  // extractAutomations and extractScripts both resolve paths on every request;
+  // a short lived cache keeps that to a single directory walk.
+  const cached = configPathsCache.get(configPath);
+  if (!fresh && cached && Date.now() - cached.at < CONFIG_PATHS_TTL_MS) {
+    return cached.value;
+  }
+
   const sources = createSourceRegistry();
   const visited = new Set();
 
-  await scanConfigFile(path.join(configPath, 'configuration.yaml'), 'config', 'auto', sources, visited);
+  // Drop scan warnings from the previous pass; this scan re-adds what still applies
+  for (const [warnedPath, warning] of parseWarnings) {
+    if (warning.kind === 'scan') parseWarnings.delete(warnedPath);
+  }
+
+  await scanConfigFile(path.join(configPath, 'configuration.yaml'), 'config', 'auto', sources, visited, { optional: true });
 
   const defaultAuto = path.join(configPath, 'automations.yaml');
   const defaultScript = path.join(configPath, 'scripts.yaml');
@@ -284,12 +345,15 @@ export async function getConfigFilePaths(configPath) {
       isPackage: meta.isPackage
     }));
 
-  return {
+  const value = {
     automationPaths: Array.from(sources.automation.keys()),
     scriptPaths: Array.from(sources.script.keys()),
     automationSources: toSourceList(sources.automation),
     scriptSources: toSourceList(sources.script)
   };
+
+  configPathsCache.set(configPath, { at: Date.now(), value });
+  return value;
 }
 
 function isItemEnabled(obj) {
@@ -509,6 +573,7 @@ export async function extractAutomations(configPath) {
       try {
         const content = await getCachedContent(filePath);
         const data = await getCachedYaml(filePath);
+        clearParseWarning(filePath);
         if (!data) return [];
 
         const relativeToConfigPath = path.relative(configPath, filePath);
@@ -547,9 +612,8 @@ export async function extractAutomations(configPath) {
             };
           });
       } catch (error) {
-        if (error.code !== 'ENOENT') {
-          console.log(`Skipping ${filePath}: ${error.message}`);
-        }
+        console.log(`Skipping ${filePath}: ${error.message}`);
+        recordParseWarning(filePath, error, error.code === 'ENOENT' ? 'scan' : 'parse');
         return [];
       }
     }));
@@ -576,6 +640,7 @@ export async function extractScripts(configPath) {
       try {
         const content = await getCachedContent(filePath);
         const data = await getCachedYaml(filePath);
+        clearParseWarning(filePath);
         if (!data) return [];
 
         const relativeToConfigPath = path.relative(configPath, filePath);
@@ -608,9 +673,8 @@ export async function extractScripts(configPath) {
             };
           });
       } catch (error) {
-        if (error.code !== 'ENOENT') {
-          console.log(`Skipping ${filePath}: ${error.message}`);
-        }
+        console.log(`Skipping ${filePath}: ${error.message}`);
+        recordParseWarning(filePath, error, error.code === 'ENOENT' ? 'scan' : 'parse');
         return [];
       }
     }));

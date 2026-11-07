@@ -50,6 +50,46 @@
       </div>
     </header>
 
+    <!-- Configuration Warnings -->
+    <div class="config-warning-banner" id="config-warning-banner" role="status" aria-live="polite" hidden>
+      <span class="config-warning-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round">
+          <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+          <line x1="12" y1="9" x2="12" y2="13" />
+          <line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
+      </span>
+      <div class="config-warning-content">
+        <div class="config-warning-head">
+          <p class="config-warning-text">
+            <span class="config-warning-title" id="config-warning-title"></span>
+            <span class="config-warning-hint">Some automations and scripts may not appear until these files are
+              fixed.</span>
+          </p>
+          <button class="config-warning-details-btn" id="config-warning-details-btn" type="button" aria-expanded="false"
+            aria-controls="config-warning-details">
+            <span class="config-warning-details-label">Details</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+              stroke-linejoin="round" aria-hidden="true">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+          <button class="config-warning-dismiss" id="config-warning-dismiss" type="button"
+            aria-label="Dismiss configuration warnings" title="Dismiss">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+              aria-hidden="true">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+        <div class="config-warning-details" id="config-warning-details" hidden>
+          <ul class="config-warning-list" id="config-warning-list"></ul>
+        </div>
+      </div>
+    </div>
+
     <!-- Main Content -->
     <main class="main">
       <!-- Left Sidebar - Groups -->
