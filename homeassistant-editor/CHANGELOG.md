@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.2.2] - 2026-11-07
+
+### Fixed
+- **Nested `!include` Discovery**: Includes are now resolved recursively, so configurations that keep automations and scripts behind a chain like `packages: !include_dir_named packages/` → `automation ui: !include ../automations.yaml` are detected.
+- **`!include_dir_*` Contents**: Files pulled in by `!include_dir_list`, `!include_dir_named`, `!include_dir_merge_list` and `!include_dir_merge_named` are now parsed with the correct shape (single item, named map, or list) instead of being silently skipped.
+- **Package Automation Keys**: Automations and scripts defined under package keys such as `automation split:` or `script split:` are listed and editable in place.
+- **Package Writes**: Saving an automation or script that lives inside a package or an included file now writes back to the correct nested location instead of the file root.
+- **`<<: !include` Documents**: Files using an ESPHome style merge include no longer abort parsing, so a single unsupported file cannot hide the rest of the config.
+
 ## [1.2.1] - 2026-08-22
 
 ### Added

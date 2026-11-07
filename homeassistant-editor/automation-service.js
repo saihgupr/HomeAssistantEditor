@@ -48,6 +48,27 @@ for (const tag of HA_TAGS) {
 export const HA_SCHEMA = yaml.DEFAULT_SCHEMA.extend(customYamlTypes);
 
 /**
+ * Parse YAML using the Home Assistant schema.
+ * ESPHome style `<<: !include file.yaml` merges cannot be resolved without
+ * reading the included file, so those lines are dropped and the parse retried
+ * instead of failing the whole document.
+ */
+export function loadHaYaml(content) {
+  try {
+    return yaml.load(content, { schema: HA_SCHEMA });
+  } catch (error) {
+    if (/cannot merge mappings/i.test(error.message || '')) {
+      const stripped = String(content)
+        .split('\n')
+        .filter((line) => !/^\s*<<:\s*!include/.test(line))
+        .join('\n');
+      return yaml.load(stripped, { schema: HA_SCHEMA });
+    }
+    throw error;
+  }
+}
+
+/**
  * Get cached file entry, refreshing if necessary
  * @param {string} filePath - Path to file
  * @returns {Promise<Object>} Cached entry { mtimeMs, content, data }
@@ -89,121 +110,186 @@ async function getCachedContent(filePath) {
 async function getCachedYaml(filePath) {
   const entry = await getCachedFileEntry(filePath);
   if (entry.data === undefined) {
-    entry.data = yaml.load(entry.content, { schema: HA_SCHEMA });
+    entry.data = loadHaYaml(entry.content);
   }
   return entry.data;
 }
 
-async function addYamlFilesFromDir(dirPath, targetArray) {
+// Matches single-line Home Assistant include directives, e.g.
+//   automation: !include automations.yaml
+//   packages: !include_dir_named packages/
+//   script split: !include_dir_merge_named scripts/
+const INCLUDE_LINE_RE = /^([A-Za-z0-9_][A-Za-z0-9_\- ]*?):\s*!(include_dir_merge_named|include_dir_merge_list|include_dir_named|include_dir_list|include)\s+(\S.*)$/;
+
+// Safety valve so a malformed config with include cycles cannot hang the add-on
+const MAX_SCANNED_FILES = 1000;
+
+/**
+ * Strip surrounding quotes and trailing comments from an include target
+ */
+function cleanIncludeTarget(raw) {
+  return String(raw)
+    .replace(/\s+#.*$/, '')
+    .trim()
+    .replace(/^['"]|['"]$/g, '');
+}
+
+/**
+ * Determine how the contents of an included file should be interpreted
+ * list   -> file holds a list of items
+ * single -> file holds exactly one item
+ * named  -> file holds a mapping of name -> item
+ * auto   -> inspect the parsed content
+ */
+function includeShapeForTag(tag) {
+  switch (tag) {
+    case 'include_dir_list':
+      return 'single';
+    case 'include_dir_merge_list':
+      return 'list';
+    case 'include_dir_named':
+    case 'include_dir_merge_named':
+      return 'named';
+    default:
+      return 'auto';
+  }
+}
+
+function domainForKey(key) {
+  const normalized = key.toLowerCase();
+  if (normalized.includes('automation')) return 'automation';
+  if (normalized.includes('script')) return 'script';
+  if (normalized.includes('package')) return 'package';
+  return null;
+}
+
+async function listYamlFilesInDir(dirPath) {
   try {
     const entries = await fs.promises.readdir(dirPath, { withFileTypes: true });
-    for (const entry of entries) {
-      const full = path.join(dirPath, entry.name);
-      if (entry.isDirectory()) {
-        await addYamlFilesFromDir(full, targetArray);
-      } else if (entry.isFile() && (entry.name.endsWith('.yaml') || entry.name.endsWith('.yml'))) {
-        if (!targetArray.includes(full)) {
-          targetArray.push(full);
-        }
-      }
-    }
+    return entries
+      .filter((entry) => entry.isFile() && (entry.name.endsWith('.yaml') || entry.name.endsWith('.yml')))
+      .map((entry) => path.join(dirPath, entry.name))
+      .sort();
   } catch (err) {
     // Ignore missing directories
+    return [];
+  }
+}
+
+function createSourceRegistry() {
+  return {
+    automation: new Map(),
+    script: new Map()
+  };
+}
+
+function addSource(sources, domain, filePath, shape, isPackage = false) {
+  const registry = sources[domain];
+  if (!registry) return;
+
+  const existing = registry.get(filePath);
+  if (!existing) {
+    registry.set(filePath, { shape, isPackage });
+    return;
+  }
+
+  if (existing.shape !== shape) existing.shape = 'auto';
+  existing.isPackage = existing.isPackage && isPackage;
+}
+
+/**
+ * Recursively walk a YAML file following Home Assistant !include directives
+ */
+async function scanConfigFile(filePath, domain, shape, sources, visited) {
+  if (!filePath || visited.has(filePath) || visited.size >= MAX_SCANNED_FILES) return;
+  visited.add(filePath);
+
+  if (domain === 'package') {
+    addSource(sources, 'automation', filePath, 'auto', true);
+    addSource(sources, 'script', filePath, 'auto', true);
+  } else if (domain === 'automation' || domain === 'script') {
+    addSource(sources, domain, filePath, shape);
+  }
+
+  let content;
+  try {
+    content = await getCachedContent(filePath);
+  } catch (err) {
+    return;
+  }
+
+  const dir = path.dirname(filePath);
+  for (const line of content.split('\n')) {
+    const trimmedLine = line.trim();
+    if (!trimmedLine || trimmedLine.startsWith('#')) continue;
+
+    const includeMatch = trimmedLine.match(INCLUDE_LINE_RE);
+    if (!includeMatch) continue;
+
+    const keyDomain = domainForKey(includeMatch[1]);
+    if (!keyDomain) continue;
+
+    const tag = includeMatch[2];
+    const rawTarget = cleanIncludeTarget(includeMatch[3]);
+    if (!rawTarget) continue;
+
+    const targetPath = path.isAbsolute(rawTarget) ? rawTarget : path.resolve(dir, rawTarget);
+    const targetShape = includeShapeForTag(tag);
+
+    if (tag.startsWith('include_dir')) {
+      const files = await listYamlFilesInDir(targetPath);
+      for (const file of files) {
+        if (keyDomain === 'package') {
+          await scanConfigFile(file, 'package', 'auto', sources, visited);
+        } else {
+          addSource(sources, keyDomain, file, targetShape);
+        }
+      }
+    } else {
+      await scanConfigFile(targetPath, keyDomain, targetShape, sources, visited);
+    }
   }
 }
 
 /**
- * Parse configuration.yaml to find automation and script file locations
+ * Parse configuration.yaml and every reachable include to find automation
+ * and script file locations
  * @param {string} configPath - Path to the config directory
- * @returns {Object} Object with automationPaths and scriptPaths arrays
+ * @returns {Object} automationPaths, scriptPaths plus per-file source metadata
  */
 export async function getConfigFilePaths(configPath) {
-  const configFile = path.join(configPath, 'configuration.yaml');
-  const automationPaths = [];
-  const scriptPaths = [];
+  const sources = createSourceRegistry();
+  const visited = new Set();
 
-  const addPathIfUnique = (list, p) => {
-    if (p && !list.includes(p)) list.push(p);
-  };
+  await scanConfigFile(path.join(configPath, 'configuration.yaml'), 'config', 'auto', sources, visited);
 
-  try {
-    const configContent = await getCachedContent(configFile);
-    const lines = configContent.split('\n');
-
-    for (const line of lines) {
-      const trimmedLine = line.trim();
-      if (!trimmedLine || trimmedLine.startsWith('#')) continue;
-
-      // Match automation / script / packages includes
-      const includeMatch = trimmedLine.match(/^([\w\-]+(?:\s+[\w\-]+)?):\s*!(include|include_dir_list|include_dir_named|include_dir_merge_list|include_dir_merge_named)\s+(.+)$/);
-      if (includeMatch) {
-        const key = includeMatch[1].toLowerCase();
-        const tag = includeMatch[2];
-        const rawTarget = includeMatch[3].trim().replace(/^['"]|['"]$/g, '');
-        const targetPath = path.isAbsolute(rawTarget) ? rawTarget : path.resolve(configPath, rawTarget);
-        const isDir = tag.startsWith('include_dir');
-
-        const isAuto = key.includes('automation');
-        const isScript = key.includes('script');
-        const isPackage = key.includes('package');
-
-        if (isDir) {
-          if (isAuto || isPackage) await addYamlFilesFromDir(targetPath, automationPaths);
-          if (isScript || isPackage) await addYamlFilesFromDir(targetPath, scriptPaths);
-        } else {
-          if (isAuto || isPackage) addPathIfUnique(automationPaths, targetPath);
-          if (isScript || isPackage) addPathIfUnique(scriptPaths, targetPath);
-
-          // If this is an included file (e.g. integrations/automation.yaml), scan it for nested includes
-          try {
-            const subContent = await getCachedContent(targetPath);
-            const subLines = subContent.split('\n');
-            const subDir = path.dirname(targetPath);
-            for (const subLine of subLines) {
-              const subTrim = subLine.trim();
-              const subMatch = subTrim.match(/^([\w\-]+(?:\s+[\w\-]+)?):\s*!(include|include_dir_list|include_dir_named|include_dir_merge_list|include_dir_merge_named)\s+(.+)$/);
-              if (subMatch) {
-                const subKey = subMatch[1].toLowerCase();
-                const subTag = subMatch[2];
-                const subRawTarget = subMatch[3].trim().replace(/^['"]|['"]$/g, '');
-                const subTargetPath = path.isAbsolute(subRawTarget) ? subRawTarget : path.resolve(subDir, subRawTarget);
-                const subIsDir = subTag.startsWith('include_dir');
-
-                const subIsAuto = subKey.includes('automation') || isAuto;
-                const subIsScript = subKey.includes('script') || isScript;
-                const subIsPackage = subKey.includes('package') || isPackage;
-
-                if (subIsDir) {
-                  if (subIsAuto || subIsPackage) await addYamlFilesFromDir(subTargetPath, automationPaths);
-                  if (subIsScript || subIsPackage) await addYamlFilesFromDir(subTargetPath, scriptPaths);
-                } else {
-                  if (subIsAuto || subIsPackage) addPathIfUnique(automationPaths, subTargetPath);
-                  if (subIsScript || subIsPackage) addPathIfUnique(scriptPaths, subTargetPath);
-                }
-              }
-            }
-          } catch (e) {
-            // Ignore sub-file read errors
-          }
-        }
-      }
-    }
-  } catch (error) {
-    // If configuration.yaml doesn't exist or can't be read, continue to defaults
-  }
-
-  // Always check standard locations
   const defaultAuto = path.join(configPath, 'automations.yaml');
   const defaultScript = path.join(configPath, 'scripts.yaml');
-  
-  if (fs.existsSync(defaultAuto)) addPathIfUnique(automationPaths, defaultAuto);
-  if (fs.existsSync(defaultScript)) addPathIfUnique(scriptPaths, defaultScript);
 
-  // If still empty, add default filenames
-  if (automationPaths.length === 0) automationPaths.push(defaultAuto);
-  if (scriptPaths.length === 0) scriptPaths.push(defaultScript);
+  // Fall back to the standard locations when nothing was discovered
+  if (fs.existsSync(defaultAuto) && !sources.automation.has(defaultAuto)) {
+    addSource(sources, 'automation', defaultAuto, 'auto');
+  }
+  if (fs.existsSync(defaultScript) && !sources.script.has(defaultScript)) {
+    addSource(sources, 'script', defaultScript, 'auto');
+  }
 
-  return { automationPaths, scriptPaths };
+  if (sources.automation.size === 0) addSource(sources, 'automation', defaultAuto, 'auto');
+  if (sources.script.size === 0) addSource(sources, 'script', defaultScript, 'auto');
+
+  const toSourceList = (registry) =>
+    Array.from(registry, ([filePath, meta]) => ({
+      filePath,
+      shape: meta.shape,
+      isPackage: meta.isPackage
+    }));
+
+  return {
+    automationPaths: Array.from(sources.automation.keys()),
+    scriptPaths: Array.from(sources.script.keys()),
+    automationSources: toSourceList(sources.automation),
+    scriptSources: toSourceList(sources.script)
+  };
 }
 
 function isItemEnabled(obj) {
@@ -213,6 +299,202 @@ function isItemEnabled(obj) {
   return true;
 }
 
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function looksLikeAutomation(obj) {
+  return isPlainObject(obj) && Boolean(obj.trigger || obj.triggers || obj.action || obj.actions || obj.alias || obj.id);
+}
+
+function looksLikeScript(obj) {
+  return isPlainObject(obj) && !(obj.trigger || obj.triggers) && Boolean(obj.sequence || obj.alias);
+}
+
+/**
+ * Flatten parsed YAML into individual automation entries, remembering where
+ * each one lives so it can be written back to the right spot.
+ * Entry: { obj, index?, key?, container?, single? }
+ */
+function collectAutomationEntries(data, shape) {
+  const entries = [];
+
+  const addList = (list, container) => {
+    if (!Array.isArray(list)) return;
+    list.forEach((item, index) => {
+      if (isPlainObject(item)) entries.push({ obj: item, index, container });
+    });
+  };
+
+  const addNamed = (obj, container) => {
+    if (!isPlainObject(obj)) return;
+    Object.keys(obj).forEach((key) => {
+      if (isPlainObject(obj[key])) entries.push({ obj: obj[key], key, container });
+    });
+  };
+
+  if (shape === 'list') {
+    addList(data);
+    return entries;
+  }
+  if (shape === 'named') {
+    // A named include may still hold a single item named after its file
+    if (looksLikeAutomation(data)) entries.push({ obj: data, single: true });
+    else addNamed(data);
+    return entries;
+  }
+  if (shape === 'single') {
+    if (looksLikeAutomation(data)) entries.push({ obj: data, single: true });
+    return entries;
+  }
+
+  // shape === 'auto' - inspect the parsed content
+  if (Array.isArray(data)) {
+    addList(data);
+    return entries;
+  }
+  if (!isPlainObject(data)) return entries;
+
+  if (Array.isArray(data.automation)) addList(data.automation, 'automation');
+  else if (isPlainObject(data.automation)) addNamed(data.automation, 'automation');
+
+  // Package style keys: "automation split:", "automation ui:", ...
+  Object.keys(data).forEach((key) => {
+    if (key === 'automation' || !/^automation(\s|$)/i.test(key)) return;
+    const value = data[key];
+    if (Array.isArray(value)) {
+      addList(value, key);
+    } else if (isPlainObject(value)) {
+      if (looksLikeAutomation(value)) entries.push({ obj: value, key });
+      else addNamed(value, key);
+    }
+  });
+
+  if (looksLikeAutomation(data)) {
+    entries.push({ obj: data, single: true });
+    return entries;
+  }
+
+  const hasAutomationKey = Object.keys(data).some((key) => /^automation(\s|$)/i.test(key));
+  if (!hasAutomationKey) addNamed(data);
+
+  return entries;
+}
+
+/**
+ * Flatten parsed YAML into individual script entries
+ * Entry: { obj, index?, key?, container?, single? }
+ */
+function collectScriptEntries(data, shape) {
+  const entries = [];
+
+  const addNamed = (obj, container) => {
+    if (!isPlainObject(obj)) return;
+    Object.keys(obj).forEach((key) => {
+      if (isPlainObject(obj[key])) entries.push({ obj: obj[key], key, container });
+    });
+  };
+
+  if (shape === 'named') {
+    // A named include may still hold a single item named after its file
+    if (looksLikeScript(data)) entries.push({ obj: data, single: true });
+    else addNamed(data);
+    return entries;
+  }
+  if (shape === 'single') {
+    if (looksLikeScript(data)) entries.push({ obj: data, single: true });
+    return entries;
+  }
+  if (shape === 'list') {
+    if (Array.isArray(data)) {
+      data.forEach((item, index) => {
+        if (isPlainObject(item)) entries.push({ obj: item, index });
+      });
+    }
+    return entries;
+  }
+
+  // shape === 'auto' - inspect the parsed content
+  if (!isPlainObject(data)) return entries;
+
+  if (isPlainObject(data.script)) addNamed(data.script, 'script');
+
+  // Package style keys: "script split:", "script ui:", ...
+  Object.keys(data).forEach((key) => {
+    if (key === 'script' || !/^script(\s|$)/i.test(key)) return;
+    const value = data[key];
+    if (isPlainObject(value)) {
+      if (looksLikeScript(value)) entries.push({ obj: value, key });
+      else addNamed(value, key);
+    }
+  });
+
+  if (looksLikeScript(data)) {
+    entries.push({ obj: data, single: true });
+    return entries;
+  }
+
+  const hasScriptKey = Object.keys(data).some((key) => /^script(\s|$)/i.test(key));
+  if (!hasScriptKey) {
+    Object.keys(data).forEach((key) => {
+      if (looksLikeScript(data[key])) entries.push({ obj: data[key], key });
+    });
+  }
+
+  return entries;
+}
+
+/**
+ * Write an updated entry back into its parsed document
+ */
+function setEntryValue(data, entry, value) {
+  if (entry.single) return value;
+
+  const target = entry.container ? data[entry.container] : data;
+  if (!target) {
+    throw new Error(`Unable to locate "${entry.container}" in the configuration file`);
+  }
+
+  if (Array.isArray(target) && entry.index !== undefined) {
+    target[entry.index] = value;
+  } else if (entry.key !== undefined) {
+    target[entry.key] = value;
+  }
+
+  return data;
+}
+
+/**
+ * Remove an entry from its parsed document
+ */
+function removeEntry(data, entry) {
+  if (entry.single) {
+    throw new Error(`${entry.file || 'This file'} holds a single item and cannot be edited in place. Delete or empty that file manually.`);
+  }
+
+  const target = entry.container ? data[entry.container] : data;
+  if (!target) {
+    throw new Error(`Unable to locate "${entry.container}" in the configuration file`);
+  }
+
+  if (Array.isArray(target) && entry.index !== undefined) {
+    target.splice(entry.index, 1);
+  } else if (entry.key !== undefined) {
+    delete target[entry.key];
+  }
+
+  return data;
+}
+
+/**
+ * Pick a sensible file for newly created items: prefer a plain (non package)
+ * list/auto source, otherwise fall back to the standard file.
+ */
+function pickCreateTarget(sources, defaultPath) {
+  const preferred = sources.find((source) => !source.isPackage && (source.shape === 'list' || source.shape === 'auto'));
+  return preferred ? preferred.filePath : defaultPath;
+}
+
 /**
  * Extract all automations from YAML files
  * @param {string} configPath - Path to the config directory
@@ -220,121 +502,50 @@ function isItemEnabled(obj) {
  */
 export async function extractAutomations(configPath) {
   try {
-    const { automationPaths } = await getConfigFilePaths(configPath);
+    const { automationSources } = await getConfigFilePaths(configPath);
 
     // Combined: Process files in parallel and use cached file entry
-    const results = await Promise.all(automationPaths.map(async (filePath) => {
+    const results = await Promise.all(automationSources.map(async ({ filePath, shape }) => {
       try {
         const content = await getCachedContent(filePath);
         const data = await getCachedYaml(filePath);
-        const fileAutomations = [];
+        if (!data) return [];
 
-        if (data) {
-          const relativeToConfigPath = path.relative(configPath, filePath);
-          const lines = content.split('\n');
+        const relativeToConfigPath = path.relative(configPath, filePath);
+        const lines = content.split('\n');
 
-          // Handle array format (standard HA automations.yaml)
-          if (Array.isArray(data)) {
-            data.forEach((auto, index) => {
-              if (auto && (auto.alias || auto.id)) {
-                const lineNumber = findLineNumber(lines, auto.id || `auto_${index}`, auto.alias, true);
-                fileAutomations.push({
-                  id: auto.id || `auto_${index}`,
-                  alias: auto.alias || `Automation ${index}`,
-                  description: auto.description || '',
-                  mode: auto.mode || 'single',
-                  category: auto.category || '',
-                  variables: auto.variables || {},
-                  triggers: auto.triggers || auto.trigger || [],
-                  conditions: auto.conditions || auto.condition || [],
-                  actions: auto.actions || auto.action || [],
-                  file: relativeToConfigPath,
-                  fullPath: filePath,
-                  index: index,
-                  enabled: isItemEnabled(auto),
-                  lineNumber: lineNumber
-                });
-              }
-            });
-          }
-          // Handle object format (packages or named automations)
-          else if (typeof data === 'object') {
-            // Check for 'automation' key (standard in packages)
-            if (data.automation) {
-              const autoData = data.automation;
-              if (Array.isArray(autoData)) {
-                autoData.forEach((auto, index) => {
-                  if (auto && (auto.alias || auto.id)) {
-                    const lineNumber = findLineNumber(lines, auto.id || `auto_${index}`, auto.alias, true);
-                    fileAutomations.push({
-                      id: auto.id || `auto_${index}`,
-                      alias: auto.alias || `Automation ${index}`,
-                      description: auto.description || '',
-                      mode: auto.mode || 'single',
-                      category: auto.category || '',
-                      variables: auto.variables || {},
-                      triggers: auto.triggers || auto.trigger || [],
-                      conditions: auto.conditions || auto.condition || [],
-                      actions: auto.actions || auto.action || [],
-                      file: relativeToConfigPath,
-                      fullPath: filePath,
-                      index: index,
-                      enabled: isItemEnabled(auto),
-                      lineNumber: lineNumber
-                    });
-                  }
-                });
-              } else if (typeof autoData === 'object') {
-                Object.keys(autoData).forEach(key => {
-                  const auto = autoData[key];
-                  if (auto && typeof auto === 'object') {
-                    fileAutomations.push({
-                      id: auto.id || key,
-                      alias: auto.alias || key,
-                      description: auto.description || '',
-                      mode: auto.mode || 'single',
-                      category: auto.category || '',
-                      variables: auto.variables || {},
-                      triggers: auto.triggers || auto.trigger || [],
-                      conditions: auto.conditions || auto.condition || [],
-                      actions: auto.actions || auto.action || [],
-                      file: relativeToConfigPath,
-                      fullPath: filePath,
-                      key: key,
-                      enabled: isItemEnabled(auto)
-                    });
-                  }
-                });
-              }
-            } else {
-              // Flat object format (key: { triggers: ... })
-              Object.keys(data).forEach(key => {
-                const auto = data[key];
-                if (auto && typeof auto === 'object') {
-                  const hasTriggers = auto.triggers || auto.trigger;
-                  if (hasTriggers) {
-                    fileAutomations.push({
-                      id: auto.id || key,
-                      alias: auto.alias || key,
-                      description: auto.description || '',
-                      mode: auto.mode || 'single',
-                      category: auto.category || '',
-                      variables: auto.variables || {},
-                      triggers: auto.triggers || auto.trigger || [],
-                      conditions: auto.conditions || auto.condition || [],
-                      actions: auto.actions || auto.action || [],
-                      file: relativeToConfigPath,
-                      fullPath: filePath,
-                      key: key,
-                      enabled: isItemEnabled(auto)
-                    });
-                  }
-                }
-              });
+        return collectAutomationEntries(data, shape)
+          .filter(({ obj }) => obj.alias || obj.id)
+          .map(({ obj: auto, index, key, container, single }) => {
+            const fallbackId = path.basename(filePath, path.extname(filePath));
+            let lineNumber = 1;
+            if (!single) {
+              lineNumber = index !== undefined
+                ? findLineNumber(lines, auto.id || `auto_${index}`, auto.alias, true)
+                : findLineNumber(lines, key, auto.alias, false);
             }
-          }
-        }
-        return fileAutomations;
+
+            return {
+              id: auto.id || key || (index !== undefined ? `auto_${index}` : fallbackId),
+              alias: auto.alias || key || (index !== undefined ? `Automation ${index}` : fallbackId),
+              description: auto.description || '',
+              mode: auto.mode || 'single',
+              category: auto.category || '',
+              variables: auto.variables || {},
+              triggers: auto.triggers || auto.trigger || [],
+              conditions: auto.conditions || auto.condition || [],
+              actions: auto.actions || auto.action || [],
+              file: relativeToConfigPath,
+              fullPath: filePath,
+              index,
+              key,
+              container,
+              single: Boolean(single),
+              shape,
+              enabled: isItemEnabled(auto),
+              lineNumber
+            };
+          });
       } catch (error) {
         if (error.code !== 'ENOENT') {
           console.log(`Skipping ${filePath}: ${error.message}`);
@@ -358,52 +569,44 @@ export async function extractAutomations(configPath) {
  */
 export async function extractScripts(configPath) {
   try {
-    const { scriptPaths } = await getConfigFilePaths(configPath);
+    const { scriptSources } = await getConfigFilePaths(configPath);
 
     // Combined: Process files in parallel and use cached file entry
-    const results = await Promise.all(scriptPaths.map(async (filePath) => {
+    const results = await Promise.all(scriptSources.map(async ({ filePath, shape }) => {
       try {
         const content = await getCachedContent(filePath);
         const data = await getCachedYaml(filePath);
-        const fileScripts = [];
+        if (!data) return [];
 
-        if (data && typeof data === 'object') {
-          const relativeToConfigPath = path.relative(configPath, filePath);
-          const lines = content.split('\n');
+        const relativeToConfigPath = path.relative(configPath, filePath);
+        const lines = content.split('\n');
 
-          const scriptData = data.script || data;
-          if (scriptData && typeof scriptData === 'object' && !Array.isArray(scriptData)) {
-            Object.keys(scriptData).forEach(key => {
-              const script = scriptData[key];
-              if (script && typeof script === 'object') {
-                const hasSequence = script.sequence;
-                const hasTriggers = script.triggers || script.trigger;
+        return collectScriptEntries(data, shape)
+          .filter(({ obj }) => obj.sequence)
+          .map(({ obj: script, index, key, container, single }) => {
+            const fallbackId = path.basename(filePath, path.extname(filePath));
+            const id = key || (single ? fallbackId : `script_${index}`);
 
-                // Scripts have sequence but NOT triggers
-                if (hasSequence && !hasTriggers) {
-                  const lineNumber = findLineNumber(lines, key, script.alias, false);
-                  fileScripts.push({
-                    id: key,
-                    alias: script.alias || key,
-                    description: script.description || '',
-                    mode: script.mode || 'single',
-                    category: script.category || '',
-                    sequence: script.sequence || [],
-                    variables: script.variables || {},
-                    fields: script.fields || {},
-                    icon: script.icon || '',
-                    file: relativeToConfigPath,
-                    fullPath: filePath,
-                    key: key,
-                    enabled: isItemEnabled(script),
-                    lineNumber: lineNumber
-                  });
-                }
-              }
-            });
-          }
-        }
-        return fileScripts;
+            return {
+              id,
+              alias: script.alias || id,
+              description: script.description || '',
+              mode: script.mode || 'single',
+              category: script.category || '',
+              sequence: script.sequence || [],
+              variables: script.variables || {},
+              fields: script.fields || {},
+              icon: script.icon || '',
+              file: relativeToConfigPath,
+              fullPath: filePath,
+              key,
+              container,
+              single: Boolean(single),
+              shape,
+              enabled: isItemEnabled(script),
+              lineNumber: single ? 1 : findLineNumber(lines, key, script.alias, false)
+            };
+          });
       } catch (error) {
         if (error.code !== 'ENOENT') {
           console.log(`Skipping ${filePath}: ${error.message}`);
@@ -467,7 +670,7 @@ export async function updateAutomation(automationId, updatedAutomation, configPa
 
     const filePath = existing.fullPath;
     const content = await fs.promises.readFile(filePath, 'utf-8');
-    let data = yaml.load(content, { schema: HA_SCHEMA });
+    let data = loadHaYaml(content);
 
     // Build the automation object for YAML
     const autoObj = {
@@ -495,16 +698,8 @@ export async function updateAutomation(automationId, updatedAutomation, configPa
       autoObj.initial_state = true;
     }
 
-    // Handle array format
-    if (Array.isArray(data)) {
-      if (existing.index !== undefined) {
-        data[existing.index] = autoObj;
-      }
-    }
-    // Handle object format
-    else if (existing.key) {
-      data[existing.key] = autoObj;
-    }
+    // Write the automation back to the exact place it came from
+    data = setEntryValue(data, existing, autoObj);
 
     // Write back to file
     const updatedYaml = yaml.dump(data, {
@@ -533,13 +728,13 @@ export async function updateAutomation(automationId, updatedAutomation, configPa
  */
 export async function createAutomation(automation, configPath) {
   try {
-    const { automationPaths } = await getConfigFilePaths(configPath);
-    const filePath = automationPaths[0]; // Use the first/default automation file
+    const { automationSources } = await getConfigFilePaths(configPath);
+    const filePath = pickCreateTarget(automationSources, path.join(configPath, 'automations.yaml'));
 
     let data = [];
     try {
       const content = await fs.promises.readFile(filePath, 'utf-8');
-      data = yaml.load(content, { schema: HA_SCHEMA }) || [];
+      data = loadHaYaml(content) || [];
     } catch (e) {
       // File might not exist, start with empty array
     }
@@ -612,16 +807,10 @@ export async function deleteAutomation(automationId, configPath) {
 
     const filePath = existing.fullPath;
     const content = await fs.promises.readFile(filePath, 'utf-8');
-    let data = yaml.load(content, { schema: HA_SCHEMA });
+    let data = loadHaYaml(content);
 
-    // Handle array format
-    if (Array.isArray(data) && existing.index !== undefined) {
-      data.splice(existing.index, 1);
-    }
-    // Handle object format
-    else if (existing.key) {
-      delete data[existing.key];
-    }
+    // Remove the automation from the exact place it came from
+    data = removeEntry(data, existing);
 
     const updatedYaml = yaml.dump(data, {
       indent: 2,
@@ -657,7 +846,7 @@ export async function updateScript(scriptId, updatedScript, configPath) {
 
     const filePath = existing.fullPath;
     const content = await fs.promises.readFile(filePath, 'utf-8');
-    let data = yaml.load(content, { schema: HA_SCHEMA });
+    let data = loadHaYaml(content);
 
     const scriptObj = {
       alias: updatedScript.alias,
@@ -682,7 +871,7 @@ export async function updateScript(scriptId, updatedScript, configPath) {
       scriptObj.fields = updatedScript.fields;
     }
 
-    data[existing.key] = scriptObj;
+    data = setEntryValue(data, existing, scriptObj);
 
     const updatedYaml = yaml.dump(data, {
       indent: 2,
@@ -708,13 +897,13 @@ export async function updateScript(scriptId, updatedScript, configPath) {
  */
 export async function createScript(script, configPath) {
   try {
-    const { scriptPaths } = await getConfigFilePaths(configPath);
-    const filePath = scriptPaths[0];
+    const { scriptSources } = await getConfigFilePaths(configPath);
+    const filePath = pickCreateTarget(scriptSources, path.join(configPath, 'scripts.yaml'));
 
     let data = {};
     try {
       const content = await fs.promises.readFile(filePath, 'utf-8');
-      data = yaml.load(content, { schema: HA_SCHEMA }) || {};
+      data = loadHaYaml(content) || {};
     } catch (e) {
       // File might not exist
     }
@@ -775,9 +964,9 @@ export async function deleteScript(scriptId, configPath) {
 
     const filePath = existing.fullPath;
     const content = await fs.promises.readFile(filePath, 'utf-8');
-    let data = yaml.load(content, { schema: HA_SCHEMA });
+    let data = loadHaYaml(content);
 
-    delete data[existing.key];
+    data = removeEntry(data, existing);
 
     const updatedYaml = yaml.dump(data, {
       indent: 2,
@@ -992,7 +1181,7 @@ export async function getRawScriptYaml(scriptId, configPath) {
 
 export function yamlToAutomation(yamlString) {
   try {
-    return yaml.load(yamlString, { schema: HA_SCHEMA });
+    return loadHaYaml(yamlString);
   } catch (error) {
     throw new Error(`Invalid YAML: ${error.message}`);
   }
