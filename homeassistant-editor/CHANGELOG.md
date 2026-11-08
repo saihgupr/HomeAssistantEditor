@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.3.1] - 2026-11-08
+
+### Fixed
+- **Includes Under Any Key (#17)**: The include walker no longer skips `!include` lines whose key is not an automation, script, or package key, and files found inside an `!include_dir_*` are scanned for their own includes. Configs that reach their automation files through a `homeassistant:` include or a directory include now list their automations and scripts.
+
 ## [1.3.0] - 2026-11-07
 
 ### Added
