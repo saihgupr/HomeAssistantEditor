@@ -249,8 +249,9 @@ function addSource(sources, domain, filePath, shape, isPackage = false) {
  * Recursively walk a YAML file following Home Assistant !include directives
  */
 async function scanConfigFile(filePath, domain, shape, sources, visited, options = {}) {
-  if (!filePath || visited.has(filePath) || visited.size >= MAX_SCANNED_FILES) return;
-  visited.add(filePath);
+  const visitKey = `${filePath}\u0000${domain}`;
+  if (!filePath || visited.has(visitKey) || visited.size >= MAX_SCANNED_FILES) return;
+  visited.add(visitKey);
 
   let content;
   try {
@@ -276,8 +277,6 @@ async function scanConfigFile(filePath, domain, shape, sources, visited, options
     if (!includeMatch) continue;
 
     const keyDomain = domainForKey(includeMatch[1]);
-    if (!keyDomain) continue;
-
     const tag = includeMatch[2];
     const rawTarget = cleanIncludeTarget(includeMatch[3]);
     if (!rawTarget) continue;
@@ -290,12 +289,15 @@ async function scanConfigFile(filePath, domain, shape, sources, visited, options
       for (const file of files) {
         if (keyDomain === 'package') {
           await scanConfigFile(file, 'package', 'auto', sources, visited);
+        } else if (keyDomain) {
+          await scanConfigFile(file, keyDomain, targetShape, sources, visited);
         } else {
-          addSource(sources, keyDomain, file, targetShape);
+          // An include under a non-automation key can still contain one further down
+          await scanConfigFile(file, 'config', 'auto', sources, visited);
         }
       }
     } else {
-      await scanConfigFile(targetPath, keyDomain, targetShape, sources, visited);
+      await scanConfigFile(targetPath, keyDomain || 'config', targetShape, sources, visited);
     }
   }
 }
