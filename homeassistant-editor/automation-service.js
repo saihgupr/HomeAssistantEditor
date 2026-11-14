@@ -211,17 +211,61 @@ function domainForKey(key) {
   return null;
 }
 
-async function listYamlFilesInDir(dirPath) {
-  try {
-    const entries = await fs.promises.readdir(dirPath, { withFileTypes: true });
-    return entries
-      .filter((entry) => entry.isFile() && (entry.name.endsWith('.yaml') || entry.name.endsWith('.yml')))
-      .map((entry) => path.join(dirPath, entry.name))
-      .sort();
-  } catch (err) {
-    // Ignore missing directories
-    return [];
-  }
+/**
+ * List YAML files below a directory, mirroring Home Assistant's own
+ * _find_files() (os.walk with subdirectories, dot entries skipped).
+ * Symlinked files are followed; symlinked directories are not, which matches
+ * os.walk's default and keeps include loops harmless.
+ */
+async function listYamlFilesInDir(dirPath, limit = MAX_SCANNED_FILES) {
+  const files = [];
+
+  const walk = async (currentDir) => {
+    if (files.length >= limit) return;
+
+    let entries;
+    try {
+      entries = await fs.promises.readdir(currentDir, { withFileTypes: true });
+    } catch (err) {
+      // A missing directory is reported by the caller. Anything else
+      // (permissions, I/O) would look exactly like an empty config, so surface it.
+      if (err.code !== 'ENOENT') {
+        recordParseWarning(currentDir, err, 'scan');
+      }
+      return;
+    }
+
+    // Stable order keeps the MAX_SCANNED_FILES cutoff deterministic
+    entries.sort((a, b) => a.name.localeCompare(b.name));
+
+    for (const entry of entries) {
+      if (files.length >= limit) return;
+      if (entry.name.startsWith('.')) continue;
+
+      const entryPath = path.join(currentDir, entry.name);
+
+      if (entry.isDirectory()) {
+        await walk(entryPath);
+        continue;
+      }
+
+      let isFile = entry.isFile();
+      if (!isFile && entry.isSymbolicLink()) {
+        try {
+          isFile = (await fs.promises.stat(entryPath)).isFile();
+        } catch (err) {
+          isFile = false;
+        }
+      }
+
+      if (isFile && (entry.name.endsWith('.yaml') || entry.name.endsWith('.yml'))) {
+        files.push(entryPath);
+      }
+    }
+  };
+
+  await walk(dirPath);
+  return files.sort();
 }
 
 function createSourceRegistry() {
@@ -286,6 +330,36 @@ async function scanConfigFile(filePath, domain, shape, sources, visited, options
 
     if (tag.startsWith('include_dir')) {
       const files = await listYamlFilesInDir(targetPath);
+      if (files.length === 0) {
+        // HA treats an empty directory include as empty, so only report the
+        // cases that hide something: a missing directory, or one that holds
+        // entries but no YAML the add-on can read.
+        if (!fs.existsSync(targetPath)) {
+          const err = new Error('Include directory not found');
+          err.code = 'ENOENT';
+          recordParseWarning(targetPath, err, 'scan');
+        } else {
+          let hasEntries = false;
+          try {
+            hasEntries = (await fs.promises.readdir(targetPath)).some((name) => !name.startsWith('.'));
+          } catch (err) {
+            recordParseWarning(targetPath, err, 'scan');
+          }
+          if (hasEntries) {
+            recordParseWarning(
+              targetPath,
+              new Error('Directory contains no YAML files (searched subdirectories)'),
+              'scan'
+            );
+          }
+        }
+      } else if (files.length >= MAX_SCANNED_FILES) {
+        recordParseWarning(
+          targetPath,
+          new Error(`Reached the ${MAX_SCANNED_FILES} file scan limit, so some files were not read`),
+          'scan'
+        );
+      }
       for (const file of files) {
         if (keyDomain === 'package') {
           await scanConfigFile(file, 'package', 'auto', sources, visited);

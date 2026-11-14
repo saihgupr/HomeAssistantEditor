@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.2] - 2026-11-13
+
+### Fixed
+- **Nested `!include_dir_*` Files (#17)**: Directory includes are now walked recursively, the way Home Assistant's own loader does. Automations and scripts that live in subdirectories under `packages/` or under an include directory are found again, instead of only one level being read.
+- **Unreadable Include Directories**: A directory include that is missing, or that holds entries but no YAML, is reported through `/api/health` instead of disappearing without a log line. A directory that is genuinely empty is left alone. Permission and I/O errors while walking are reported too.
+- **`/api/health` Sources**: The response now lists the config files that were actually opened and how many automations and scripts were parsed, so an empty list can be told apart from a scan that found nothing.
+- **Version Banner**: `run.sh` prints the version from `config.json` instead of a hardcoded string, and `deploy.sh` no longer requires a hardcoded version in `run.sh`.
+
 ## [1.3.1] - 2026-11-08
 
 ### Fixed

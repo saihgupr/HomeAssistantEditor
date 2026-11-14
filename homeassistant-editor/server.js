@@ -30,7 +30,8 @@ import {
     dumpYaml,
     getRawAutomationYaml,
     getRawScriptYaml,
-    getParseWarnings
+    getParseWarnings,
+    getConfigFilePaths
 } from './automation-service.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -418,18 +419,37 @@ app.get('/api/automations', async (req, res) => {
     }
 });
 
-// Health/diagnostics: surfaces config files that could not be read or parsed
+// Health/diagnostics: surfaces config files that could not be read or parsed,
+// plus the source files the scan actually discovered. An empty automation list
+// with zero discovered sources is a scan problem, not an empty config.
 app.get('/api/health', async (req, res) => {
     try {
         // Run a scan so warnings reflect the current state of the config
-        await extractAutomations(CONFIG_PATH);
-        await extractScripts(CONFIG_PATH);
+        const automations = await extractAutomations(CONFIG_PATH);
+        const scripts = await extractScripts(CONFIG_PATH);
+        const { automationSources, scriptSources } = await getConfigFilePaths(CONFIG_PATH);
+
+        const describeSources = (sources) => sources.map(({ filePath, shape, isPackage }) => ({
+            file: path.relative(CONFIG_PATH, filePath),
+            shape,
+            isPackage
+        }));
 
         res.json({
             success: true,
             version: ADDON_VERSION,
             configPath: CONFIG_PATH,
-            warnings: getParseWarnings(CONFIG_PATH)
+            warnings: getParseWarnings(CONFIG_PATH),
+            sources: {
+                automation: describeSources(automationSources),
+                script: describeSources(scriptSources)
+            },
+            counts: {
+                automations: automations.length,
+                scripts: scripts.length,
+                automationSources: automationSources.length,
+                scriptSources: scriptSources.length
+            }
         });
     } catch (error) {
         console.error('[API] Error building health response:', error);
